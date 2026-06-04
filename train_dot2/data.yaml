@@ -1,0 +1,121 @@
+# ============================================================
+# data.yaml - Đợt 2: Fruits + Vegetables Quality (96 class)
+# YOLO11 detection
+# 16 class cũ (index 0-15) GIỮ NGUYÊN thứ tự đợt 1
+# 80 class mới (index 16-95) = 20 loại rau củ × 4 mức chất lượng
+# ------------------------------------------------------------
+# LƯU Ý: Khi export từ Roboflow, dùng data.yaml MÀ ROBOFLOW SINH RA
+# làm chuẩn cuối. File này là CẤU TRÚC MỤC TIÊU để bạn sắp xếp
+# class trong Roboflow cho khớp (giữ 16 class cũ ở đầu).
+# ============================================================
+
+path: ../datasets/fruits-veg-quality   # sửa theo đường dẫn thực tế
+train: train/images
+val:   valid/images
+test:  test/images
+
+nc: 96
+
+names:
+  # ---------- 16 CLASS ĐỢT 1 (giữ nguyên index) ----------
+  0:  Apple Fresh
+  1:  Apple Rotten
+  2:  Apple Semifresh
+  3:  Apple Semirotten
+  4:  Banana Fresh
+  5:  Banana Rotten
+  6:  Banana Semifresh
+  7:  Banana Semirotten
+  8:  Mango Fresh
+  9:  Mango Rotten
+  10: Mango Semifresh
+  11: Mango Semirotten
+  12: Orange Fresh
+  13: Orange Rotten
+  14: Orange Semifresh
+  15: Orange Semirotten
+
+  # ---------- 80 CLASS MỚI: 20 loại rau củ × 4 mức ----------
+  # (Danh sách 20 loại dưới đây là ĐỀ XUẤT - sửa tên tùy ý,
+  #  giữ đúng định dạng "<Tên> Fresh/Rotten/Semifresh/Semirotten")
+
+  16: Tomato Fresh
+  17: Tomato Rotten
+  18: Tomato Semifresh
+  19: Tomato Semirotten
+  20: Carrot Fresh
+  21: Carrot Rotten
+  22: Carrot Semifresh
+  23: Carrot Semirotten
+  24: Potato Fresh
+  25: Potato Rotten
+  26: Potato Semifresh
+  27: Potato Semirotten
+  28: Cucumber Fresh
+  29: Cucumber Rotten
+  30: Cucumber Semifresh
+  31: Cucumber Semirotten
+  32: Bell Pepper Fresh
+  33: Bell Pepper Rotten
+  34: Bell Pepper Semifresh
+  35: Bell Pepper Semirotten
+  36: Cabbage Fresh
+  37: Cabbage Rotten
+  38: Cabbage Semifresh
+  39: Cabbage Semirotten
+  40: Cauliflower Fresh
+  41: Cauliflower Rotten
+  42: Cauliflower Semifresh
+  43: Cauliflower Semirotten
+  44: Broccoli Fresh
+  45: Broccoli Rotten
+  46: Broccoli Semifresh
+  47: Broccoli Semirotten
+  48: Eggplant Fresh
+  49: Eggplant Rotten
+  50: Eggplant Semifresh
+  51: Eggplant Semirotten
+  52: Onion Fresh
+  53: Onion Rotten
+  54: Onion Semifresh
+  55: Onion Semirotten
+  56: Garlic Fresh
+  57: Garlic Rotten
+  58: Garlic Semifresh
+  59: Garlic Semirotten
+  60: Chili Fresh
+  61: Chili Rotten
+  62: Chili Semifresh
+  63: Chili Semirotten
+  64: Bitter Melon Fresh
+  65: Bitter Melon Rotten
+  66: Bitter Melon Semifresh
+  67: Bitter Melon Semirotten
+  68: Pumpkin Fresh
+  69: Pumpkin Rotten
+  70: Pumpkin Semifresh
+  71: Pumpkin Semirotten
+  72: Zucchini Fresh
+  73: Zucchini Rotten
+  74: Zucchini Semifresh
+  75: Zucchini Semirotten
+  76: Lettuce Fresh
+  77: Lettuce Rotten
+  78: Lettuce Semifresh
+  79: Lettuce Semirotten
+  80: Spinach Fresh
+  81: Spinach Rotten
+  82: Spinach Semifresh
+  83: Spinach Semirotten
+  84: Corn Fresh
+  85: Corn Rotten
+  86: Corn Semifresh
+  87: Corn Semirotten
+  88: Radish Fresh
+  89: Radish Rotten
+  90: Radish Semifresh
+  91: Radish Semirotten
+  92: Sweet Potato Fresh
+  93: Sweet Potato Rotten
+  94: Sweet Potato Semifresh
+  95: Sweet Potato Semirotten

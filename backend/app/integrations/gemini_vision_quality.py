@@ -29,6 +29,20 @@ Tiêu chí phân loại chất lượng:
 Nếu ảnh KHÔNG chứa nông sản: đặt is_produce=false, detected_crop='không phải nông sản', quality_grade='grade_3', confidence=0.0"""
 
 
+def _build_contents(image_bytes: bytes, mime_type: str):
+    """Build Gemini multimodal contents without hard dependency in tests."""
+    try:
+        from google.genai import types as _types
+        return [
+            _types.Part.from_bytes(data=image_bytes, mime_type=mime_type),
+            _ANALYZE_PROMPT,
+        ]
+    except Exception:
+        # Fallback for environments without google.genai installed.
+        # Mock clients used in tests only need a contents payload.
+        return [image_bytes, _ANALYZE_PROMPT]
+
+
 class GeminiVisionAnalyzer:
     def __init__(self, client=None):
         self._client = client  # injectable for testing
@@ -50,6 +64,7 @@ class GeminiVisionAnalyzer:
             return _fallback_result("AI không khả dụng")
 
         mime_type = _detect_mime(image_bytes)
+        contents = _build_contents(image_bytes, mime_type)
 
         for model_name in [
             "gemini-2.5-flash-lite",
@@ -60,13 +75,9 @@ class GeminiVisionAnalyzer:
             "gemini-3.1-flash-lite",
         ]:
             try:
-                from google.genai import types as _types
                 response = client.models.generate_content(
                     model=model_name,
-                    contents=[
-                        _types.Part.from_bytes(data=image_bytes, mime_type=mime_type),
-                        _ANALYZE_PROMPT,
-                    ],
+                    contents=contents,
                 )
                 text = (response.text or "").strip()
                 text = _strip_fences(text)

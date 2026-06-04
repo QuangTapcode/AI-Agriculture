@@ -253,6 +253,65 @@ def _apply_lightweight_schema_upgrades() -> None:
         _fix_mssql_alert_type_constraint()
 
 
+def _apply_price_indexes() -> None:
+    """Add UniqueConstraint and composite index to price tables for existing DBs.
+
+    - uq_marketprices_upsert_key  : UNIQUE (CropID, Region, PriceDate, QualityGrade, MarketType)
+    - ix_pricehistory_crop_region_date : INDEX (CropID, Region, RecordDate)
+
+    Both are IF NOT EXISTS — safe to run on every startup.
+    Duplicates already in the DB will cause the UNIQUE constraint to be skipped with a warning.
+    """
+    import logging as _log
+    logger = _log.getLogger(__name__)
+
+    if _is_sqlite():
+        try:
+            with engine.begin() as conn:
+                conn.exec_driver_sql(
+                    "CREATE UNIQUE INDEX IF NOT EXISTS uq_marketprices_upsert_key "
+                    "ON MarketPrices (CropID, Region, PriceDate, QualityGrade, MarketType)"
+                )
+                conn.exec_driver_sql(
+                    "CREATE INDEX IF NOT EXISTS ix_pricehistory_crop_region_date "
+                    "ON PriceHistory (CropID, Region, RecordDate)"
+                )
+        except Exception as exc:
+            logger.warning("[schema] price indexes (SQLite): %s", exc)
+        return
+
+    if active_database_url.startswith("mssql"):
+        stmts = [
+            (
+                "uq_marketprices_upsert_key",
+                "MarketPrices",
+                "IF NOT EXISTS (SELECT 1 FROM sys.indexes "
+                "WHERE object_id = OBJECT_ID('MarketPrices') "
+                "AND name = 'uq_marketprices_upsert_key') "
+                "ALTER TABLE MarketPrices ADD CONSTRAINT uq_marketprices_upsert_key "
+                "UNIQUE (CropID, Region, PriceDate, QualityGrade, MarketType)",
+            ),
+            (
+                "ix_pricehistory_crop_region_date",
+                "PriceHistory",
+                "IF NOT EXISTS (SELECT 1 FROM sys.indexes "
+                "WHERE object_id = OBJECT_ID('PriceHistory') "
+                "AND name = 'ix_pricehistory_crop_region_date') "
+                "CREATE INDEX ix_pricehistory_crop_region_date "
+                "ON PriceHistory (CropID, Region, RecordDate)",
+            ),
+        ]
+        for name, table, stmt in stmts:
+            try:
+                with engine.begin() as conn:
+                    conn.execute(text(stmt))
+            except Exception as exc:
+                logger.warning(
+                    "[schema] Could not add %s on %s (possible duplicate data): %s",
+                    name, table, exc,
+                )
+
+
 def _fix_mssql_alert_type_constraint() -> None:
     """Ensure AlertSubscriptions.AlertType constraint allows Vietnamese Unicode values."""
     if not active_database_url.startswith("mssql"):
@@ -399,6 +458,7 @@ def init_db():
         legacy_users_table = _migrate_legacy_sqlite_users()
         Base.metadata.create_all(bind=engine)
         _apply_lightweight_schema_upgrades()
+        _apply_price_indexes()
         _copy_legacy_sqlite_users(legacy_users_table)
         seed_demo_users(SessionLocal)
         seed_demo_seasons(SessionLocal)
@@ -410,6 +470,7 @@ def init_db():
         legacy_users_table = _migrate_legacy_sqlite_users()
         Base.metadata.create_all(bind=engine)
         _apply_lightweight_schema_upgrades()
+        _apply_price_indexes()
         _copy_legacy_sqlite_users(legacy_users_table)
         seed_demo_users(SessionLocal)
         seed_demo_seasons(SessionLocal)

@@ -343,14 +343,9 @@ def _strip_tags(html: str) -> str:
 
 def _normalize_crop(raw: str) -> Optional[str]:
     """Trả về tên chuẩn hoặc None nếu không nhận dạng được."""
-    cleaned = _strip_tags(raw).strip().lower()
-    cleaned = re.sub(r"\s+", " ", cleaned)
-    if cleaned in _CROP_ALIAS:
-        return _CROP_ALIAS[cleaned]
-    for alias, canonical in _CROP_ALIAS.items():
-        if alias in cleaned:
-            return canonical
-    return None
+    from app.services.data_quality_service import normalize_crop_strict
+    cleaned = re.sub(r"\s+", " ", _strip_tags(raw).strip())
+    return normalize_crop_strict(cleaned)
 
 
 def _normalize_region(raw: str) -> Optional[str]:

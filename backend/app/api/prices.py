@@ -92,13 +92,16 @@ def get_current_price(
 
 
 @router.get("")
-def get_latest_prices(limit: int = 20, db: Session = Depends(get_db)):
-    """
-    Lấy danh sách giá thị trường mới nhất (mặc định 20 dòng).
-    """
+def get_latest_prices(
+    limit: int = 20,
+    offset: int = 0,
+    db: Session = Depends(get_db),
+):
+    """Lấy danh sách giá thị trường mới nhất. Hỗ trợ phân trang: ?limit=20&offset=40"""
     results = (
         db.query(MarketPrice)
         .order_by(MarketPrice.UpdatedAt.desc())
+        .offset(offset)
         .limit(limit)
         .all()
     )

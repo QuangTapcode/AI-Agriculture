@@ -131,8 +131,8 @@ async def suggest_price(request: PricingSuggestRequest, db: Session = Depends(ge
 
 
 @router.post("/forecast")
-async def forecast_price(request: PriceForecastRequest):
-    data = pricing_service.forecast_price(request.crop_name, request.region, request.days)
+async def forecast_price(request: PriceForecastRequest, db: Session = Depends(get_db)):
+    data = pricing_service.forecast_price_with_db(db, request.crop_name, request.region, request.days)
     return api_response(
         data,
         source=data.get("source", "cache"),
@@ -208,14 +208,13 @@ async def weather_price_forecast(
         return api_response(current)
     base_price = float(current["current_price"])
     weather_info = get_weather_adjusted_pricing(db, crop_name, region, base_price)
-    multiplier = pricing_service.quality_multipliers.get(quality_grade, 1.0)
 
     data = {
         "crop_name": crop_name,
         "region": region,
         "quality_grade": quality_grade,
-        "base_price": round(base_price * multiplier, 2),
-        "weather_adjusted_price": round(weather_info["adjusted_price"] * multiplier, 2),
+        "base_price": round(base_price, 2),
+        "weather_adjusted_price": round(weather_info["adjusted_price"], 2),
         "weather_factor": weather_info["weather_factor"],
         "price_change_pct": weather_info["price_change_pct"],
         "weather_summary": weather_info["weather_summary"],

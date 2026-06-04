@@ -26,6 +26,30 @@ import { qualityApi } from '../services/qualityApi';
 
 const REGIONS = ['Hà Nội', 'TP.HCM', 'Đà Nẵng', 'Cần Thơ', 'Hải Phòng', 'Đắk Lắk', 'Tiền Giang'];
 
+const GRADE_COLOR = {
+  grade_1: '#22c55e',
+  grade_2: '#eab308',
+  grade_3: '#f97316',
+  damaged: '#ef4444',
+};
+
+// Crops supported by YOLO11 + EfficientNet (trained model)
+const YOLO_CROPS = [
+  { value: 'chuoi',  label: 'Chuối',  emoji: '🍌' },
+  { value: 'xoai',   label: 'Xoài',   emoji: '🥭' },
+  { value: 'tao',    label: 'Táo',    emoji: '🍎' },
+  { value: 'cam',    label: 'Cam',    emoji: '🍊' },
+];
+// Other crops use Gemini Vision fallback
+const GEMINI_CROPS = [
+  { value: 'ca chua',    label: 'Cà chua'    },
+  { value: 'dua chuot',  label: 'Dưa chuột'  },
+  { value: 'sau rieng',  label: 'Sầu riêng'  },
+  { value: 'thanh long', label: 'Thanh long'  },
+  { value: 'lua',        label: 'Lúa'         },
+  { value: '',           label: 'Tự động nhận diện' },
+];
+
 const GRADE = {
   grade_1: {
     label: 'Loại 1',
@@ -656,7 +680,11 @@ const QualityPage = () => {
 
   // Shared state
   const [region, setRegion] = useState('Đà Nẵng');
+  const [cropName, setCropName] = useState('chuoi');
   const [loading, setLoading] = useState(false);
+  const [hoveredIdx, setHoveredIdx] = useState(-1);
+  const [imgNaturalDims, setImgNaturalDims] = useState({ w: 640, h: 480 });
+  const annotationImgRef = useRef(null);
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
 
@@ -684,9 +712,10 @@ const QualityPage = () => {
     setError(null);
     setResult(null);
     try {
-      const data = await qualityApi.checkWithPrice(selectedFile, '', region);
+      const data = await qualityApi.checkWithPrice(selectedFile, cropName, region);
       setResult(data);
       setResultSource('image');
+      setHoveredIdx(-1);
     } catch (err) {
       setResult(null);
       setError(getApiErrorMessage(err, 'Lỗi khi kiểm tra chất lượng'));
@@ -725,7 +754,11 @@ const QualityPage = () => {
           </div>
           <div>
             <h1 className="text-xl font-bold text-gray-900">Kiểm định chất lượng nông sản</h1>
-            <p className="text-sm text-gray-500">AI Gemini Vision — định giá qua ảnh hoặc video trực tiếp</p>
+            <p className="text-sm text-gray-500">
+              {YOLO_CROPS.some((c) => c.value === cropName)
+                ? '🤖 YOLO11 + EfficientNet — AI local, nhanh, không cần internet'
+                : '✨ Gemini Vision — AI cloud, nhận diện đa dạng nông sản'}
+            </p>
           </div>
         </div>
       </div>
@@ -735,18 +768,50 @@ const QualityPage = () => {
         {/* ── LEFT: Input panel ────────────────────────────────────────────── */}
         <div className="lg:col-span-2 space-y-4">
 
-          {/* Region */}
-          <div className="bg-white rounded-2xl border border-gray-200 p-4 shadow-sm">
-            <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
-              <MapPin className="h-4 w-4 text-emerald-500" /> Khu vực thị trường
-            </label>
-            <select
-              value={region}
-              onChange={(e) => setRegion(e.target.value)}
-              className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-gray-50"
-            >
-              {REGIONS.map((r) => <option key={r} value={r}>{r}</option>)}
-            </select>
+          {/* Crop + Region selectors */}
+          <div className="bg-white rounded-2xl border border-gray-200 p-4 shadow-sm space-y-3">
+            {/* Crop selector */}
+            <div>
+              <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
+                <Leaf className="h-4 w-4 text-emerald-500" /> Loại nông sản
+              </label>
+              <select
+                value={cropName}
+                onChange={(e) => setCropName(e.target.value)}
+                className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-gray-50"
+              >
+                <optgroup label="🤖 YOLO11 + EfficientNet (AI local)">
+                  {YOLO_CROPS.map((c) => (
+                    <option key={c.value} value={c.value}>{c.emoji} {c.label}</option>
+                  ))}
+                </optgroup>
+                <optgroup label="✨ Gemini Vision (AI cloud)">
+                  {GEMINI_CROPS.map((c) => (
+                    <option key={c.value || '_auto'} value={c.value}>{c.label}</option>
+                  ))}
+                </optgroup>
+              </select>
+              {YOLO_CROPS.some((c) => c.value === cropName) && (
+                <p className="text-xs text-emerald-600 mt-1 flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
+                  Dùng YOLO11 + EfficientNet — nhanh, không cần internet
+                </p>
+              )}
+            </div>
+
+            {/* Region selector */}
+            <div>
+              <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
+                <MapPin className="h-4 w-4 text-emerald-500" /> Khu vực thị trường
+              </label>
+              <select
+                value={region}
+                onChange={(e) => setRegion(e.target.value)}
+                className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-gray-50"
+              >
+                {REGIONS.map((r) => <option key={r} value={r}>{r}</option>)}
+              </select>
+            </div>
           </div>
 
           {/* Tab selector */}
@@ -930,7 +995,17 @@ const QualityPage = () => {
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1">
                       <div className="mb-3 flex flex-wrap items-center gap-2">
-                        <DataSourceBadge data={result} className="bg-white/90" />
+                        {result.ai_source === 'yolo_efficientnet' || result.ai_source === 'efficientnet_fullimage' ? (
+                          <span className="rounded-full bg-white/20 px-3 py-1 text-xs font-semibold flex items-center gap-1">
+                            🤖 YOLO11 + EfficientNet + HSV
+                          </span>
+                        ) : result.ai_source === 'gemini_vision' ? (
+                          <span className="rounded-full bg-white/20 px-3 py-1 text-xs font-semibold">
+                            ✨ Gemini Vision
+                          </span>
+                        ) : (
+                          <DataSourceBadge data={result} className="bg-white/90" />
+                        )}
                         {Number.isFinite(result.confidence) && (
                           <span className="rounded-full bg-white/20 px-3 py-1 text-xs font-semibold">
                             Độ tin cậy {(result.confidence * 100).toFixed(0)}%
@@ -967,6 +1042,152 @@ const QualityPage = () => {
                 </div>
               )}
 
+              {/* Interactive fruit detection panel */}
+              {(result.all_detections || []).length > 0 && preview && (
+                <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+                  <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+                    <span className="text-sm font-bold text-gray-800 flex items-center gap-2">
+                      🔍 Phát hiện {(result.all_detections || []).length} quả
+                    </span>
+                    <span className="text-xs text-gray-400">
+                      {hoveredIdx >= 0 ? `Đang xem quả #${hoveredIdx + 1}` : 'Hover để xem từng quả'}
+                    </span>
+                  </div>
+
+                  {/* Image + SVG box overlay */}
+                  <div className="relative select-none">
+                    <img
+                      ref={annotationImgRef}
+                      src={preview}
+                      alt="Fruit detection"
+                      className="w-full object-contain max-h-72 block"
+                      onLoad={() => {
+                        if (annotationImgRef.current) {
+                          setImgNaturalDims({
+                            w: annotationImgRef.current.naturalWidth,
+                            h: annotationImgRef.current.naturalHeight,
+                          });
+                        }
+                      }}
+                    />
+                    {/* SVG overlay — viewBox = original image dims, auto-scales */}
+                    <svg
+                      className="absolute inset-0 w-full h-full pointer-events-none"
+                      viewBox={`0 0 ${imgNaturalDims.w} ${imgNaturalDims.h}`}
+                      preserveAspectRatio="xMidYMid meet"
+                    >
+                      <defs>
+                        <filter id="glow">
+                          <feGaussianBlur stdDeviation="3" result="blur" />
+                          <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                        </filter>
+                      </defs>
+                      {(result.all_detections || []).map((det, i) => {
+                        const bbox = det.bbox || [];
+                        if (bbox.length < 4) return null;
+                        const [x1, y1, x2, y2] = bbox;
+                        const w = x2 - x1, h = y2 - y1;
+                        const color = GRADE_COLOR[det.grade] ?? '#94a3b8';
+                        const isHovered = hoveredIdx === i;
+                        const isOther = hoveredIdx >= 0 && !isHovered;
+                        return (
+                          <g key={i}>
+                            {/* Box */}
+                            <rect
+                              x={x1} y={y1} width={w} height={h}
+                              rx={8} ry={8}
+                              fill={isHovered ? `${color}30` : isOther ? 'transparent' : `${color}18`}
+                              stroke={color}
+                              strokeWidth={isHovered ? 3 : isOther ? 1 : 2}
+                              opacity={isOther ? 0.35 : 1}
+                              filter={isHovered ? 'url(#glow)' : 'none'}
+                              strokeDasharray={isHovered ? 'none' : 'none'}
+                            />
+                            {/* Number badge */}
+                            <circle
+                              cx={x1 + 14} cy={y1 + 14} r={13}
+                              fill={isOther ? '#94a3b8' : color}
+                              opacity={isOther ? 0.35 : 1}
+                            />
+                            <text
+                              x={x1 + 14} y={y1 + 19}
+                              textAnchor="middle"
+                              fill="white"
+                              fontSize={imgNaturalDims.w > 800 ? 14 : 12}
+                              fontWeight="bold"
+                              opacity={isOther ? 0.5 : 1}
+                            >
+                              {i + 1}
+                            </text>
+                            {/* Label on hover */}
+                            {isHovered && (
+                              <g>
+                                <rect
+                                  x={x1} y={y1 - 30} width={Math.min(w, 160)} height={26}
+                                  rx={6} fill={color}
+                                />
+                                <text
+                                  x={x1 + 8} y={y1 - 12}
+                                  fill="white"
+                                  fontSize={imgNaturalDims.w > 800 ? 13 : 11}
+                                  fontWeight="600"
+                                >
+                                  {det.fruit_type_vi} · {det.grade_label_vi} {(det.confidence * 100).toFixed(0)}%
+                                </text>
+                              </g>
+                            )}
+                          </g>
+                        );
+                      })}
+                    </svg>
+                  </div>
+
+                  {/* Per-fruit interactive list */}
+                  <div className="p-3 space-y-1.5 max-h-52 overflow-y-auto">
+                    {(result.all_detections || []).map((det, i) => {
+                      const g2 = GRADE[det.grade] ?? GRADE.grade_2;
+                      const color = GRADE_COLOR[det.grade] ?? '#94a3b8';
+                      const isHovered = hoveredIdx === i;
+                      return (
+                        <div
+                          key={i}
+                          onMouseEnter={() => setHoveredIdx(i)}
+                          onMouseLeave={() => setHoveredIdx(-1)}
+                          className={`flex items-center gap-3 px-3 py-2.5 rounded-xl border cursor-pointer transition-all duration-150
+                            ${isHovered
+                              ? 'shadow-md scale-[1.01]'
+                              : 'hover:shadow-sm hover:scale-[1.005]'}
+                            ${g2.border} ${isHovered ? g2.light : 'bg-white'}`}
+                          style={{ borderLeftWidth: 3, borderLeftColor: isHovered ? color : 'transparent' }}
+                        >
+                          {/* Colored number */}
+                          <span
+                            className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0 transition-transform"
+                            style={{ background: color, transform: isHovered ? 'scale(1.15)' : 'scale(1)' }}
+                          >
+                            {i + 1}
+                          </span>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-semibold text-gray-900 truncate">
+                              {det.fruit_type_vi} — {det.grade_label_vi}
+                            </p>
+                            <p className="text-xs text-gray-400">
+                              YOLO {(det.yolo_confidence * 100).toFixed(0)}%
+                              {det.efficientnet_confidence > 0 && ` · CNN ${(det.efficientnet_confidence * 100).toFixed(0)}%`}
+                            </p>
+                          </div>
+                          <div className="text-right shrink-0">
+                            <span className="text-sm font-bold" style={{ color }}>
+                              {(det.confidence * 100).toFixed(0)}%
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
               {/* Analysis cards grid */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
 
@@ -978,6 +1199,45 @@ const QualityPage = () => {
                     </div>
                     <span className="text-sm font-bold text-gray-800">Phân tích {resultSource === 'video' ? 'video' : 'hình ảnh'}</span>
                   </div>
+                  {/* AI confidence breakdown for YOLO */}
+                  {(result.yolo_confidence > 0 || result.efficientnet_confidence > 0) && (
+                    <div className="mb-3 space-y-1.5">
+                      {result.yolo_confidence > 0 && (
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-gray-500">YOLO11</span>
+                          <div className="flex items-center gap-2">
+                            <div className="w-20 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                              <div className="h-full bg-emerald-500 rounded-full" style={{width:`${(result.yolo_confidence*100).toFixed(0)}%`}}/>
+                            </div>
+                            <span className="font-semibold text-gray-700 w-8 text-right">{(result.yolo_confidence*100).toFixed(0)}%</span>
+                          </div>
+                        </div>
+                      )}
+                      {result.efficientnet_confidence > 0 && (
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-gray-500">EfficientNet</span>
+                          <div className="flex items-center gap-2">
+                            <div className="w-20 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                              <div className="h-full bg-blue-500 rounded-full" style={{width:`${(result.efficientnet_confidence*100).toFixed(0)}%`}}/>
+                            </div>
+                            <span className="font-semibold text-gray-700 w-8 text-right">{(result.efficientnet_confidence*100).toFixed(0)}%</span>
+                          </div>
+                        </div>
+                      )}
+                      {result.hsv_freshness > 0 && (
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-gray-500">HSV tươi</span>
+                          <div className="flex items-center gap-2">
+                            <div className="w-20 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                              <div className="h-full bg-yellow-400 rounded-full" style={{width:`${(result.hsv_freshness*100).toFixed(0)}%`}}/>
+                            </div>
+                            <span className="font-semibold text-gray-700 w-8 text-right">{(result.hsv_freshness*100).toFixed(0)}%</span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                   {result.color_assessment && (
                     <Row icon={Leaf} label="Màu sắc & tình trạng" iconClass="text-green-500">
                       <p className="text-sm text-gray-700">{result.color_assessment}</p>
@@ -997,6 +1257,19 @@ const QualityPage = () => {
                     </Row>
                   )}
                 </div>
+
+                {/* Reasoning (YOLO/EfficientNet) */}
+                {result.reasoning && (
+                  <div className="sm:col-span-2 bg-white rounded-2xl border border-gray-200 p-4 shadow-sm">
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className="p-1.5 rounded-lg bg-violet-50">
+                        <Sparkles className="h-4 w-4 text-violet-500" />
+                      </div>
+                      <span className="text-sm font-bold text-gray-800">Lý do phân loại</span>
+                    </div>
+                    <p className="text-sm text-gray-600 leading-relaxed">{result.reasoning}</p>
+                  </div>
+                )}
 
                 {/* Price */}
                 {isProduce && (

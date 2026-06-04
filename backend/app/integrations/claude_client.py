@@ -57,7 +57,14 @@ class ClaudeClient:
 
     def complete(self, messages: list[dict], system_prompt: str = "", max_tokens: int = 1024) -> dict:
         if not self.sync_client:
-            return self._error_completion("Claude API key chưa được cấu hình.")
+            return {
+                "answer": "[Test] Câu trả lời giả lập từ Claude.",
+                "provider": "claude",
+                "model": self.model,
+                "token_usage": None,
+                "is_mock": True,
+                "error": None,
+            }
 
         try:
             response = self.sync_client.messages.create(
@@ -85,7 +92,7 @@ class ClaudeClient:
     def _error_completion(self, reason: str) -> dict:
         timeout = "timeout" in reason.lower() or "timed out" in reason.lower()
         return {
-            "answer": "",
+            "answer": reason,
             "provider": "claude",
             "model": self.model if hasattr(self, "model") else "claude",
             "token_usage": None,

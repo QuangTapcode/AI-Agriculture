@@ -35,10 +35,16 @@ export const qualityApi = {
     return unwrapApiResponse(response);
   },
 
-  getHistory: async (userId = 1, limit = 50) => {
-    const response = await api.get(`/api/quality/history/${encodeURIComponent(userId)}`, {
-      params: { limit },
-    });
+  getHistory: async (userId, limit = 50) => {
+    const hasExplicitUserId = !(userId == null || userId === '');
+    const response = await api.get(
+      hasExplicitUserId
+        ? `/api/quality/history/${encodeURIComponent(userId)}`
+        : '/api/quality/history',
+      {
+        params: { limit },
+      }
+    );
     return unwrapApiResponse(response);
   },
 };

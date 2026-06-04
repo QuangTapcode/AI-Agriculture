@@ -185,6 +185,7 @@ def api_response(
 
     source_url = None
     if isinstance(data, dict):
+        source = data.get("source") or source
         source_name = source_name or data.get("source_name") or data.get("source") or source
         source_url = data.get("source_url")
         last_updated = last_updated or data.get("last_updated") or data.get("updated_at") or data.get("created_at")
@@ -252,7 +253,7 @@ def api_response(
         "source_url": source_url if isinstance(data, dict) else None,
         "is_realtime": bool(is_realtime),
         "is_cache": bool(is_cache),
-        "is_mock": False,
+        "is_mock": bool(is_mock),
         "cache_status": cache_status,
         "warning": warning,
         "error": None,
@@ -268,7 +269,7 @@ def api_response(
             "source_url": source_url if isinstance(data, dict) else None,
             "is_realtime": is_realtime,
             "is_cache": is_cache,
-            "is_mock": False,
+            "is_mock": bool(is_mock),
             "warning": warning,
             "fallback_used": fallback_used,
             "timeout": timeout,

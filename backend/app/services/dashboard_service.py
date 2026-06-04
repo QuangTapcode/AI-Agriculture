@@ -54,8 +54,8 @@ class DashboardService:
         if not force_refresh:
             try:
                 cached = redis_client.get(cache_key)
-                if cached:
-                    return json.loads(cached)
+                if cached and isinstance(cached, dict):
+                    return cached
             except Exception:
                 pass
 
@@ -235,7 +235,7 @@ class DashboardService:
         }
 
         try:
-            redis_client.setex(cache_key, 180, json.dumps(result, default=str))
+            redis_client.set(cache_key, result, expire=180)
         except Exception:
             pass
 

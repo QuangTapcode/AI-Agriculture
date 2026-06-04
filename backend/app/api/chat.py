@@ -20,19 +20,53 @@ router = APIRouter(prefix="/api/chat", tags=["AI Chatbot"])
 gemini_client = GeminiClient()
 
 
+def _build_local_fallback_answer(question: str, topic: str = "general", region: str | None = None, crop: str | None = None) -> str:
+    region_text = region or _detect_region(question)
+    crop_text = crop or extract_crop_from_message(question)
+
+    if topic in {"price", "price_query"}:
+        crop_label = crop_text or "nông sản này"
+        return (
+            f"Hiện AI bên ngoài đang tạm không khả dụng. "
+            f"Bạn đang hỏi về giá {crop_label} tại {region_text}. "
+            "Vui lòng thử lại sau ít phút hoặc cung cấp thêm khu vực/cây trồng để hệ thống hỗ trợ tốt hơn."
+        )
+    if topic == "weather":
+        return (
+            f"Hiện AI bên ngoài đang tạm không khả dụng. "
+            f"Bạn đang hỏi thời tiết tại {region_text}. Vui lòng thử lại sau ít phút."
+        )
+    if topic == "cultivation":
+        crop_label = crop_text or "cây trồng"
+        return (
+            f"Hiện AI bên ngoài đang tạm không khả dụng. "
+            f"Bạn đang hỏi về canh tác {crop_label}. Vui lòng thử lại sau hoặc mô tả rõ hơn giai đoạn sinh trưởng."
+        )
+    if topic == "pest":
+        crop_label = crop_text or "cây trồng"
+        return (
+            f"Hiện AI bên ngoài đang tạm không khả dụng. "
+            f"Bạn đang hỏi về sâu bệnh trên {crop_label}. Vui lòng cung cấp thêm triệu chứng để hỗ trợ tốt hơn khi hệ thống sẵn sàng."
+        )
+    return "Hiện AI bên ngoài đang tạm không khả dụng. Vui lòng thử lại sau ít phút."
+
+
 def _save_conversation(db: Session, user_id: int | None, question: str, answer: str, topic: str = "general") -> None:
+    from app.models.conversation import AIConversation
+
+    row = AIConversation(
+        UserID=user_id,
+        UserMessage=question,
+        AIResponse=answer,
+        Provider="gemini",
+        Topic=db_topic_for_intent(topic),
+    )
     try:
-        from app.models.conversation import AIConversation
-        db.add(AIConversation(
-            UserID=user_id,
-            UserMessage=question,
-            AIResponse=answer,
-            Provider="gemini",
-            Topic=db_topic_for_intent(topic),
-        ))
+        db.add(row)
         db.commit()
-    except Exception:
+    except Exception as exc:
         db.rollback()
+        raise RuntimeError(f"Failed to save conversation: {exc}") from exc
 
 
 class ChatRequest(BaseModel):
@@ -71,6 +105,7 @@ _PEST_KEYWORDS        = ["sâu", "bệnh", "nấm", "vi khuẩn", "virus", "héo
 _WEATHER_KEYWORDS     = ["thời tiết", "bão", "lũ", "lụt", "mưa", "hạn hán", "nhiệt độ", "độ ẩm", "gió", "dự báo", "áp thấp", "nắng nóng", "rét đậm", "sương muối", "ngập", "khô hạn", "lũ quét", "bão số"]
 _SALINITY_KEYWORDS    = ["độ mặn", "xâm nhập mặn", "đất mặn", "nước mặn", "nhiễm mặn", "mặn hóa", "mặn xâm"]
 _ACIDITY_KEYWORDS     = ["phèn", "đất phèn", "đất chua", "ph đất", "cải tạo đất", "vôi nông nghiệp", "bón vôi", "đất nhiễm phèn", "axit đất"]
+
 
 def _question_contains(question: str, keywords: list[str]) -> bool:
     q = question.lower()
@@ -152,7 +187,7 @@ def _build_weather_context(db: Session, region: str) -> str:
                 ws = f" | ⚠️ {fwarns[0]}" if fwarns else ""
                 lines.append(f"- {f.get('date', 'N/A')}: {fc} | {f.get('temp_min', '?')}–{f.get('temp_max', '?')}°C | mưa {float(f.get('rainfall', 0)):.0f}mm{ws}")
         return "\n".join(lines)
-    except Exception as e:
+    except Exception:
         return f"## Lưu ý: Không lấy được dữ liệu thời tiết tại {region}."
 
 # Bảng mapping từ khoá vùng → tên vùng chính xác trong DB
@@ -205,6 +240,7 @@ def _detect_region(question: str) -> str:
 def _detect_crop(question: str) -> str:
     return extract_crop_from_message(question) or "lua"
 
+
 @router.post("", response_model=ChatResponse)
 async def ask_farming_advice(
     request: ChatRequest,
@@ -229,13 +265,21 @@ async def ask_farming_advice(
         from app.services.ai_context_service import ai_context_service
         from app.services.claude_service import claude_service
 
-        context = ai_context_service.build_ai_context(
-            db,
-            user_id=current_user.UserID if current_user else request.user_id,
-            region=extract_region_from_message(q) or _detect_region(q),
-            crop=extract_crop_from_message(q) or _detect_crop(q),
-            intent=intent,
-        )
+        try:
+            context = ai_context_service.build_ai_context(
+                db,
+                user_id=current_user.UserID if current_user else request.user_id,
+                region=extract_region_from_message(q) or _detect_region(q),
+                crop=extract_crop_from_message(q) or _detect_crop(q),
+                intent=intent,
+            )
+        except Exception:
+            context = {
+                "intent": intent,
+                "region": extract_region_from_message(q) or _detect_region(q),
+                "crop_name": extract_crop_from_message(q) or _detect_crop(q),
+            }
+
         if request.context_data:
             context["legacy_context_data"] = request.context_data
         result = await claude_service.answer_question(
@@ -246,9 +290,28 @@ async def ask_farming_advice(
             region=context.get("region"),
             extra_context=context,
         )
-        return ChatResponse(answer=result.get("answer", "Không thể tạo câu trả lời."))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Loi khi ket noi AI: {str(e)}") from e
+        answer = result.get("answer") or result.get("error")
+        if not answer:
+            answer = _build_local_fallback_answer(
+                q,
+                topic=intent,
+                region=context.get("region"),
+                crop=context.get("crop_name"),
+            )
+        _save_conversation(db, current_user.UserID if current_user else None, q, answer, intent)
+        return ChatResponse(answer=answer)
+    except Exception:
+        answer = _build_local_fallback_answer(
+            q,
+            topic=intent,
+            region=extract_region_from_message(q) or _detect_region(q),
+            crop=extract_crop_from_message(q) or _detect_crop(q),
+        )
+        try:
+            _save_conversation(db, current_user.UserID if current_user else None, q, answer, intent)
+        except Exception as exc:
+            raise HTTPException(status_code=500, detail=str(exc)) from exc
+        return ChatResponse(answer=answer)
 
     # RAG 1: Bổ sung giá thị trường từ DB nếu câu hỏi liên quan đến giá
     if _question_contains(q, _PRICE_KEYWORDS):
@@ -357,13 +420,16 @@ async def price_qa(
             _save_conversation(db, current_user.UserID if current_user else None, q, answer, "price_query")
             return PriceQAResponse(answer=answer, tavily_answer="", sources=[], db_prices=[])
         history = pricing_service.get_price_history(db, crop, region, days=7)
-        context = ai_context_service.build_ai_context(
-            db,
-            user_id=current_user.UserID if current_user else None,
-            region=region,
-            crop=crop,
-            intent="price_query",
-        )
+        try:
+            context = ai_context_service.build_ai_context(
+                db,
+                user_id=current_user.UserID if current_user else None,
+                region=region,
+                crop=crop,
+                intent="price_query",
+            )
+        except Exception:
+            context = {"intent": "price_query", "region": region, "crop_name": crop}
         result = await claude_service.answer_question(
             db,
             question=q,
@@ -372,8 +438,12 @@ async def price_qa(
             region=region,
             extra_context=context,
         )
+        answer = result.get("answer") or result.get("error")
+        if not answer:
+            answer = _build_local_fallback_answer(q, topic="price_query", region=region, crop=crop)
+        _save_conversation(db, current_user.UserID if current_user else None, q, answer, "price_query")
         return PriceQAResponse(
-            answer=result.get("answer", ""),
+            answer=answer,
             tavily_answer="",
             sources=context.get("data_sources", []),
             db_prices=[
@@ -521,9 +591,9 @@ async def price_qa(
                 lines.append(f"- **{p['crop_name']}**: {p['price']:,.0f} VNĐ/kg — {p['date']}")
             full_answer = "\n".join(lines)
         else:
-            full_answer = f"Chưa có dữ liệu giá tại {region}. Vui lòng hỏi về hồ tiêu, sầu riêng hoặc chọn vùng khác."
+            full_answer = _build_local_fallback_answer(q, topic="price_query", region=region, crop=crop)
 
-    _save_conversation(db, current_user.UserID if current_user else None, q, full_answer)
+    _save_conversation(db, current_user.UserID if current_user else None, q, full_answer, "price_query")
 
     return PriceQAResponse(
         answer=full_answer,
@@ -555,8 +625,10 @@ async def ask_agri(
     intent = classify_user_intent(q)
     region = extract_region_from_message(q) or _detect_region(q)
     if intent == "greeting":
+        _save_conversation(db, current_user.UserID if current_user else None, q, GREETING_REPLY, intent)
         return AskResponse(answer=GREETING_REPLY, topic=intent, region=region, sources=[])
     if intent == "general_question" and is_capability_question(q):
+        _save_conversation(db, current_user.UserID if current_user else None, q, GENERAL_CAPABILITY_REPLY, intent)
         return AskResponse(answer=GENERAL_CAPABILITY_REPLY, topic=intent, region=region, sources=[])
     fallback_topic = _detect_topic(q)
     topic = intent if intent != "general_question" else fallback_topic
@@ -564,13 +636,20 @@ async def ask_agri(
         from app.services.ai_context_service import ai_context_service
         from app.services.claude_service import claude_service
 
-        context = ai_context_service.build_ai_context(
-            db,
-            user_id=current_user.UserID if current_user else request.user_id,
-            region=region,
-            crop=extract_crop_from_message(q) or _detect_crop(q),
-            intent=topic,
-        )
+        try:
+            context = ai_context_service.build_ai_context(
+                db,
+                user_id=current_user.UserID if current_user else request.user_id,
+                region=region,
+                crop=extract_crop_from_message(q) or _detect_crop(q),
+                intent=topic,
+            )
+        except Exception:
+            context = {
+                "intent": topic,
+                "region": region,
+                "crop_name": extract_crop_from_message(q) or _detect_crop(q),
+            }
         result = await claude_service.answer_question(
             db,
             question=q,
@@ -579,8 +658,10 @@ async def ask_agri(
             region=context.get("region"),
             extra_context=context,
         )
+        answer = result.get("answer", "")
+        _save_conversation(db, current_user.UserID if current_user else None, q, answer, topic)
         return AskResponse(
-            answer=result.get("answer", ""),
+            answer=answer,
             topic=topic,
             region=region,
             sources=context.get("data_sources", []),
@@ -634,7 +715,7 @@ async def ask_agri(
                 for name, ph in hist:
                     lines.append(f"- {name} ({ph.Region}) ngày {ph.RecordDate}: TB {float(ph.AvgPrice):,.0f} VNĐ/kg")
                 ctx_parts.append("\n".join(lines))
-        except Exception as e:
+        except Exception:
             pass
 
     # Canh tác, sâu bệnh, general: bổ sung thông tin cây trồng từ DB
@@ -694,15 +775,17 @@ def get_chat_history(
     current_user: User = Depends(get_current_user),
 ):
     from app.models.conversation import AIConversation
+
+    base_query = db.query(AIConversation).filter(AIConversation.UserID == current_user.UserID)
+    total = base_query.count()
     rows = (
-        db.query(AIConversation)
-        .filter(AIConversation.UserID == current_user.UserID)
+        base_query
         .order_by(AIConversation.CreatedAt.desc())
         .limit(limit)
         .all()
     )
     return {
-        "total": len(rows),
+        "total": total,
         "history": [
             {
                 "id": r.ConvID,

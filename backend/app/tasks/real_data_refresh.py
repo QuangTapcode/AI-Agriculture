@@ -6,7 +6,13 @@ import os
 import time
 from collections.abc import Callable
 
+from datetime import date, timedelta
+
+from sqlalchemy import func
+
 from app.core.database import SessionLocal
+from app.models.price import MarketPrice, PriceHistory
+from app.services.data_quality_service import clean_price_records, save_quarantine, warn_count_mismatch
 from app.services.market_analysis_service import market_analysis_service
 from app.services.market_news_service import market_news_service
 from app.services.price_aggregator_service import price_aggregator_service
@@ -65,11 +71,95 @@ def _refresh_weather_forecast(regions: list[str]) -> None:
     )
 
 
+def _count_today_prices() -> int:
+    db = SessionLocal()
+    try:
+        return db.query(func.count(MarketPrice.PriceID)).filter(
+            MarketPrice.PriceDate == date.today()
+        ).scalar() or 0
+    except Exception:
+        return 0
+    finally:
+        db.close()
+
+
+def _avg_daily_prices_last_7d() -> float:
+    """Average number of MarketPrice records per day over the last 7 days (excluding today)."""
+    db = SessionLocal()
+    try:
+        since = date.today() - timedelta(days=7)
+        rows = (
+            db.query(MarketPrice.PriceDate, func.count(MarketPrice.PriceID))
+            .filter(MarketPrice.PriceDate >= since, MarketPrice.PriceDate < date.today())
+            .group_by(MarketPrice.PriceDate)
+            .all()
+        )
+        if not rows:
+            return 0.0
+        return sum(count for _, count in rows) / len(rows)
+    except Exception:
+        return 0.0
+    finally:
+        db.close()
+
+
+def _warn_if_abnormal_record_count() -> None:
+    """Warn when today's crawled price records are far below the 7-day average."""
+    avg = _avg_daily_prices_last_7d()
+    if avg < 5:
+        return  # not enough history yet
+    today = _count_today_prices()
+    threshold = float(os.getenv("CRAWL_COUNT_WARN_RATIO", "0.5"))
+    if today < avg * threshold:
+        logger.warning(
+            "[crawler-monitor] Bất thường: hôm nay chỉ cào %d bản ghi giá "
+            "(trung bình 7 ngày: %.0f, ngưỡng cảnh báo: %.0f%%). "
+            "Kiểm tra kết nối tới thitruongnongsan.gov.vn.",
+            today, avg, threshold * 100,
+        )
+
+
 def _refresh_prices(crops: list[str]) -> None:
     _run_with_db(
         "official_prices",
         lambda db: [price_aggregator_service.refresh_prices(db, crop_name=crop) for crop in crops],
     )
+    _warn_if_abnormal_record_count()
+
+
+def _price_history_row_count() -> int:
+    db = SessionLocal()
+    try:
+        return db.query(PriceHistory).count()
+    except Exception:
+        return 0
+    finally:
+        db.close()
+
+
+def _backfill_price_history(crops: list[str]) -> None:
+    """One-time backfill: fetch 90 days of history when DB is nearly empty."""
+    from app.integrations.thitruong_nongsan_price_client import thitruong_nongsan_price_client
+    from app.repositories.price_repository import bulk_upsert_market_prices
+
+    backfill_days = int(os.getenv("PRICE_BACKFILL_DAYS", "90"))
+    db = SessionLocal()
+    try:
+        for crop in crops:
+            raw = thitruong_nongsan_price_client.fetch_history(crop_name=crop, days=backfill_days)
+            records, rejected = clean_price_records(raw)
+            save_quarantine(rejected, source=f"backfill_{crop}")
+            result = bulk_upsert_market_prices(db, records)
+            warn_count_mismatch(f"backfill_{crop}", len(records), result)
+            logger.info(
+                "[backfill] %s: fetched=%d clean=%d saved=%d updated=%d",
+                crop, len(raw), len(records),
+                result.get("records_saved", 0), result.get("records_updated", 0),
+            )
+    except Exception as exc:
+        logger.warning("[backfill] price history backfill failed: %s", exc)
+    finally:
+        db.close()
 
 
 def _refresh_retail_prices(crops: list[str]) -> None:
@@ -95,6 +185,13 @@ async def real_data_refresh_loop() -> None:
 
     regions = _csv_env("REAL_REFRESH_REGIONS", DEFAULT_REGIONS)
     crops = _csv_env("REAL_REFRESH_CROPS", DEFAULT_CROPS)
+
+    # One-time backfill if PriceHistory is nearly empty (threshold: 1 row per crop)
+    backfill_threshold = int(os.getenv("PRICE_BACKFILL_MIN_ROWS", str(len(crops))))
+    if _price_history_row_count() < backfill_threshold:
+        logger.info("[backfill] PriceHistory sparse — running %d-day backfill for %s", int(os.getenv("PRICE_BACKFILL_DAYS", "90")), crops)
+        await asyncio.to_thread(_backfill_price_history, crops)
+
     jobs: dict[str, tuple[int, Callable[[], None]]] = {
         "weather_current": (_interval_seconds("WEATHER_CURRENT_REFRESH_SECONDS", 20), lambda: _refresh_weather_current(regions)),
         "weather_hourly": (_interval_seconds("WEATHER_HOURLY_REFRESH_SECONDS", 30), lambda: _refresh_weather_hourly(regions)),

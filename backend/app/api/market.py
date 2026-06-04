@@ -8,6 +8,11 @@ from app.api.auth import get_optional_current_user
 from app.api.response import api_response, error_response
 from app.core.database import get_db
 from app.models.user import User
+from app.repositories.analytics_repository import (
+    get_monthly_price_by_region,
+    get_price_trend,
+    get_weather_price_correlation,
+)
 from app.schemas.market_schema import MarketSuggestRequest, MarketSuggestResponse
 from app.services.market_analysis_service import market_analysis_service
 from app.services.market_news_service import market_news_service
@@ -415,3 +420,40 @@ async def get_market_demand(crop_name: str):
         code="REALTIME_API_FAILED",
         source="realtime_api",
     )
+
+
+# ── Analytics endpoints ─────────────────────────────────────────────────────
+
+@router.get("/analytics/trend/{crop_name}")
+async def get_analytics_trend(
+    crop_name: str,
+    region: str = Query(..., description="Tên tỉnh/thành"),
+    days: int = Query(30, ge=7, le=365),
+    db: Session = Depends(get_db),
+):
+    """Xu hướng giá (% thay đổi tuần, trung bình 7/30 ngày, chuỗi số)."""
+    data = get_price_trend(db, crop_name, region, days=days)
+    return api_response(data, source="database", is_mock=False)
+
+
+@router.get("/analytics/monthly/{crop_name}")
+async def get_analytics_monthly(
+    crop_name: str,
+    months: int = Query(6, ge=1, le=24),
+    db: Session = Depends(get_db),
+):
+    """Tổng hợp giá trung bình theo vùng × tháng."""
+    data = get_monthly_price_by_region(db, crop_name, months=months)
+    return api_response(data, source="database", is_mock=False)
+
+
+@router.get("/analytics/weather-correlation/{crop_name}")
+async def get_analytics_weather_correlation(
+    crop_name: str,
+    region: str = Query(..., description="Tên tỉnh/thành"),
+    days: int = Query(90, ge=14, le=365),
+    db: Session = Depends(get_db),
+):
+    """Tương quan Pearson giữa thời tiết (mưa, nhiệt độ, độ ẩm) và giá."""
+    data = get_weather_price_correlation(db, crop_name, region, days=days)
+    return api_response(data, source="database", is_mock=False)

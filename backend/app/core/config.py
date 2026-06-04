@@ -118,6 +118,14 @@ class Settings(BaseSettings):
     EXCHANGE_RATE_API_URL: str = "https://open.er-api.com/v6/latest/USD"
     OPEN_METEO_BASE_URL: str = "https://api.open-meteo.com"
     MARKET_API_BASE_URL: str = ""
+    PRICE_SAVE_RATIO_WARN_THRESHOLD: float = 0.5
+
+    # --- Firecrawl ---
+    FIRECRAWL_API_KEY: str = ""
+    FIRECRAWL_ENABLED: bool = False
+    FIRECRAWL_BASE_URL: str = "https://api.firecrawl.dev"
+    FIRECRAWL_RAW_STORAGE_PATH: str = "storage/raw_crawl"
+
     # --- Tavily ---
     TAVILY_API_KEY: str = ""
     TAVILY_ENABLED: bool = True
@@ -131,10 +139,8 @@ class Settings(BaseSettings):
     USD_VND_FALLBACK_RATE: float = 26000.0
     MARKET_NEWS_RSS_URLS_JSON: str = json.dumps(
         [
-            "https://vnexpress.net/rss/kinh-doanh.rss",
             "https://vnexpress.net/rss/nong-nghiep.rss",
-            "https://dantri.com.vn/kinh-doanh.rss",
-            "https://baomoi.com/nong-nghiep.rss",
+            "https://vnexpress.net/rss/kinh-doanh.rss",
         ]
     )
     MARKET_NEWS_CACHE_TTL_SECONDS: int = 1800

@@ -8,8 +8,8 @@ from typing import Any
 from dotenv import load_dotenv
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import JSONResponse
-from google import genai
-from google.genai import types
+import google.generativeai as genai
+from google.generativeai import types
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
@@ -191,7 +191,7 @@ def _local_market_reply(context: dict, message: str) -> str:
         )
 
     lines = [
-        f"Giá {crop} tại {region}: {_format_vnd(pricing.get('current_price') or pricing.get('market_price'))} {pricing.get('unit') or 'VNĐ/kg'}.",
+        f"Giá {crop} tại {region}: {_format_vnd(pricing.get('current_price') or pricing.get('market_price'))} {pricing.get('unit') or 'VNĐ/kg' }.",
         f"Nguồn: {pricing.get('source_name') or 'MarketPrices DB'}; độ tin cậy khoảng {round(float(pricing.get('confidence_score') or pricing.get('confidence') or 0) * 100)}%.",
     ]
     global_reference = pricing.get("global_reference") or analysis.get("global_reference")
@@ -987,34 +987,36 @@ async def ai_chat_message_with_context(
 
 
 @router.get("/history")
-async def ai_chat_history(
+def ai_chat_history(
     limit: int = Query(default=20, ge=1, le=100),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     from app.models.conversation import AIConversation
+
+    base_query = db.query(AIConversation).filter(AIConversation.UserID == current_user.UserID)
+    total = base_query.count()
     rows = (
-        db.query(AIConversation)
-        .filter(AIConversation.UserID == current_user.UserID)
+        base_query
         .order_by(AIConversation.CreatedAt.desc())
         .limit(limit)
         .all()
     )
-    data = {
-        "total": len(rows),
+
+    # Trả đúng contract mà frontend/tests cũ đang đọc trực tiếp ở root.
+    return {
+        "total": total,
         "history": [
             {
                 "id": row.ConvID,
                 "user_message": row.UserMessage,
                 "ai_response": row.AIResponse,
                 "topic": row.Topic,
-                "tools_used": row.ContextSnapshot,
-                "created_at": row.CreatedAt,
+                "created_at": row.CreatedAt.isoformat() if row.CreatedAt else None,
             }
             for row in rows
         ],
     }
-    return api_response(data, source="database", source_name="AIConversations DB", confidence=0.7)
 
 
 

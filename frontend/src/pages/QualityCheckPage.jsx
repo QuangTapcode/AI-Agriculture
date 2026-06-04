@@ -8,7 +8,7 @@ import {
   Upload,
   XCircle,
 } from 'lucide-react';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { getApiErrorMessage } from '../services/api';
 import { qualityApi } from '../services/qualityApi';
 
@@ -43,6 +43,12 @@ const QualityCheckPage = () => {
   const [error, setError] = useState(null);
   const fileInputRef = useRef(null);
 
+  useEffect(() => () => {
+    if (selectedImage) {
+      URL.revokeObjectURL(selectedImage);
+    }
+  }, [selectedImage]);
+
   const analyzeFile = async (file) => {
     if (!file) return;
     setIsAnalyzing(true);
@@ -50,7 +56,7 @@ const QualityCheckPage = () => {
     setAnalysisResult(null);
 
     try {
-      const result = await qualityApi.checkQuality(file, cropName, region);
+      const result = await qualityApi.checkWithPrice(file, cropName, region);
       setAnalysisResult(result);
     } catch (err) {
       setError(getApiErrorMessage(err, 'Không thể phân tích ảnh'));
@@ -61,6 +67,9 @@ const QualityCheckPage = () => {
 
   const loadFile = (file) => {
     if (!file || !file.type.startsWith('image/')) return;
+    if (selectedImage) {
+      URL.revokeObjectURL(selectedImage);
+    }
     setSelectedFile(file);
     setSelectedImage(URL.createObjectURL(file));
     setAnalysisResult(null);
@@ -77,11 +86,17 @@ const QualityCheckPage = () => {
   };
 
   const handleReset = () => {
+    if (selectedImage) {
+      URL.revokeObjectURL(selectedImage);
+    }
     setSelectedImage(null);
     setSelectedFile(null);
     setAnalysisResult(null);
     setError(null);
     setIsAnalyzing(false);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
   };
 
   const meta = gradeMeta[analysisResult?.quality_grade] || gradeMeta.grade_1;
@@ -92,7 +107,7 @@ const QualityCheckPage = () => {
       <div>
         <h1 className="text-3xl font-bold text-gray-900 mb-2">Kiểm Tra Chất Lượng</h1>
         <p className="text-gray-600">
-          Tải ảnh nông sản lên để hệ thống phân tích chất lượng.
+          🍌🍊🥭🍎 Dùng <strong>YOLO11 + EfficientNet</strong> cho quả đã train. Rau củ dùng Gemini Vision.
         </p>
       </div>
 
@@ -114,11 +129,21 @@ const QualityCheckPage = () => {
                   onChange={(event) => setCropName(event.target.value)}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
                 >
-                  <option value="ca chua">Cà chua</option>
-                  <option value="dua chuot">Dưa chuột</option>
-                  <option value="rau muong">Rau muống</option>
-                  <option value="lua">Lúa</option>
-                  <option value="ot">Ớt</option>
+                  <optgroup label="🍌 Quả (YOLO + EfficientNet)">
+                    <option value="chuoi">Chuối</option>
+                    <option value="xoai">Xoài</option>
+                    <option value="tao">Táo</option>
+                    <option value="cam">Cam</option>
+                  </optgroup>
+                  <optgroup label="🥬 Rau củ (Gemini Vision)">
+                    <option value="ca chua">Cà chua</option>
+                    <option value="dua chuot">Dưa chuột</option>
+                    <option value="rau muong">Rau muống</option>
+                    <option value="lua">Lúa</option>
+                    <option value="ot">Ớt</option>
+                    <option value="sau rieng">Sầu riêng</option>
+                    <option value="thanh long">Thanh long</option>
+                  </optgroup>
                 </select>
               </div>
 
@@ -227,22 +252,45 @@ const QualityCheckPage = () => {
                 <ResultIcon className="w-6 h-6" />
               </div>
 
+              <div className="mb-3">
+                {analysisResult.ai_source === 'yolo_efficientnet' || analysisResult.ai_source === 'efficientnet_fullimage' ? (
+                  <span className="inline-flex items-center gap-1 text-xs bg-white/20 rounded-full px-3 py-1 font-medium">
+                    🤖 YOLO11 + EfficientNet + HSV
+                  </span>
+                ) : analysisResult.ai_source === 'gemini_vision' ? (
+                  <span className="inline-flex items-center gap-1 text-xs bg-white/20 rounded-full px-3 py-1 font-medium">
+                    ✨ Gemini Vision AI
+                  </span>
+                ) : null}
+              </div>
+
               <div className="mb-6">
                 <div className="text-sm opacity-80 mb-2">Phân loại sản phẩm</div>
                 <div className="text-4xl font-bold mb-2">{meta.label}</div>
                 <div className="text-sm opacity-90">{meta.description}</div>
               </div>
 
-              <div className="space-y-4 mb-6">
+              <div className="space-y-2 mb-6">
+                {analysisResult.yolo_confidence > 0 && (
+                  <div className="flex items-center justify-between p-2 bg-black/15 rounded-xl text-sm">
+                    <span className="opacity-80">YOLO11</span>
+                    <span className="font-bold">{(analysisResult.yolo_confidence * 100).toFixed(0)}%</span>
+                  </div>
+                )}
+                {analysisResult.efficientnet_confidence > 0 && (
+                  <div className="flex items-center justify-between p-2 bg-black/15 rounded-xl text-sm">
+                    <span className="opacity-80">EfficientNet</span>
+                    <span className="font-bold">{(analysisResult.efficientnet_confidence * 100).toFixed(0)}%</span>
+                  </div>
+                )}
+                {analysisResult.hsv_freshness > 0 && (
+                  <div className="flex items-center justify-between p-2 bg-black/15 rounded-xl text-sm">
+                    <span className="opacity-80">HSV tươi</span>
+                    <span className="font-bold">{(analysisResult.hsv_freshness * 100).toFixed(0)}%</span>
+                  </div>
+                )}
                 <div className="flex items-center justify-between p-3 bg-black/15 rounded-xl">
-                  <span className="text-sm">Lỗi phát hiện</span>
-                  <span className="font-bold">
-                    {analysisResult.defects?.length ? analysisResult.defects.length : 0}
-                  </span>
-                </div>
-
-                <div className="flex items-center justify-between p-3 bg-black/15 rounded-xl">
-                  <span className="text-sm">Độ tin cậy</span>
+                  <span className="text-sm">Độ tin cậy tổng hợp</span>
                   <span className="font-bold">
                     {((analysisResult.confidence ?? 0) * 100).toFixed(1)}%
                   </span>

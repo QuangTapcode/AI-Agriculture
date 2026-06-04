@@ -24,6 +24,7 @@ from app.api import (
     harvest, locations, market, market_news, news, notifications, prices,
     price_forecast, pricing, quality, reports, season, weather,
 )
+from app.api import admin as admin_router
 from app.api import settings as settings_router
 from app.core.config import settings
 from app.core import database
@@ -98,6 +99,7 @@ async def db_exception_handler(request: Request, exc: Exception) -> JSONResponse
         },
     )
 
+app.include_router(admin_router.router)
 app.include_router(auth.router)
 app.include_router(chat.router)
 app.include_router(ai.router)

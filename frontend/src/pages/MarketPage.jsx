@@ -481,7 +481,7 @@ const MarketPage = () => {
                         <td className="py-3 text-right text-xs text-gray-400">— cơ sở</td>
                       </tr>
                     )}
-                    {storePrices.stores.map((store) => {
+                    {(storePrices.stores || []).map((store) => {
                       const diffPct = analysis?.current_price > 0
                         ? (((store.price - analysis.current_price) / analysis.current_price) * 100).toFixed(0)
                         : null;

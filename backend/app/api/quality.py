@@ -69,8 +69,9 @@ async def check_quality(
             buffer.write(chunk)
 
     try:
-        data = await asyncio.to_thread(
-            quality_service.check_quality,
+        # Không chạy quality_service.check_quality trong thread khác vì `db`
+        # là SQLAlchemy Session, không thread-safe.
+        data = quality_service.check_quality(
             db,
             image_path=str(file_path),
             crop_name=crop_name,
@@ -128,6 +129,52 @@ async def get_quality_grades():
     }
 
 
+@router.post("/yolo-check")
+async def yolo_quality_check(
+    image: UploadFile | None = File(None),
+    file: UploadFile | None = File(None),
+    conf: float = Form(0.25),
+):
+    """YOLO11-based fruit quality check using the trained best.pt model.
+
+    Returns detections with fruit_type, grade, confidence, bbox, price_range.
+    No DB write — pure inference endpoint for the Streamlit UI.
+    """
+    upload = image or file
+    if upload is None:
+        raise HTTPException(status_code=400, detail="image file is required")
+
+    upload_dir = Path(settings.UPLOAD_DIR) / "quality_check"
+    upload_dir.mkdir(parents=True, exist_ok=True)
+    extension = Path(upload.filename or "").suffix or ".jpg"
+    file_path = upload_dir / f"{uuid.uuid4()}{extension}"
+
+    written = 0
+    with file_path.open("wb") as buffer:
+        while chunk := await upload.read(1024 * 256):
+            written += len(chunk)
+            if written > MAX_UPLOAD_BYTES:
+                file_path.unlink(missing_ok=True)
+                raise HTTPException(status_code=413, detail="File quá lớn")
+            buffer.write(chunk)
+
+    try:
+        from ai_models.fruit_quality_pipeline import fruit_quality_pipeline
+        result = await asyncio.to_thread(
+            fruit_quality_pipeline.analyze, str(file_path), conf
+        )
+    finally:
+        file_path.unlink(missing_ok=True)
+
+    return api_response(
+        result,
+        source="yolo_inference",
+        source_name="YOLO11 fruit_quality model",
+        is_mock=False,
+        confidence=max((d["confidence"] for d in result.get("detections", [])), default=0.0),
+    )
+
+
 @router.get("/history/{user_id}")
 async def get_quality_history(user_id: int, limit: int = 50, db: Session = Depends(get_db)):
     history = quality_service.get_history(db, user_id, limit)
@@ -147,7 +194,9 @@ async def get_quality_history_alias(
     db: Session = Depends(get_db),
     current_user: User | None = Depends(get_optional_current_user),
 ):
-    resolved_user_id = user_id or (current_user.UserID if current_user else 1)
+    resolved_user_id = user_id or (current_user.UserID if current_user else None)
+    if resolved_user_id is None:
+        raise HTTPException(status_code=401, detail="Authentication required to view quality history")
     history = quality_service.get_history(db, resolved_user_id, limit)
     return api_response(
         {"user_id": resolved_user_id, "total": len(history), "history": history},

@@ -114,7 +114,7 @@ export function PageError({ message, error, source, onRetry, retryLabel = 'Thử
       error={error}
       source={source}
       onRetry={onRetry}
-      retryLabel={retryLabel}a
+      retryLabel={retryLabel}
       className={className}
       showSourceBadge={showSourceBadge}
     />

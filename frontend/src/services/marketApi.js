@@ -4,17 +4,25 @@ import { normalizePriceInput } from '../utils/priceInputs';
 import { pricingApi } from './pricingApi';
 
 const unwrap = (response) => unwrapApiResponse(response);
-const normalizeNewsPayload = (payload) => (
-  Array.isArray(payload)
-    ? {
-        news: payload,
-        metadata: payload.meta || {},
-        source: payload.meta?.source_type || payload.source,
-        source_name: payload.meta?.source_name || payload.source_name,
-        cache_status: payload.meta?.cache_status,
-      }
-    : payload
-);
+const normalizeNewsPayload = (payload) => {
+  if (Array.isArray(payload)) {
+    return { news: payload, metadata: {}, warning: null };
+  }
+  // API returns {success, data: [...articles], warning, metadata}
+  // unwrapApiResponse returns the full object, not just .data
+  const newsArr = payload?.news ?? (Array.isArray(payload?.data) ? payload.data : null);
+  if (newsArr !== null) {
+    return {
+      news: newsArr,
+      warning: payload?.warning,
+      cache_status: payload?.metadata?.cache_status || payload?.cache_status,
+      metadata: payload?.metadata || {},
+      source: payload?.source,
+      source_name: payload?.source_name,
+    };
+  }
+  return payload;
+};
 const request = async (factory, fallback) => {
   try {
     return unwrap(await factory());

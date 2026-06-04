@@ -1,4 +1,7 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+import time
+from collections import defaultdict
+
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy import func
 from sqlalchemy.exc import OperationalError, SQLAlchemyError
@@ -10,6 +13,34 @@ from app.models.user import User
 from app.schemas.auth_schema import AuthResponse, LoginRequest, RegisterRequest, UserRead
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
+
+# ── Simple in-memory login rate limiter ──────────────────────────────────────
+# Tracks failed attempt timestamps per IP. Resets on restart (acceptable for dev).
+# For production scale, swap _fail_log for a Redis sorted set.
+_LOGIN_MAX_FAILS = 5        # attempts
+_LOGIN_WINDOW_SEC = 300     # 5 minutes
+
+_fail_log: dict[str, list[float]] = defaultdict(list)
+
+
+def _check_login_rate_limit(ip: str) -> None:
+    now = time.monotonic()
+    cutoff = now - _LOGIN_WINDOW_SEC
+    recent = [t for t in _fail_log[ip] if t > cutoff]
+    _fail_log[ip] = recent
+    if len(recent) >= _LOGIN_MAX_FAILS:
+        raise HTTPException(
+            status_code=429,
+            detail=f"Quá nhiều lần thử đăng nhập. Vui lòng đợi {_LOGIN_WINDOW_SEC // 60} phút.",
+        )
+
+
+def _record_fail(ip: str) -> None:
+    _fail_log[ip].append(time.monotonic())
+
+
+def _clear_fail(ip: str) -> None:
+    _fail_log.pop(ip, None)
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
 oauth2_optional_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login", auto_error=False)
 
@@ -139,7 +170,10 @@ async def register(request: RegisterRequest, db: Session = Depends(get_db)):
 
 
 @router.post("/login", response_model=AuthResponse)
-async def login(request: LoginRequest, db: Session = Depends(get_db)):
+async def login(request: LoginRequest, http_request: Request, db: Session = Depends(get_db)):
+    ip = http_request.client.host if http_request.client else "unknown"
+    _check_login_rate_limit(ip)
+
     try:
         email = request.email.strip().lower()
         user = db.query(User).filter(func.lower(User.Email) == email).first()
@@ -149,10 +183,12 @@ async def login(request: LoginRequest, db: Session = Depends(get_db)):
             detail="Cơ sở dữ liệu tạm thời không khả dụng. Vui lòng khởi động SQL Server và thử lại.",
         )
     if user is None or not verify_password(request.password, user.PasswordHash):
+        _record_fail(ip)
         raise HTTPException(status_code=401, detail="Email hoặc mật khẩu không đúng.")
     if not user.IsActive:
         raise HTTPException(status_code=403, detail="Tài khoản đã bị vô hiệu hóa.")
 
+    _clear_fail(ip)
     return AuthResponse(access_token=create_access_token(user.UserID), user=_to_user_read(user))
 
 

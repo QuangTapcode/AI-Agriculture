@@ -69,14 +69,26 @@ class TestHarvestService:
         return db
 
     def test_forecast_has_required_fields(self):
+        from app.schemas.harvest_schema import HarvestForecastRequest
         db = self._mock_db()
-        result = self.service.forecast_harvest(db, "Cà chua", datetime(2024,1,1), "Hà Nội")
+        request = HarvestForecastRequest(
+            crop_name="Cà chua",
+            planting_date=datetime(2024,1,1).date(),
+            region="Hà Nội"
+        )
+        result = self.service.forecast_harvest(db, request)
         for f in ["crop_name", "region", "expected_harvest_date", "confidence", "recommendation"]:
             assert f in result, f"Missing: {f}"
 
     def test_forecast_crop_name_matches(self):
+        from app.schemas.harvest_schema import HarvestForecastRequest
         db = self._mock_db()
-        result = self.service.forecast_harvest(db, "Cà chua", datetime(2024,1,1), "Hà Nội")
+        request = HarvestForecastRequest(
+            crop_name="Cà chua",
+            planting_date=datetime(2024,1,1).date(),
+            region="Hà Nội"
+        )
+        result = self.service.forecast_harvest(db, request)
         assert result["crop_name"] == "Cà chua"
         assert result["region"] == "Hà Nội"
 

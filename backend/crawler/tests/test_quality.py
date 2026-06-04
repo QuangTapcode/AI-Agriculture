@@ -13,7 +13,7 @@ from unittest.mock import MagicMock
 class TestQualityDetector:
     def setup_method(self):
         from ai_models.quality_check.detector import QualityDetector
-        self.detector = QualityDetector(model_path="nonexistent.pt")  # force mock
+        self.detector = QualityDetector()  # Initialize without model_path
 
     def test_detect_quality_returns_required_fields(self):
         result = self.detector.detect_quality("nonexistent_image.jpg")

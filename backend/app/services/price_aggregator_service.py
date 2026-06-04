@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 import logging
 
+from app.core.config import settings
 from app.core.real_data import (
     OFFICIAL_AGRI_SOURCE_NAME,
     OFFICIAL_PRICE_URL,
@@ -19,11 +20,13 @@ from app.core.real_data import (
 from app.core.redis_client import redis_client
 from app.core.resilience import build_timeout, resilient_request
 from app.integrations.thitruong_nongsan_price_client import thitruong_nongsan_price_client
+from app.integrations.firecrawl_price_client import firecrawl_price_client
 from app.models.crop import Crop
 from app.models.price import MarketPrice
 from app.repositories.common import ensure_crop, normalize_text
 from app.repositories.ingestion_repository import finish_ingestion_log, start_ingestion_log
 from app.repositories.price_repository import bulk_upsert_market_prices
+from app.services.data_quality_service import clean_price_records, save_quarantine, warn_count_mismatch
 
 logger = logging.getLogger(__name__)
 
@@ -78,11 +81,20 @@ class PriceAggregatorService:
         selected_crop = self._clean_crop(crop_name)
         selected_region = self._clean_region(region)
         try:
-            records = thitruong_nongsan_price_client.fetch_prices(selected_crop, region=selected_region)
+            # Fetch ALL regions for the crop — no region filter here.
+            # Saving all-region data ensures _latest_db_price finds a fresh fallback
+            # even when the requested region (e.g. "Ha Noi") has no government price.
+            if settings.FIRECRAWL_ENABLED and settings.FIRECRAWL_API_KEY:
+                raw = firecrawl_price_client.fetch_prices(selected_crop, region=None)
+            else:
+                raw = thitruong_nongsan_price_client.fetch_prices(selected_crop, region=None)
+            records, rejected = clean_price_records(raw)
+            save_quarantine(rejected, source="thitruongnongsan_price")
             result = bulk_upsert_market_prices(db, records)
+            warn_count_mismatch("thitruongnongsan_price", len(records), result)
             return {
                 "status": "success" if records else "empty",
-                "records_fetched": len(records),
+                "records_fetched": len(raw),
                 "records_saved": result.get("records_saved", 0),
                 "records_updated": result.get("records_updated", 0),
                 "errors": list(result.get("errors") or []),
@@ -93,8 +105,14 @@ class PriceAggregatorService:
                 "is_mock": False,
             }
         except Exception as exc:
+            is_timeout = "timeout" in str(exc).lower() or "timed out" in str(exc).lower()
+            if is_timeout:
+                logger.warning(
+                    "[PriceAggregator] timeout fetching %s/%s — serving DB cache",
+                    crop_name, region,
+                )
             return {
-                "status": "failed",
+                "status": "stale_cache" if is_timeout else "failed",
                 "records_fetched": 0,
                 "records_saved": 0,
                 "records_updated": 0,
@@ -102,6 +120,7 @@ class PriceAggregatorService:
                 "source_name": OFFICIAL_AGRI_SOURCE_NAME,
                 "source_url": OFFICIAL_PRICE_URL,
                 "is_mock": False,
+                "warning": "Dữ liệu giá đang chậm (timeout). Hiển thị giá đã lưu." if is_timeout else None,
             }
 
     def get_best_current_price(

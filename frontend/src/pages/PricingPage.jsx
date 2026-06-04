@@ -53,7 +53,20 @@ const QUALITY_LABELS = {
   'Loai 3': 'Loại 3',
 };
 
-const formatCurrency = (value) => `${Number(value || 0).toLocaleString('vi-VN')} đ/kg`;
+const formatCurrency = (value) => {
+  if (value == null || Number.isNaN(Number(value))) return '—';
+  return `${Number(value).toLocaleString('vi-VN')} đ/kg`;
+};
+
+const hasItems = (value) => Array.isArray(value) && value.length > 0;
+const toArray = (value) => (Array.isArray(value) ? value : []);
+const unwrapData = (payload) => payload?.data ?? payload ?? null;
+const hasRenderableData = (payload) => {
+  const data = unwrapData(payload);
+  if (!data || data._api_error) return false;
+  if (Array.isArray(data)) return data.length > 0;
+  return Object.keys(data).length > 0;
+};
 
 const initialSearch = {
   cropName: 'Cà phê',
@@ -71,6 +84,7 @@ const PricingPage = () => {
   const [history, setHistory] = useState(null);
   const [engine, setEngine] = useState(null);
   const [error, setError] = useState(null);
+  const [partialWarnings, setPartialWarnings] = useState([]);
 
   const normalizedSearch = useMemo(() => ({
     crop_name: normalizePriceInput(search.cropName),
@@ -93,11 +107,12 @@ const PricingPage = () => {
       setLoading(true);
     }
     setError(null);
+    setPartialWarnings([]);
 
     try {
       const results = await Promise.allSettled([
         forceRefresh
-          ? pricingApi.refreshCurrentPrice(buildPriceQuery({ cropName: normalizedSearch.crop_name, region: normalizedSearch.region }))
+          ? pricingApi.refreshCurrentPrice(buildPriceQuery({ cropName: normalizedSearch.crop_name, region: normalizedSearch.region, qualityGrade: normalizedSearch.quality_grade }))
           : pricingApi.getCurrentPrice({
               cropName: normalizedSearch.crop_name,
               region: normalizedSearch.region,
@@ -114,18 +129,48 @@ const PricingPage = () => {
         ),
       ]);
 
-      if (results[0].status === 'rejected') {
-        throw results[0].reason;
+      const currentResult = results[0];
+      const forecastResult = results[1];
+      const historyResult = results[2];
+      const engineResult = results[3];
+
+      const nextCurrent = currentResult.status === 'fulfilled' ? currentResult.value : null;
+      const nextForecast = forecastResult.status === 'fulfilled' ? forecastResult.value : null;
+      const nextHistory = historyResult.status === 'fulfilled' ? historyResult.value : null;
+      const nextEngine = engineResult.status === 'fulfilled' ? engineResult.value : null;
+
+      setCurrentPrice(nextCurrent);
+      setForecast(nextForecast);
+      setHistory(nextHistory);
+      setEngine(nextEngine);
+
+      const warnings = [];
+      if (currentResult.status === 'rejected' || (nextCurrent && unwrapData(nextCurrent)?._api_error)) {
+        warnings.push('Chưa tải được giá hiện tại.');
       }
-      setCurrentPrice(results[0].value);
-      setForecast(results[1].status === 'fulfilled' ? results[1].value : null);
-      setHistory(results[2].status === 'fulfilled' ? results[2].value : null);
-      setEngine(results[3].status === 'fulfilled' ? results[3].value : null);
+      if (forecastResult.status === 'rejected' || (nextForecast && unwrapData(nextForecast)?._api_error)) {
+        warnings.push('Chưa tải được dữ liệu dự báo giá.');
+      }
+      if (historyResult.status === 'rejected' || !hasRenderableData(nextHistory)) {
+        warnings.push('Chưa tải được lịch sử giá.');
+      }
+      if (engineResult.status === 'rejected' || (nextEngine && unwrapData(nextEngine)?._api_error)) {
+        warnings.push('Chưa tải được bộ phân tích giá AI.');
+      }
+      setPartialWarnings(warnings);
+
+      const hasAnySuccessfulData = [nextCurrent, nextForecast, nextHistory, nextEngine].some(hasRenderableData);
+      if (!hasAnySuccessfulData) {
+        setError('Không thể tải dữ liệu giá. Vui lòng thử lại sau.');
+      } else if (currentResult.status === 'rejected' && hasAnySuccessfulData) {
+        setError(getApiErrorMessage(currentResult.reason, 'Không thể tải giá realtime hiện tại, nhưng vẫn hiển thị được dữ liệu còn lại.'));
+      }
     } catch (err) {
       setCurrentPrice(null);
       setForecast(null);
       setHistory(null);
       setEngine(null);
+      setPartialWarnings([]);
       setError(getApiErrorMessage(err, 'Không thể tải giá realtime.'));
     } finally {
       setLoading(false);
@@ -142,15 +187,24 @@ const PricingPage = () => {
     await loadPriceData({ forceRefresh: true });
   };
 
-  const chartData = forecast?.forecast_data?.length
+  const currentData = unwrapData(currentPrice);
+  const forecastData = unwrapData(forecast);
+  const historyData = unwrapData(history);
+  const engineData = unwrapData(engine);
+
+  const forecastRows = toArray(forecastData?.forecast_data);
+  const historyRows = toArray(historyData?.history);
+  const engineReasons = toArray(engineData?.reasons);
+
+  const chartData = hasItems(forecastRows)
     ? {
-        labels: forecast.forecast_data.map((item) =>
+        labels: forecastRows.map((item) =>
           new Date(item.date).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' })
         ),
         datasets: [
           {
             label: 'Giá dự báo',
-            data: forecast.forecast_data.map((item) => item.predicted_price),
+            data: forecastRows.map((item) => item.predicted_price ?? item.estimated_price ?? item.forecast_price),
             borderColor: 'rgb(22, 163, 74)',
             backgroundColor: 'rgba(22, 163, 74, 0.12)',
             fill: true,
@@ -158,7 +212,7 @@ const PricingPage = () => {
           },
           {
             label: 'Cận trên',
-            data: forecast.forecast_data.map((item) => item.confidence_upper),
+            data: forecastRows.map((item) => item.confidence_upper ?? item.max_price),
             borderColor: 'rgba(22, 163, 74, 0.3)',
             borderDash: [5, 5],
             fill: false,
@@ -166,7 +220,7 @@ const PricingPage = () => {
           },
           {
             label: 'Cận dưới',
-            data: forecast.forecast_data.map((item) => item.confidence_lower),
+            data: forecastRows.map((item) => item.confidence_lower ?? item.min_price),
             borderColor: 'rgba(22, 163, 74, 0.3)',
             borderDash: [5, 5],
             fill: false,
@@ -193,12 +247,14 @@ const PricingPage = () => {
     },
   };
 
-  const trend = trendMeta[currentPrice?.trend || currentPrice?.price_trend] || trendMeta.stable;
-  const sourceNotice = currentPrice?._api_error
+  const trendKey = currentData?.trend || currentData?.price_trend || forecastData?.trend || engineData?.trend;
+  const trend = trendMeta[trendKey] || trendMeta.stable;
+  const sourceNotice = currentData?._api_error
     ? 'Không thể tải dữ liệu thực tế hiện tại. Vui lòng thử lại sau.'
-    : currentPrice?.is_mock
+    : currentData?.is_mock
       ? 'Không thể tải dữ liệu thực tế hiện tại. Vui lòng thử lại sau.'
       : 'Dữ liệu giá lấy từ nguồn thực tế hoặc cơ sở dữ liệu nội bộ.';
+  const hasAnyData = [currentPrice, forecast, history, engine].some(hasRenderableData);
 
   return (
     <div className="space-y-6">
@@ -280,32 +336,43 @@ const PricingPage = () => {
         </form>
       </section>
 
-      {error && <PageError message={error} onRetry={handleSubmit} />}
+      {error && <PageError message={error} onRetry={() => loadPriceData({ forceRefresh: false })} />}
       {(loading || refreshing) && <InlineLoading text="Đang tải dữ liệu giá..." />}
 
-      {!loading && !refreshing && !currentPrice && !error && (
+      {!loading && !refreshing && !hasAnyData && !error && (
         <EmptyState
           title="Chưa có dữ liệu giá"
           description="Nhập nông sản, khu vực rồi bấm Xem giá để lấy dữ liệu từ hệ thống."
         />
       )}
 
-      {currentPrice && (
+      {hasItems(partialWarnings) && (
+        <section className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 shadow-sm">
+          <p className="font-semibold text-amber-900">Một phần dữ liệu chưa tải được</p>
+          <ul className="mt-2 list-disc space-y-1 pl-5">
+            {partialWarnings.map((warning) => (
+              <li key={warning}>{warning}</li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {currentData && !currentData._api_error && (
         <div className="flex flex-wrap items-center gap-3 rounded-lg border border-gray-200 bg-white p-4 text-sm text-gray-700 shadow-sm">
-          <DataSourceBadge data={currentPrice} />
-          <span>Nguồn dữ liệu: {sourceNameLabel(currentPrice.source_name)}</span>
-          <span>Loại nguồn: {currentPrice.source_type || currentPrice.source || 'database'}</span>
-          {currentPrice.last_updated && <span>Cập nhật: {new Date(currentPrice.last_updated).toLocaleString('vi-VN')}</span>}
-          <span>Độ tin cậy: {Math.round(Number(currentPrice.confidence_score ?? currentPrice.confidence ?? 0) * 100)}%</span>
-          {currentPrice.is_mock && <span className="font-medium text-amber-700">{sourceNotice}</span>}
+          <DataSourceBadge source={currentData.source || currentData.source_type} />
+          <span>Nguồn dữ liệu: {sourceNameLabel(currentData.source_name)}</span>
+          <span>Loại nguồn: {currentData.source_type || currentData.source || 'database'}</span>
+          {currentData.last_updated && <span>Cập nhật: {new Date(currentData.last_updated).toLocaleString('vi-VN')}</span>}
+          <span>Độ tin cậy: {Math.round(Number(currentData.confidence_score ?? currentData.confidence ?? 0) * 100)}%</span>
+          {currentData.is_mock && <span className="font-medium text-amber-700">{sourceNotice}</span>}
         </div>
       )}
 
-      {currentPrice && (
+      {currentData && !currentData._api_error && (
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
           <div className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
             <p className="text-sm text-gray-600">Giá hiện tại</p>
-            <p className="mt-2 text-3xl font-bold text-gray-900">{formatCurrency(currentPrice.current_price)}</p>
+            <p className="mt-2 text-3xl font-bold text-gray-900">{formatCurrency(currentData.current_price)}</p>
           </div>
 
           <div className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
@@ -318,17 +385,17 @@ const PricingPage = () => {
 
           <div className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
             <p className="text-sm text-gray-600">Phân loại</p>
-            <p className="mt-2 text-2xl font-bold text-gray-900">{QUALITY_LABELS[currentPrice.quality_grade] || currentPrice.quality_grade}</p>
+            <p className="mt-2 text-2xl font-bold text-gray-900">{QUALITY_LABELS[currentData.quality_grade] || currentData.quality_grade || '—'}</p>
           </div>
 
           <div className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
             <p className="text-sm text-gray-600">Tham chiếu quốc tế</p>
-              {currentPrice.global_reference ? (
+            {currentData.global_reference ? (
               <>
                 <p className="mt-2 text-2xl font-bold text-gray-900">
-                  {Number(currentPrice.global_reference.price || 0).toLocaleString('vi-VN')} {currentPrice.global_reference.unit || 'USD/ton'}
+                  {Number(currentData.global_reference.price || 0).toLocaleString('vi-VN')} {currentData.global_reference.unit || 'USD/ton'}
                 </p>
-                <p className="mt-1 text-xs text-gray-500">{currentPrice.global_reference.source_name || 'Nguồn tham chiếu quốc tế'}</p>
+                <p className="mt-1 text-xs text-gray-500">{currentData.global_reference.source_name || 'Nguồn tham chiếu quốc tế'}</p>
               </>
             ) : (
               <p className="mt-2 text-sm text-gray-500">Chưa có tham chiếu quốc tế cho nông sản này.</p>
@@ -337,68 +404,70 @@ const PricingPage = () => {
         </div>
       )}
 
-      {engine && (
+      {engineData && !engineData._api_error && (
         <section className="rounded-lg border border-violet-200 bg-white p-5 shadow-sm">
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
             <div>
               <h2 className="text-lg font-semibold text-gray-900">Bộ phân tích giá AI</h2>
               <p className="text-sm text-gray-500">Kết hợp giá thị trường, dự báo, chất lượng và thời tiết.</p>
             </div>
-            <DataSourceBadge data={engine} />
+            <DataSourceBadge source={engineData.source} />
           </div>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
             <div className="rounded-lg bg-violet-50 p-4">
               <p className="text-sm text-violet-700">Giá AI đề xuất</p>
-              <p className="mt-2 text-2xl font-bold text-gray-900">{formatCurrency(engine.suggested_price || engine.current_price)}</p>
+              <p className="mt-2 text-2xl font-bold text-gray-900">{formatCurrency(engineData.suggested_price || engineData.current_price)}</p>
             </div>
             <div className="rounded-lg bg-emerald-50 p-4">
               <p className="text-sm text-emerald-700">Dự báo 7 ngày</p>
-              <p className="mt-2 text-2xl font-bold text-gray-900">{formatCurrency(engine.forecast_price_7d)}</p>
+              <p className="mt-2 text-2xl font-bold text-gray-900">{formatCurrency(engineData.forecast_price_7d)}</p>
             </div>
             <div className="rounded-lg bg-slate-50 p-4">
               <p className="text-sm text-slate-700">Độ tin cậy</p>
-              <p className="mt-2 text-2xl font-bold text-gray-900">{((engine.confidence || 0) * 100).toFixed(0)}%</p>
+              <p className="mt-2 text-2xl font-bold text-gray-900">{((engineData.confidence || 0) * 100).toFixed(0)}%</p>
             </div>
           </div>
-          {engine.reasons?.length > 0 && (
+          {hasItems(engineReasons) && (
             <div className="mt-4 grid gap-2 md:grid-cols-2">
-              {engine.reasons.map((reason) => (
+              {engineReasons.map((reason) => (
                 <div key={reason} className="rounded-lg border border-violet-100 bg-violet-50/60 p-3 text-sm text-violet-900">
                   {translateUiText(reason)}
                 </div>
               ))}
             </div>
           )}
-          {engine.recommendation && (
+          {engineData.recommendation && (
             <div className="mt-4 rounded-lg border border-blue-100 bg-blue-50 p-4 text-sm text-blue-800">
-              {translateUiText(engine.recommendation)}
+              {translateUiText(engineData.recommendation)}
             </div>
           )}
         </section>
       )}
 
-      {forecast && chartData && (
+      {forecastData && !forecastData._api_error && chartData && (
         <section className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
           <div className="h-80 min-h-80">
             <Line data={chartData} options={chartOptions} />
           </div>
 
-          <div className="mt-5 rounded-lg border border-blue-100 bg-blue-50 p-4">
-            <p className="text-sm font-semibold text-blue-900">Khuyến nghị</p>
-            <p className="mt-1 text-sm leading-6 text-blue-800">{translateUiText(forecast.recommendation)}</p>
-          </div>
+          {forecastData.recommendation && (
+            <div className="mt-5 rounded-lg border border-blue-100 bg-blue-50 p-4">
+              <p className="text-sm font-semibold text-blue-900">Khuyến nghị</p>
+              <p className="mt-1 text-sm leading-6 text-blue-800">{translateUiText(forecastData.recommendation)}</p>
+            </div>
+          )}
         </section>
       )}
 
-      {history?.history?.length > 0 && (
+      {historyData && hasItems(historyRows) && (
         <section className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
           <h2 className="text-lg font-semibold text-gray-900">Lịch sử giá gần đây</h2>
           <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-            {history.history.slice(-6).map((item) => (
+            {historyRows.slice(-6).map((item) => (
               <div key={item.date} className="rounded-lg border border-gray-200 p-3">
                 <div className="flex items-start justify-between gap-2">
                   <p className="text-sm text-gray-500">{new Date(item.date).toLocaleDateString('vi-VN')}</p>
-                  <DataSourceBadge data={item} compact />
+                  <DataSourceBadge source={item.source} compact />
                 </div>
                 <p className="mt-1 text-lg font-bold text-gray-900">{formatCurrency(item.avg_price)}</p>
               </div>

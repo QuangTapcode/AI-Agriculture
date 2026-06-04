@@ -69,13 +69,33 @@ def ai_timeout() -> httpx.Timeout:
     )
 
 
-def _sleep_backoff(attempt: int, backoff: float) -> None:
-    if backoff > 0:
+def _retry_after_seconds(exc: Exception | None) -> float | None:
+    """Return the Retry-After value (seconds) if exc is a 429 HTTPStatusError, else None."""
+    if isinstance(exc, httpx.HTTPStatusError) and exc.response.status_code == 429:
+        header = exc.response.headers.get("retry-after") or exc.response.headers.get("Retry-After")
+        if header:
+            try:
+                return float(header)
+            except ValueError:
+                pass
+    return None
+
+
+def _sleep_backoff(attempt: int, backoff: float, last_error: Exception | None = None) -> None:
+    wait = _retry_after_seconds(last_error)
+    if wait is not None:
+        logger.warning("[resilience] 429 — honouring Retry-After: %.0fs", wait)
+        time.sleep(wait)
+    elif backoff > 0:
         time.sleep(backoff * (2 ** attempt))
 
 
-async def _async_sleep_backoff(attempt: int, backoff: float) -> None:
-    if backoff > 0:
+async def _async_sleep_backoff(attempt: int, backoff: float, last_error: Exception | None = None) -> None:
+    wait = _retry_after_seconds(last_error)
+    if wait is not None:
+        logger.warning("[resilience] 429 — honouring Retry-After: %.0fs", wait)
+        await asyncio.sleep(wait)
+    elif backoff > 0:
         await asyncio.sleep(backoff * (2 ** attempt))
 
 
@@ -131,7 +151,7 @@ def resilient_request(
                 exc,
             )
         if attempt < attempts - 1:
-            _sleep_backoff(attempt, retry_backoff)
+            _sleep_backoff(attempt, retry_backoff, last_error)
 
     raise ExternalServiceError(
         f"{service_name} request failed after {attempts} attempt(s): {last_error}",
@@ -192,7 +212,7 @@ async def resilient_async_request(
                 exc,
             )
         if attempt < attempts - 1:
-            await _async_sleep_backoff(attempt, retry_backoff)
+            await _async_sleep_backoff(attempt, retry_backoff, last_error)
 
     raise ExternalServiceError(
         f"{service_name} request failed after {attempts} attempt(s): {last_error}",

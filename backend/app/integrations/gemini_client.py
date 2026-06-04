@@ -1,8 +1,7 @@
 import asyncio
 import os
 import logging
-from google import genai
-from google.genai import types
+import google.generativeai as genai
 from dotenv import load_dotenv
 from pathlib import Path
 
@@ -33,7 +32,8 @@ class GeminiClient:
             logger.warning("GEMINI_API_KEY is not set. Gemini AI will not work.")
             self.client = None
         else:
-            self.client = genai.Client(api_key=api_key)
+            genai.configure(api_key=api_key)
+            self.client = genai
             self.model_fallbacks = [
                 'gemini-2.5-flash-lite',  # free tier quota cao, nhanh
                 'gemini-2.0-flash-lite',
@@ -71,12 +71,12 @@ class GeminiClient:
 
         for model_name in self.model_fallbacks:
             try:
+                model = genai.GenerativeModel(
+                    model_name=model_name,
+                    system_instruction=system_instruction
+                )
                 response = await asyncio.wait_for(
-                    self.client.aio.models.generate_content(
-                        model=model_name,
-                        contents=prompt,
-                        config=types.GenerateContentConfig(system_instruction=system_instruction),
-                    ),
+                    asyncio.to_thread(model.generate_content, prompt),
                     timeout=settings.AI_TIMEOUT_SECONDS,
                 )
                 return response.text or ""
@@ -144,12 +144,12 @@ class GeminiClient:
 
         for model_name in self.model_fallbacks:
             try:
+                model = genai.GenerativeModel(
+                    model_name=model_name,
+                    system_instruction=sys_prompt
+                )
                 response = await asyncio.wait_for(
-                    self.client.aio.models.generate_content(
-                        model=model_name,
-                        contents=prompt,
-                        config=types.GenerateContentConfig(system_instruction=sys_prompt),
-                    ),
+                    asyncio.to_thread(model.generate_content, prompt),
                     timeout=settings.AI_TIMEOUT_SECONDS,
                 )
                 return response.text or ""
@@ -196,14 +196,12 @@ Hãy phân tích kỹ và trả lời đầy đủ, chuyên sâu dựa trên d�
 
         for model_name in self.model_fallbacks:
             try:
+                model = genai.GenerativeModel(
+                    model_name=model_name,
+                    system_instruction=system_instruction
+                )
                 response = await asyncio.wait_for(
-                    self.client.aio.models.generate_content(
-                        model=model_name,
-                        contents=prompt,
-                        config=types.GenerateContentConfig(
-                            system_instruction=system_instruction,
-                        ),
-                    ),
+                    asyncio.to_thread(model.generate_content, prompt),
                     timeout=settings.AI_TIMEOUT_SECONDS,
                 )
                 if model_name != self.model_fallbacks[0]:

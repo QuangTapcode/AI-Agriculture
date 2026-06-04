@@ -702,7 +702,7 @@ const Dashboard = () => {
         <PanelHeader icon={Globe2} title="Tham chiếu thị trường quốc tế" />
         <div className="grid gap-3 md:grid-cols-3">
           {(realtimeMarket.global_references || []).length ? (
-            realtimeMarket.global_references.map((item) => (
+            (realtimeMarket.global_references || []).map((item) => (
               <div key={`${item.crop_name}-${item.source_url}`} className="rounded-md border border-slate-200 px-3 py-3">
                 <div className="text-sm font-semibold text-slate-950">{item.crop_name || item.crop_id}</div>
                 <div className="mt-2 text-xl font-bold text-slate-950">

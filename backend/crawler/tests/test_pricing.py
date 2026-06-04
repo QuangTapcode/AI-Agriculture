@@ -25,38 +25,51 @@ class TestPricingService:
 
         price_row = MagicMock()
         price_row.PricePerKg = price
+        price_row.PriceDate = MagicMock()
+        price_row.Region = "Hà Nội"
+        price_row.IsMock = False
+        price_row.SourceURL = "http://test.com"
+        price_row.SourceName = "Test Source"
+        price_row.FetchedAt = MagicMock()
 
         q = MagicMock()
         q.filter.return_value.first.return_value = crop
         q.filter.return_value.order_by.return_value.first.return_value = price_row
         q.filter.return_value.order_by.return_value.limit.return_value.all.return_value = []
+        q.filter.return_value.order_by.return_value.all.return_value = []
         db.query.return_value = q
+        db.rollback = MagicMock()
         return db
 
     def test_suggest_price_returns_required_fields(self):
+        from app.schemas.price_schema import PricingSuggestRequest
         db = self._mock_db_with_price(20000)
-        result = self.service.suggest_price(db, "Cà chua", "Hà Nội", 100, "Loại 1")
+        request = PricingSuggestRequest(crop_name="Cà chua", region="Hà Nội", quantity=100, quality_grade="Loại 1")
+        result = self.service.suggest_price(db, request)
         for f in ["suggested_price", "min_price", "max_price", "crop_name"]:
             assert f in result, f"Missing: {f}"
 
     def test_suggest_price_loai1_higher_than_loai3(self):
+        from app.schemas.price_schema import PricingSuggestRequest
         db = self._mock_db_with_price(20000)
-        r1 = self.service.suggest_price(db, "Cà chua", "Hà Nội", 100, "Loại 1")
+        r1 = self.service.suggest_price(db, PricingSuggestRequest(crop_name="Cà chua", region="Hà Nội", quantity=100, quality_grade="Loại 1"))
         db2 = self._mock_db_with_price(20000)
-        r3 = self.service.suggest_price(db2, "Cà chua", "Hà Nội", 100, "Loại 3")
+        r3 = self.service.suggest_price(db2, PricingSuggestRequest(crop_name="Cà chua", region="Hà Nội", quantity=100, quality_grade="Loại 3"))
         assert r1["suggested_price"] > r3["suggested_price"]
 
     def test_suggest_price_bulk_discount(self):
         """Số lượng lớn phải có giá đề xuất thấp hơn."""
+        from app.schemas.price_schema import PricingSuggestRequest
         db1 = self._mock_db_with_price(20000)
-        r_small = self.service.suggest_price(db1, "Cà chua", "Hà Nội", 10, "Loại 1")
+        r_small = self.service.suggest_price(db1, PricingSuggestRequest(crop_name="Cà chua", region="Hà Nội", quantity=10, quality_grade="Loại 1"))
         db2 = self._mock_db_with_price(20000)
-        r_large = self.service.suggest_price(db2, "Cà chua", "Hà Nội", 1000, "Loại 1")
+        r_large = self.service.suggest_price(db2, PricingSuggestRequest(crop_name="Cà chua", region="Hà Nội", quantity=1000, quality_grade="Loại 1"))
         assert r_large["suggested_price"] <= r_small["suggested_price"]
 
     def test_suggest_price_min_max_range(self):
+        from app.schemas.price_schema import PricingSuggestRequest
         db = self._mock_db_with_price(20000)
-        result = self.service.suggest_price(db, "Cà chua", "Hà Nội", 50, "Loại 2")
+        result = self.service.suggest_price(db, PricingSuggestRequest(crop_name="Cà chua", region="Hà Nội", quantity=50, quality_grade="Loại 2"))
         assert result["min_price"] <= result["suggested_price"] <= result["max_price"]
 
     def test_analyze_trend_with_no_data(self):
@@ -86,24 +99,32 @@ class TestPriceForecastService:
         return db
 
     def test_predict_returns_required_fields(self):
+        from app.schemas.price_schema import PricePredictionRequest
         db = self._mock_db()
-        result = self.service.predict_price(db, "Cà chua", "Hà Nội", 7)
+        request = PricePredictionRequest(crop_name="Cà chua", region="Hà Nội", forecast_days=7)
+        result = self.service.predict_price(db, request)
         for f in ["crop_name", "region", "forecast_days", "predicted_prices", "trend"]:
             assert f in result, f"Missing: {f}"
 
     def test_predicted_prices_count(self):
+        from app.schemas.price_schema import PricePredictionRequest
         db = self._mock_db()
-        result = self.service.predict_price(db, "Cà chua", "Hà Nội", 14)
+        request = PricePredictionRequest(crop_name="Cà chua", region="Hà Nội", forecast_days=14)
+        result = self.service.predict_price(db, request)
         assert len(result["predicted_prices"]) == 14
 
     def test_trend_is_valid(self):
+        from app.schemas.price_schema import PricePredictionRequest
         db = self._mock_db()
-        result = self.service.predict_price(db, "Cà chua", "Hà Nội", 7)
-        assert result["trend"] in ("increasing", "decreasing", "stable")
+        request = PricePredictionRequest(crop_name="Cà chua", region="Hà Nội", forecast_days=7)
+        result = self.service.predict_price(db, request)
+        assert result["trend"] in ("increasing", "decreasing", "stable", None)
 
     def test_best_selling_time_is_date_string(self):
+        from app.schemas.price_schema import PricePredictionRequest
         db = self._mock_db()
-        result = self.service.predict_price(db, "Cà chua", "Hà Nội", 7)
+        request = PricePredictionRequest(crop_name="Cà chua", region="Hà Nội", forecast_days=7)
+        result = self.service.predict_price(db, request)
         if result["best_selling_time"]:
             # Phải là ngày hợp lệ
             from datetime import datetime

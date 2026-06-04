@@ -1,4 +1,4 @@
-from sqlalchemy import Boolean, Column, Date, DateTime, Float, ForeignKey, Integer, JSON, String, Unicode
+from sqlalchemy import Boolean, Column, Date, DateTime, Float, ForeignKey, Index, Integer, JSON, String, Unicode, UniqueConstraint
 from sqlalchemy.orm import synonym
 from sqlalchemy.sql import func
 
@@ -7,6 +7,14 @@ from ..core.database import Base
 
 class MarketPrice(Base):
     __tablename__ = "MarketPrices"
+    __table_args__ = (
+        # DB-level guard against concurrent duplicate upserts.
+        # Mirrors the Python dedup key in bulk_upsert_market_prices.
+        UniqueConstraint(
+            "CropID", "Region", "PriceDate", "QualityGrade", "MarketType",
+            name="uq_marketprices_upsert_key",
+        ),
+    )
 
     PriceID = Column("PriceID", Integer, primary_key=True, index=True)
     CropID = Column("CropID", Integer, ForeignKey("CropTypes.CropID"), nullable=False, index=True)
@@ -54,6 +62,11 @@ class MarketPrice(Base):
 
 class PriceHistory(Base):
     __tablename__ = "PriceHistory"
+    __table_args__ = (
+        # Composite index for the most common query pattern:
+        # get_price_history filters CropID + Region + RecordDate together.
+        Index("ix_pricehistory_crop_region_date", "CropID", "Region", "RecordDate"),
+    )
 
     HistoryID = Column("HistoryID", Integer, primary_key=True, index=True)
     CropID = Column("CropID", Integer, ForeignKey("CropTypes.CropID"), nullable=False, index=True)

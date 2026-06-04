@@ -8,13 +8,40 @@ from app.models.price import MarketPrice, PriceHistory
 class DataCleaningPipeline:
     """Validate và làm sạch dữ liệu trước khi lưu."""
 
-    def process_item(self, item, _spider):
-        price = item.get("price_per_kg") or item.get("price")
-        if not price or float(price) <= 0:
-            raise DropItem(f"Giá không hợp lệ: {price}")
+    QUALITY_GRADE_MAP = {
+        "grade_1": "Loại 1",
+        "grade_2": "Loại 2",
+        "grade_3": "Loại 3",
+    }
 
+    def process_item(self, item, _spider):
+        # Validate price
+        price = item.get("price_per_kg") or item.get("price")
+        try:
+            price_float = float(price) if price else 0
+        except (ValueError, TypeError):
+            return None  # Invalid price
+        
+        if price_float <= 0 or price_float > 500000:  # Max 500k VND/kg
+            return None
+        
+        item["price_per_kg"] = price_float
+
+        # Validate required fields
         if not item.get("crop_name") or not item.get("region"):
-            raise DropItem(f"Thiếu crop_name hoặc region: {dict(item)}")
+            return None
+
+        # Clean crop_name
+        item["crop_name"] = item["crop_name"].strip()
+
+        # Normalize quality_grade
+        quality_grade = item.get("quality_grade", "")
+        if quality_grade in self.QUALITY_GRADE_MAP:
+            item["quality_grade"] = self.QUALITY_GRADE_MAP[quality_grade]
+
+        # Add collected_at timestamp
+        if "collected_at" not in item:
+            item["collected_at"] = datetime.now().isoformat()
 
         return item
 

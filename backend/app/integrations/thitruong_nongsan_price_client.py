@@ -4,7 +4,9 @@ import html
 import json
 import logging
 import re
+import time
 from datetime import date, datetime, timedelta
+from pathlib import Path
 from typing import Any
 from urllib.parse import urljoin
 
@@ -17,6 +19,11 @@ from app.repositories.common import normalize_text
 
 logger = logging.getLogger(__name__)
 
+# Module-level cache: (date_from, date_to) → (fetched_at_monotonic, html_content)
+# Prevents redundant HTTP calls when dashboard/pricing service calls per crop/region.
+_PAGE_CACHE: dict[tuple[date, date], tuple[float, str]] = {}
+_PAGE_CACHE_TTL = 300.0  # 5 minutes
+
 
 class ThiTruongNongSanPriceClient:
     def __init__(self) -> None:
@@ -27,7 +34,8 @@ class ThiTruongNongSanPriceClient:
             connect=min(float(getattr(settings, "EXTERNAL_CONNECT_TIMEOUT_SECONDS", 3.0)), 3.0),
             read=min(float(getattr(settings, "EXTERNAL_READ_TIMEOUT_SECONDS", 8.0)), 8.0),
         )
-        self.retries = min(max(int(getattr(settings, "EXTERNAL_RETRY_COUNT", 1)), 1), 2)
+        # Allow 0 retries for fail-fast behavior — forced min=1 doubles every timeout
+        self.retries = min(int(getattr(settings, "EXTERNAL_RETRY_COUNT", 1)), 2)
         self.allowed_crops = (
             "ca phe",
             "lua gao",
@@ -82,17 +90,138 @@ class ThiTruongNongSanPriceClient:
                 history.append(record)
         return history
 
+    def fetch_history(self, crop_name: str | None = None, region: str | None = None, days: int = 90) -> list[dict]:
+        """Backfill price history by fetching in 30-day chunks.
+
+        days=90  → 3 POST requests (90d, 60d, 30d windows)
+        days=180 → 6 POST requests
+        """
+        chunk = 30
+        today = date.today()
+        all_records: list[dict] = []
+        seen_keys: set[tuple] = set()
+
+        for offset in range(0, days, chunk):
+            date_to   = today - timedelta(days=offset)
+            date_from = today - timedelta(days=offset + chunk)
+            try:
+                html_content = self._fetch_page_range(date_from, date_to)
+                records = self._parse_prices(html_content, crop_name=crop_name, region=region)
+                for r in records:
+                    key = (
+                        normalize_text(r.get("crop_name") or ""),
+                        normalize_text(r.get("region") or ""),
+                        str(r.get("price_date") or ""),
+                        float(r.get("price") or 0),
+                    )
+                    if key not in seen_keys:
+                        seen_keys.add(key)
+                        all_records.append(r)
+            except Exception as exc:
+                logger.warning("[ThiTruong] history chunk %s→%s failed: %s", date_from, date_to, exc)
+
+        return all_records
+
     def _fetch_page(self) -> str:
-        response = resilient_request(
+        """Fetch latest 30 days (default window for regular refresh)."""
+        today = date.today()
+        return self._fetch_page_range(today - timedelta(days=30), today)
+
+    def _fetch_page_range(self, date_from: date, date_to: date) -> str:
+        """POST ASP.NET UpdatePanel for all commodities within a date range.
+        Saves raw HTML to storage/raw_crawl/ before returning.
+
+        Results are cached for _PAGE_CACHE_TTL seconds to avoid redundant HTTP
+        calls when dashboard/pricing service invokes per crop×region.
+        """
+        cache_key = (date_from, date_to)
+        cached = _PAGE_CACHE.get(cache_key)
+        if cached:
+            fetched_at, html_content = cached
+            if time.monotonic() - fetched_at < _PAGE_CACHE_TTL:
+                logger.debug("[ThiTruong] returning cached page (%s → %s)", date_from, date_to)
+                return html_content
+
+        # Step 1: GET to obtain ASP.NET hidden fields
+        get_resp = resilient_request(
             "GET",
             self.source_url,
             headers=self._headers(),
             timeout=self.timeout,
-            retries=self.retries,
-            backoff=float(getattr(settings, "EXTERNAL_BACKOFF_SECONDS", 0.4)),
-            service_name="thitruongnongsan_price",
+            retries=0,
+            service_name="thitruongnongsan_price_get",
         )
-        return response.text
+        soup_init = BeautifulSoup(get_resp.text, "lxml")
+        viewstate     = (soup_init.find("input", {"id": "__VIEWSTATE"}) or {}).get("value", "")
+        eventval      = (soup_init.find("input", {"id": "__EVENTVALIDATION"}) or {}).get("value", "")
+        viewstate_gen = (soup_init.find("input", {"id": "__VIEWSTATEGENERATOR"}) or {}).get("value", "")
+
+        if not viewstate:
+            return get_resp.text
+
+        from_str = date_from.strftime("%d/%m/%Y")
+        to_str   = date_to.strftime("%d/%m/%Y")
+
+        ajax_headers = {
+            **self._headers(),
+            "X-MicrosoftAjax": "Delta=true",
+            "X-Requested-With": "XMLHttpRequest",
+        }
+
+        combined_html = ""
+        for commodity in ("Cà phê", "Lúa gạo", "Rau, quả"):
+            try:
+                form_data = {
+                    "ctl00$ScriptManager_Sitemaster": "ctl00$maincontent$UpdatePanel2|ctl00$maincontent$Xem",
+                    "__ASYNCPOST":                   "true",
+                    "__VIEWSTATE":                   viewstate,
+                    "__EVENTVALIDATION":             eventval,
+                    "__VIEWSTATEGENERATOR":          viewstate_gen,
+                    "ctl00$maincontent$tu_ngay":       from_str,
+                    "ctl00$maincontent$den_ngay":       to_str,
+                    "ctl00$maincontent$Ngành_hàng":     commodity,
+                    "ctl00$maincontent$Theo_thời_gian": "ngay",
+                    "ctl00$maincontent$Xem":            "Xem",
+                }
+                post_resp = resilient_request(
+                    "POST",
+                    self.source_url,
+                    headers=ajax_headers,
+                    data=form_data,
+                    timeout=self.timeout,
+                    retries=self.retries,
+                    backoff=float(getattr(settings, "EXTERNAL_BACKOFF_SECONDS", 0.4)),
+                    service_name="thitruongnongsan_price_post",
+                )
+                fragment = self._extract_update_panel(post_resp.text)
+                raw_html = fragment if fragment else post_resp.text
+                self._save_raw_html(raw_html, commodity, date_from, date_to)
+                combined_html += "\n" + raw_html
+            except Exception as exc:
+                logger.warning("[ThiTruong] POST commodity=%s %s→%s failed: %s", commodity, from_str, to_str, exc)
+
+        result = combined_html if combined_html else get_resp.text
+        if combined_html:
+            _PAGE_CACHE[cache_key] = (time.monotonic(), result)
+        return result
+
+    def _save_raw_html(self, content: str, commodity: str, date_from: date, date_to: date) -> None:
+        """Save raw HTML fragment to disk before any parsing."""
+        try:
+            raw_dir = Path(getattr(settings, "FIRECRAWL_RAW_STORAGE_PATH", "storage/raw_crawl"))
+            today_dir = raw_dir / date.today().strftime("%Y%m%d")
+            today_dir.mkdir(parents=True, exist_ok=True)
+            slug = commodity.replace(" ", "_").replace(",", "").lower()
+            filename = f"thitruongnongsan_{slug}_{date_from.strftime('%Y%m%d')}_{date_to.strftime('%Y%m%d')}.html"
+            (today_dir / filename).write_text(content, encoding="utf-8")
+        except Exception as exc:
+            logger.warning("[ThiTruong] Could not save raw HTML: %s", exc)
+
+    @staticmethod
+    def _extract_update_panel(response_text: str) -> str:
+        """Parse ASP.NET UpdatePanel delta response to extract the HTML fragment."""
+        matches = re.findall(r"\d+\|updatePanel\|[^|]+\|(.+?)(?=\d+\|[a-z]+\||$)", response_text, re.DOTALL)
+        return "\n".join(matches) if matches else ""
 
     def _parse_prices(self, content: str, *, crop_name: str | None, region: str | None) -> list[dict]:
         soup = BeautifulSoup(content, "lxml")
@@ -197,11 +326,17 @@ class ThiTruongNongSanPriceClient:
         header_map = {self._normalize_header(header): idx for idx, header in enumerate(headers)}
         row_text = " | ".join(cells)
 
-        product = self._pick_cell(cells, header_map, ("san pham", "mat hang", "ten", "ten san pham", "nong san", "product", "commodity"))
-        region = self._pick_cell(cells, header_map, ("khu vuc", "vung", "noi ban", "dia phuong", "tinh", "region", "province", "area"))
+        # "Tên mặt hàng" normalizes to "ten mat hang"; also try partial keys via contains
+        product = self._pick_cell(cells, header_map, (
+            "ten mat hang", "san pham", "mat hang", "ten san pham", "nong san", "product", "commodity",
+        )) or self._pick_cell_contains(cells, header_map, ("ten", "mat hang", "san pham"))
+        # "Thị trường" on this site = region/location (e.g. Đắk Lắk), not a market type
+        region = self._pick_cell(cells, header_map, (
+            "thi truong", "khu vuc", "vung", "noi ban", "dia phuong", "tinh", "region", "province", "area",
+        )) or self._pick_cell_contains(cells, header_map, ("thi truong",))
         price_text = self._pick_cell(cells, header_map, ("gia", "gia ban", "price", "don gia", "muc gia", "price/kg", "price per kg"))
         date_text = self._pick_cell(cells, header_map, ("ngay", "thoi gian", "date", "updated", "cap nhat", "published"))
-        market_type = self._pick_cell(cells, header_map, ("thi truong", "market", "loai thi truong", "market type"))
+        market_type = self._pick_cell(cells, header_map, ("loai thi truong", "market type", "loai gia"))
         unit = self._pick_cell(cells, header_map, ("don vi", "unit", "dvt")) or "VNĐ/kg"
 
         if not product and not price_text:
@@ -292,6 +427,15 @@ class ThiTruongNongSanPriceClient:
                 value = cells[idx]
                 if value:
                     return value
+        return None
+
+    @staticmethod
+    def _pick_cell_contains(cells: list[str], header_map: dict[str, int], keywords: tuple[str, ...]) -> str | None:
+        """Fallback: find header whose normalized name CONTAINS any keyword."""
+        for header, idx in header_map.items():
+            if any(kw in header for kw in keywords):
+                if idx < len(cells) and cells[idx]:
+                    return cells[idx]
         return None
 
     @staticmethod

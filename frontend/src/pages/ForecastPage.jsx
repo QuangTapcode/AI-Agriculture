@@ -389,9 +389,9 @@ const ForecastPage = () => {
     setSelectedHour(null);
     setHourlyByDate({});
     try {
-      // Refresh cache trước (silent — timeout không block page)
-      await weatherApi.refreshCurrentWeather(region).catch(() => {});
-      await weatherApi.getForecast(region, 7).catch(() => {});
+      // Fire-and-forget: không await — background refresh không được block trang
+      weatherApi.refreshCurrentWeather(region).catch(() => {});
+      weatherApi.getForecast(region, 7).catch(() => {});
 
       const results = await Promise.allSettled([
         weatherApi.getAgricultureWeather({

@@ -33,17 +33,7 @@ class ClaudeService:
         intent = classify_user_intent(question)
         if intent == "greeting" or (intent == "general_question" and is_capability_question(question)):
             answer = GREETING_REPLY if intent == "greeting" else GENERAL_CAPABILITY_REPLY
-            completion = {
-                "answer": answer,
-                "provider": "local",
-                "model": "intent-router-v1",
-                "token_usage": None,
-                "is_mock": False,
-                "error": None,
-                "timeout": False,
-            }
             context = {"intent": intent}
-            self._save_conversation(db, user_id, session_id, question, completion, context, crop_name)
             return {
                 "answer": answer,
                 "provider": "local",
@@ -101,7 +91,6 @@ class ClaudeService:
                 "timeout": "timeout" in str(exc).lower(),
             }
 
-        self._save_conversation(db, user_id, session_id, question, completion, context, crop_name)
         return {
             "answer": completion["answer"],
             "provider": completion["provider"],

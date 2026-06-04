@@ -1,13 +1,17 @@
 import csv
 import io
 import json
+import logging
 import re
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import date, datetime
+from pathlib import Path
 from typing import Any
 
 from app.core.config import settings
 from app.core.resilience import build_timeout, resilient_request
+
+logger = logging.getLogger(__name__)
 
 
 class MarketPriceClient:
@@ -55,7 +59,24 @@ class MarketPriceClient:
                     records.extend(future.result())
                 except Exception:
                     continue
+
+        self._save_raw_records(records, label=source_name or "all")
         return records
+
+    def _save_raw_records(self, records: list[dict], label: str) -> None:
+        """Save fetched records as JSON before clean_price_records transforms them."""
+        try:
+            raw_dir = Path(getattr(settings, "FIRECRAWL_RAW_STORAGE_PATH", "storage/raw_crawl"))
+            today_dir = raw_dir / date.today().strftime("%Y%m%d")
+            today_dir.mkdir(parents=True, exist_ok=True)
+            slug = re.sub(r"[^\w]", "_", label.lower())[:40]
+            path = today_dir / f"market_price_client_{slug}.json"
+            path.write_text(
+                json.dumps(records, default=str, ensure_ascii=False, indent=2),
+                encoding="utf-8",
+            )
+        except Exception as exc:
+            logger.warning("[MarketPriceClient] Could not save raw records: %s", exc)
 
     def fetch_all_legacy(self, source_name: str | None = None, crop_filter: str | None = None) -> list[dict]:
         records: list[dict] = []

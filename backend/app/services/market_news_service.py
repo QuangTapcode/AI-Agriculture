@@ -35,8 +35,9 @@ def _market_news_dedupe_key(title: str | None, source_url: str | None) -> str:
 
 class MarketNewsService:
     LATEST_CACHE_PREFIX = "market_news:latest:agriculture"
-    LATEST_WINDOW_DAYS = 7
+    LATEST_WINDOW_DAYS = 30  # 30 days — covers VNExpress nong-nghiep feature articles (updated weekly)
     AGRICULTURE_NEWS_KEYWORDS = (
+        # Ngành nông nghiệp chung
         "nông nghiệp",
         "nông sản",
         "sản xuất nông nghiệp",
@@ -50,10 +51,19 @@ class MarketNewsService:
         "nhà vườn",
         "nông dân",
         "hợp tác xã",
-        "lúa",
+        # Cây lương thực — dùng multi-word để tránh "lúa"→"lua" collision với "tên lửa"→"ten lua"
         "gạo",
-        "rau",
+        "lúa gạo",
+        "giá gạo",
+        "giá lúa",
+        "cây lúa",
+        "hạt lúa",
+        "trồng lúa",
+        "thu hoạch lúa",
+        # Rau củ
         "rau màu",
+        "rau củ",
+        "rau quả",
         "cà phê",
         "hồ tiêu",
         "sầu riêng",
@@ -61,14 +71,47 @@ class MarketNewsService:
         "xoài",
         "cà chua",
         "dưa chuột",
+        "dưa hấu",
+        "bưởi",
+        "vải thiều",
+        "nhãn lồng",
+        # Vật tư nông nghiệp
         "phân bón",
         "sâu bệnh",
         "dịch bệnh cây",
+        "thuốc bảo vệ thực vật",
         "thủy lợi",
         "hạn hán",
-        "mưa bão",
+        "mưa bão nông",
+        # Thị trường nông sản (cụm từ cụ thể, tránh match "xuất khẩu" đơn lẻ)
         "xuất khẩu nông sản",
+        "xuất khẩu gạo",
+        "xuất khẩu cà phê",
+        "xuất khẩu trái cây",
+        "xuất khẩu thủy sản",
         "giá nông sản",
+        "thị trường nông sản",
+        "giá cả nông sản",
+        # Chăn nuôi và thủy sản
+        "chăn nuôi",
+        "thủy sản",
+        "nuôi trồng",
+        "trái cây",
+        "cây ăn quả",
+        "gia cầm",
+        "gia súc",
+        "con tôm",
+        "nuôi tôm",
+        "mía đường",
+        "cây mía",
+        "cây sắn",       # tránh "san" match "bất động sản"
+        "cây chè",       # tránh "che" match các từ khác
+        "hạt điều",      # tránh "dieu" match "điều hành", "điều chỉnh"
+        "cao su",
+        "cây dừa",
+        "nông thôn",
+        "nông lâm",
+        "nông lâm nghiệp",
     )
 
     def refresh_news(self) -> dict:
@@ -100,7 +143,8 @@ class MarketNewsService:
             fetched_records = list(official_records or []) + list(rss_records or []) + list(tavily_records or [])
 
             official_records = self._filter_relevant_news((official_records or []), since=self._recent_since())
-            rss_records = self._filter_relevant_news((rss_records or []), since=self._recent_since())
+            # RSS uses softer filter (no keyword check) — sources are already agriculture-focused
+            rss_records = self._filter_rss_news((rss_records or []), since=self._recent_since())
             tavily_records = self._filter_relevant_news((tavily_records or []), since=self._recent_since())
 
             records = self._merge_dedupe_news(official_records + rss_records, tavily_records)
@@ -249,6 +293,16 @@ class MarketNewsService:
     def _filter_agriculture_news(self, items):
         return [item for item in (items or []) if self._is_agriculture_production_news(item)]
 
+    def _filter_rss_news(self, items, since: datetime):
+        """Filter RSS records at ingest: only drop corrupt or too-old articles.
+        Keyword check is skipped because we use agriculture-focused RSS sources."""
+        return [
+            item
+            for item in (items or [])
+            if self._is_recent_news(item, since)
+            and not self._has_text_corruption(item)
+        ]
+
     def _filter_relevant_news(self, items, since: datetime):
         return [
             item
@@ -338,7 +392,20 @@ class MarketNewsService:
                 "SourceName",
             )
         ))
-        return any(self._normalize_text(keyword) in haystack for keyword in self.AGRICULTURE_NEWS_KEYWORDS)
+        return any(self._keyword_matches(self._normalize_text(keyword), haystack) for keyword in self.AGRICULTURE_NEWS_KEYWORDS)
+
+    @staticmethod
+    def _keyword_matches(norm_keyword: str, haystack: str) -> bool:
+        """Match keyword in haystack.
+
+        Single-word keywords use word-boundary check to avoid diacritic-strip
+        collisions (e.g. "lúa"→"lua" matching "lửa"→"lua" in "tên lửa").
+        Multi-word keywords use plain substring match (spaces already act as boundaries).
+        """
+        if " " not in norm_keyword:
+            # Pad haystack so boundary check works at string edges
+            return (" " + norm_keyword + " ") in (" " + haystack + " ")
+        return norm_keyword in haystack
 
     @staticmethod
     def _normalize_text(value: str) -> str:

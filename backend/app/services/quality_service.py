@@ -10,7 +10,7 @@ from typing import Optional
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
-from app.repositories.common import to_api_grade
+from app.repositories.common import normalize_text, to_api_grade
 from app.repositories.quality_repository import (
     create_quality_check,
     get_quality_check_by_id,
@@ -30,7 +30,6 @@ class QualityService:
     def check_quality(
         self,
         db: Session,
-        *,
         image_path: str,
         crop_name: str,
         region: str,
@@ -43,37 +42,48 @@ class QualityService:
         3. Lưu kết quả qua repository
         4. Trả về kết quả đầy đủ
         """
-        # 1. Đọc ảnh và gọi Gemini Vision
-        analyzer = self._get_detector()
-        if analyzer is None:
-            if self._realtime_only():
-                return {
-                    "_api_error": True,
-                    "error_code": "REALTIME_API_FAILED",
-                    "error_message": "Không thể kết nối AI kiểm định chất lượng. Vui lòng thử lại sau.",
-                    "source": "realtime_api",
-                }
-            grade, confidence, defects = self._mock_grade(image_path)
-            vision_result = {
-                "detected_crop": crop_name or "unknown",
-                "is_produce": True,
-                "color_assessment": "",
-                "ripeness": "unknown",
-                "defects": defects,
-                "quality_grade": grade,
-                "confidence": confidence,
-                "reasoning": "mock fallback",
-            }
-        else:
+        normalized_region = self._normalize_region(region)
+
+        # 1. Phân tích ảnh — ưu tiên YOLO+EfficientNet (local), fallback Gemini Vision
+        vision_result = self._run_yolo_pipeline(image_path, crop_name=crop_name)
+        _used_source = "yolo_efficientnet"
+
+        if vision_result is None and crop_name:
+            # YOLO không detect bbox nhưng user cung cấp crop_name
+            # → classify toàn ảnh bằng EfficientNet + HSV
             try:
-                with open(image_path, "rb") as f:
-                    image_bytes = f.read()
-                if hasattr(analyzer, "analyze"):
-                    vision_result = analyzer.analyze(image_bytes)
-                else:
-                    detector_result = analyzer.analyze_image(image_path, crop_name)
-                    vision_result = self._vision_from_detector_result(detector_result, crop_name)
-            except Exception as e:
+                from ai_models.fruit_quality_pipeline import fruit_quality_pipeline
+                det = fruit_quality_pipeline.classify_full_image(image_path, crop_name_hint=crop_name)
+                if det and det.get("confidence", 0) > 0:
+                    grade_map = {"grade_1": "grade_1", "grade_2": "grade_2",
+                                 "grade_3": "grade_3", "damaged": "damaged"}
+                    grade = grade_map.get(det["grade"], "grade_2")
+                    vision_result = {
+                        "detected_crop": det["fruit_type_vi"],
+                        "is_produce": True,
+                        "color_assessment": f"Màu {det.get('hsv_color', '?')}, độ tươi {det.get('hsv_freshness', 0):.0%}",
+                        "ripeness": det["quality_level"],
+                        "defects": [],
+                        "quality_grade": grade,
+                        "confidence": det["confidence"],
+                        "reasoning": det.get("reasoning", ""),
+                        "yolo_confidence": 0.0,
+                        "efficientnet_confidence": det.get("efficientnet_confidence", 0),
+                        "efficientnet_top3": str(det.get("efficientnet_top3", "")),
+                        "hsv_freshness": det.get("hsv_freshness", 0),
+                        "total_detections": 0,
+                        "source": "efficientnet_fullimage",
+                    }
+                    _used_source = "efficientnet_fullimage"
+            except Exception as exc:
+                import logging
+                logging.getLogger(__name__).warning("[QualityService] classify_full_image failed: %s", exc)
+
+        if vision_result is None:
+            # YOLO không detect quả → thử Gemini Vision
+            _used_source = "gemini_vision"
+            analyzer = self._get_detector()
+            if analyzer is None:
                 if self._realtime_only():
                     return {
                         "_api_error": True,
@@ -81,16 +91,46 @@ class QualityService:
                         "error_message": "Không thể kết nối AI kiểm định chất lượng. Vui lòng thử lại sau.",
                         "source": "realtime_api",
                     }
+                grade, confidence, defects = self._mock_grade(image_path)
                 vision_result = {
-                    "detected_crop": "không xác định",
-                    "is_produce": False,
-                    "color_assessment": f"Lỗi đọc ảnh: {e}",
+                    "detected_crop": crop_name or "unknown",
+                    "is_produce": True,
+                    "color_assessment": "",
                     "ripeness": "unknown",
-                    "defects": [],
-                    "quality_grade": "grade_2",
-                    "confidence": 0.0,
-                    "reasoning": str(e),
+                    "defects": defects,
+                    "quality_grade": grade,
+                    "confidence": confidence,
+                    "reasoning": "mock fallback",
                 }
+                _used_source = "mock"
+            else:
+                try:
+                    with open(image_path, "rb") as f:
+                        image_bytes = f.read()
+                    if hasattr(analyzer, "analyze"):
+                        vision_result = analyzer.analyze(image_bytes)
+                    else:
+                        detector_result = analyzer.analyze_image(image_path, crop_name)
+                        vision_result = self._vision_from_detector_result(detector_result, crop_name)
+                except Exception as e:
+                    if self._realtime_only():
+                        return {
+                            "_api_error": True,
+                            "error_code": "REALTIME_API_FAILED",
+                            "error_message": "Không thể kết nối AI kiểm định chất lượng. Vui lòng thử lại sau.",
+                            "source": "realtime_api",
+                        }
+                    vision_result = {
+                        "detected_crop": "không xác định",
+                        "is_produce": False,
+                        "color_assessment": f"Lỗi đọc ảnh: {e}",
+                        "ripeness": "unknown",
+                        "defects": [],
+                        "quality_grade": "grade_2",
+                        "confidence": 0.0,
+                        "reasoning": str(e),
+                    }
+                    _used_source = "fallback"
 
         detected_crop = vision_result.get("detected_crop", "không xác định")
         is_produce = vision_result.get("is_produce", False)
@@ -109,50 +149,52 @@ class QualityService:
         disease_detected = bool(defects)
         damage_level = self._damage_level(grade)
 
-        # Nếu người dùng không nhập crop_name, dùng kết quả nhận diện
         effective_crop = crop_name if crop_name and crop_name not in ("unknown", "") else detected_crop
 
-        # 2. Lấy giá thực từ DB/Tavily theo grade
-        price_info = self._fetch_real_price(db, effective_crop, region, grade)
-        price_unavailable = False
-        if price_info.get("_api_error"):
-            # Pricing thất bại — vẫn trả về kết quả chất lượng, không block
-            price_unavailable = True
-            price_info = {"min": 0, "max": 0, "suggested": 0, "multiplier": 1.0, "source": "unavailable"}
+        pricing = self._get_quality_pricing(
+            db=db,
+            crop_name=effective_crop,
+            region=normalized_region,
+            grade=grade,
+        )
+        price_unavailable = bool(pricing.get("_api_error"))
 
-        final_min       = price_info["min"]
-        final_max       = price_info["max"]
-        final_suggested = price_info["suggested"]
+        final_min = pricing.get("weather_min_price")
+        if final_min is None:
+            final_min = pricing.get("min_price")
 
-        # Cũng gọi pricing_service để lấy weather_factor (bổ sung thông tin)
-        pricing = {}
-        try:
-            pricing = pricing_service.suggest_price(
-                db,
-                PricingSuggestRequest(
-                    crop_name=effective_crop,
-                    region=region,
-                    quantity=1,
-                    quality_grade=grade,
-                ),
-            )
-        except Exception:
-            pass
+        final_max = pricing.get("weather_max_price")
+        if final_max is None:
+            final_max = pricing.get("max_price")
 
-        # 3. Lưu vào DB qua repository
+        final_suggested = pricing.get("weather_suggested_price")
+        if final_suggested is None:
+            final_suggested = pricing.get("suggested_price")
+
+        if final_min is None or final_max is None:
+            suggested_range = pricing.get("suggested_price_range") or {}
+            final_min = final_min if final_min is not None else suggested_range.get("min")
+            final_max = final_max if final_max is not None else suggested_range.get("max")
+
+        stored_suggested_price = final_suggested if self._has_positive_price(final_suggested) else None
+        stored_min_price = final_min if self._has_positive_price(final_min) else None
+        stored_max_price = final_max if self._has_positive_price(final_max) else None
+
         record = create_quality_check(
             db,
             crop_name=effective_crop,
-            region=region,
+            region=normalized_region,
             image_path=image_path,
             quality_grade=grade,
             disease_detected=disease_detected,
             damage_level=damage_level,
-            suggested_price=final_suggested,
+            suggested_price=stored_suggested_price,
+            suggested_price_min=stored_min_price,
+            suggested_price_max=stored_max_price,
             confidence=confidence,
+            user_id=user_id,
         )
 
-        # 4. Bổ sung lưu vào QualityRecord (Quang) nếu có crop + user
         self._save_quality_record_direct(
             db=db,
             crop_name=effective_crop,
@@ -161,10 +203,15 @@ class QualityService:
             grade=grade,
             confidence=confidence,
             defects=defects,
-            min_price=final_min,
-            max_price=final_max,
+            min_price=stored_min_price,
+            max_price=stored_max_price,
             recommendations=self._recommendations(grade),
         )
+
+        source_is_mock = (_used_source == "mock") or (reasoning == "mock fallback")
+        quality_multiplier = pricing.get("quality_coefficient")
+        if quality_multiplier is None:
+            quality_multiplier = pricing.get("quality_multiplier", 1.0)
 
         return {
             "crop_name": effective_crop,
@@ -172,7 +219,7 @@ class QualityService:
             "is_produce": is_produce,
             "color_assessment": color_assessment,
             "reasoning": reasoning,
-            "region": region,
+            "region": normalized_region,
             "image_path": image_path,
             "quality_grade": grade,
             "quality_grade_letter": self._grade_letter(grade),
@@ -181,27 +228,38 @@ class QualityService:
             "damage_level": damage_level,
             "freshness_score": self._freshness_score(grade, defects),
             "suggested_price": final_suggested,
-            "suggested_price_adjustment": f"{int((price_info.get('multiplier', 1.0) - 1) * 100)}%",
+            "suggested_price_adjustment": f"{int(((quality_multiplier or 1.0) - 1) * 100)}%",
             "confidence": confidence,
             "defects": defects,
             "suggested_price_range": {
                 "min": final_min,
                 "max": final_max,
             },
-            # Nguồn giá và hệ số chất lượng
-            "price_source":        price_info.get("source", ""),
-            "price_unavailable":   price_unavailable,
-            "quality_multiplier":  price_info.get("multiplier", 1.0),
-            # Thông tin thời tiết kèm theo
-            "weather_factor":      pricing.get("weather_factor", 1.0),
-            "weather_summary":     pricing.get("weather_summary", ""),
+            "price_source": pricing.get("source", "unavailable" if price_unavailable else ""),
+            "price_unavailable": price_unavailable,
+            "quality_multiplier": quality_multiplier or 1.0,
+            "weather_factor": pricing.get("weather_factor", 1.0),
+            "weather_summary": pricing.get("weather_summary", ""),
             "weather_explanation": pricing.get("weather_explanation", ""),
-            "price_change_pct":    pricing.get("price_change_pct", 0.0),
+            "price_change_pct": pricing.get("price_change_pct", 0.0),
             "recommendation": self._recommendations(grade),
             "recommendations": self._recommendations(grade),
-            "source": "mock" if confidence == 0.0 or reasoning == "mock fallback" else "ai_generated",
-            "source_name": "Gemini Vision Quality" if confidence > 0 else "Rule-based quality fallback",
-            "is_mock": confidence == 0.0 or reasoning == "mock fallback",
+            "ai_source": _used_source,
+            "yolo_confidence": vision_result.get("yolo_confidence", 0),
+            "efficientnet_confidence": vision_result.get("efficientnet_confidence", 0),
+            "efficientnet_top3": vision_result.get("efficientnet_top3", ""),
+            "hsv_freshness": vision_result.get("hsv_freshness", 0),
+            "total_detections": vision_result.get("total_detections", 0),
+            "all_detections": vision_result.get("all_detections", []),
+            "annotated_b64": vision_result.get("annotated_b64", ""),
+            "source": "mock" if source_is_mock else "ai_generated",
+            "source_name": (
+                "YOLO11 + EfficientNet + HSV" if _used_source == "yolo_efficientnet"
+                else "EfficientNet full image" if _used_source == "efficientnet_fullimage"
+                else "Gemini Vision Quality" if _used_source == "gemini_vision"
+                else "Rule-based fallback"
+            ),
+            "is_mock": source_is_mock,
             "cache_status": "computed",
             "checked_at": getattr(record, "checked_at", None) or datetime.now(),
         }
@@ -213,6 +271,98 @@ class QualityService:
     @staticmethod
     def _realtime_only() -> bool:
         return bool(settings.USE_REALTIME_ONLY) and not bool(settings.ALLOW_MOCK_DATA or settings.ALLOW_SAMPLE_DATA)
+
+    @staticmethod
+    def _normalize_region(region: str | None) -> str:
+        return pricing_service._clean_region(region)
+
+    @staticmethod
+    def _has_positive_price(value) -> bool:
+        try:
+            return value is not None and float(value) > 0
+        except (TypeError, ValueError):
+            return False
+
+    def _get_quality_pricing(self, db: Session, crop_name: str, region: str, grade: str) -> dict:
+        normalized_region = self._normalize_region(region)
+        request = PricingSuggestRequest(
+            crop_name=crop_name,
+            region=normalized_region,
+            quantity=1,
+            quality_grade=grade,
+        )
+        try:
+            pricing = pricing_service.suggest_price(db, request)
+            if pricing and not pricing.get("_api_error"):
+                return pricing
+        except Exception:
+            pass
+        return {
+            "_api_error": True,
+            "source": "realtime_api",
+            "weather_factor": 1.0,
+            "weather_summary": "",
+            "weather_explanation": "",
+            "price_change_pct": 0.0,
+        }
+
+    @staticmethod
+    def _run_yolo_pipeline(image_path: str, crop_name: str = "") -> dict | None:
+        """Run YOLO11+EfficientNet+HSV pipeline.
+
+        Returns a vision_result dict (same shape as Gemini result) when at least
+        one fruit is detected, or None when the image has no detectable fruit.
+        """
+        try:
+            from ai_models.fruit_quality_pipeline import fruit_quality_pipeline
+            result = fruit_quality_pipeline.analyze(image_path, crop_name_hint=crop_name)
+            detections = result.get("detections", [])
+            if not detections:
+                return None   # caller decides: try classify_full_image or Gemini
+
+            best = max(detections, key=lambda d: d["confidence"])
+
+            _GRADE_MAP = {
+                "grade_1": "grade_1", "grade_2": "grade_2",
+                "grade_3": "grade_3", "damaged": "damaged",
+            }
+            grade = _GRADE_MAP.get(best["grade"], "grade_2")
+
+            defects: list[str] = []
+            if best.get("hsv_defect_ratio", 0) > 0.10:
+                defects.append("vùng tối / tổn thương màu sắc")
+            if best.get("color_uniformity", 1.0) < 0.50:
+                defects.append("màu sắc không đồng đều")
+            if grade in ("grade_3", "damaged"):
+                defects.append("chất lượng thấp")
+
+            top3_text = ", ".join(
+                f"{n} {p:.0%}" for n, p in best.get("efficientnet_top3", [])[:3]
+            )
+
+            return {
+                "detected_crop": best["fruit_type_vi"],
+                "is_produce": True,
+                "color_assessment": f"Màu {best.get('hsv_color', '?')}, "
+                                    f"độ tươi {best.get('hsv_freshness', 0):.0%}",
+                "ripeness": best["quality_level"],
+                "defects": defects,
+                "quality_grade": grade,
+                "confidence": best["confidence"],
+                "reasoning": best.get("reasoning", ""),
+                "yolo_confidence": best.get("yolo_confidence", 0),
+                "efficientnet_confidence": best.get("efficientnet_confidence", 0),
+                "efficientnet_top3": top3_text,
+                "hsv_freshness": best.get("hsv_freshness", 0),
+                "total_detections": len(detections),
+                "all_detections": detections,
+                "annotated_b64": result.get("annotated_b64", ""),
+                "source": "yolo_efficientnet",
+            }
+        except Exception as exc:
+            import logging
+            logging.getLogger(__name__).warning("[QualityService] YOLO pipeline failed: %s", exc)
+            return None
 
     @staticmethod
     def _get_detector():
@@ -243,8 +393,8 @@ class QualityService:
         grade: str,
         confidence: float,
         defects: list,
-        min_price: float,
-        max_price: float,
+        min_price: float | None,
+        max_price: float | None,
         recommendations: list,
     ):
         """Lưu vào bảng QualityRecords trực tiếp (Quang) - best-effort."""
@@ -288,21 +438,21 @@ class QualityService:
         record, crop = result
         return self._record_to_dict(record, crop)
 
-    # Hệ số giảm giá theo chất lượng
     _GRADE_MULTIPLIER = {"grade_1": 1.0, "grade_2": 0.78, "grade_3": 0.45}
 
     def _fetch_real_price(self, db: Session, crop_name: str, region: str, grade: str) -> dict:
         """
         Lấy giá thực từ MarketPrices DB cho crop_name.
         Áp hệ số chất lượng: grade_1=100%, grade_2=78%, grade_3=45%.
-        Fallback về TypicalPrice nếu không có market data.
+        Không bịa dữ liệu khi không lấy được giá thật.
         """
         from app.models.crop import Crop
         from app.models.price import MarketPrice
 
         multiplier = self._GRADE_MULTIPLIER.get(grade, 0.78)
+        normalized_region = self._normalize_region(region)
+        target_region = normalize_text(normalized_region)
 
-        # Tìm crop trong DB (fuzzy match, không phân biệt hoa thường)
         crop = (
             db.query(Crop)
             .filter(Crop.CropName.ilike(f"%{crop_name}%"))
@@ -310,54 +460,39 @@ class QualityService:
         )
 
         base_price: float | None = None
+        source = "market_db"
 
         if crop:
-            # Ưu tiên lấy giá theo vùng, fallback toàn quốc
-            mp = (
+            rows = (
                 db.query(MarketPrice)
-                .filter(MarketPrice.CropID == crop.CropID, MarketPrice.Region == region)
-                .order_by(MarketPrice.PriceDate.desc())
-                .first()
+                .filter(MarketPrice.CropID == crop.CropID)
+                .order_by(MarketPrice.PriceDate.desc(), MarketPrice.UpdatedAt.desc())
+                .all()
             )
-            if not mp:
-                mp = (
-                    db.query(MarketPrice)
-                    .filter(MarketPrice.CropID == crop.CropID)
-                    .order_by(MarketPrice.PriceDate.desc())
-                    .first()
-                )
+            mp = next((row for row in rows if normalize_text(row.Region) == target_region), None)
+            if not mp and rows:
+                mp = rows[0]
             if mp:
                 base_price = float(mp.PricePerKg)
+                source = "market_db"
 
-            # Fallback về typical price nếu không có market price
-            if base_price is None and crop.TypicalPriceMin and crop.TypicalPriceMax:
-                base_price = (float(crop.TypicalPriceMin) + float(crop.TypicalPriceMax)) / 2
-
-        # Nếu vẫn không tìm được, thử Tavily
         if base_price is None:
             try:
                 import asyncio
-                from app.core.config import settings
+                import re
                 from app.integrations.tavily_client import ask_price_qa
                 result = asyncio.run(asyncio.wait_for(asyncio.to_thread(
                     ask_price_qa,
-                    f"giá {crop_name} hiện nay tại {region} VNĐ/kg"
+                    f"giá {crop_name} hiện nay tại {normalized_region} VNĐ/kg"
                 ), timeout=settings.AI_TIMEOUT_SECONDS))
-                import re
                 nums = re.findall(r'\d[\d\.]{2,8}', result.get("tavily_answer", ""))
                 if nums:
                     base_price = float(nums[0].replace(".", ""))
+                    source = "tavily"
             except Exception:
-                if self._realtime_only():
-                    return {
-                        "_api_error": True,
-                        "error_code": "REALTIME_API_FAILED",
-                        "error_message": "Không thể tải giá realtime cho kiểm định chất lượng.",
-                        "source": "realtime_api",
-                    }
-                base_price = 20_000  # fallback tuyệt đối
+                pass
 
-        if base_price is None and self._realtime_only():
+        if base_price is None:
             return {
                 "_api_error": True,
                 "error_code": "REALTIME_API_FAILED",
@@ -365,17 +500,15 @@ class QualityService:
                 "source": "realtime_api",
             }
 
-        base_price = base_price or 20_000
-
         suggested = round(base_price * multiplier)
-        spread = 0.08  # ±8%
+        spread = 0.08
         return {
             "suggested": suggested,
-            "min":       round(suggested * (1 - spread)),
-            "max":       round(suggested * (1 + spread)),
+            "min": round(suggested * (1 - spread)),
+            "max": round(suggested * (1 + spread)),
             "base_price": base_price,
             "multiplier": multiplier,
-            "source": "market_db" if crop else "tavily",
+            "source": source,
         }
 
     @staticmethod
