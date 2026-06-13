@@ -10,7 +10,7 @@ import {
   Tooltip,
 } from 'chart.js';
 import { Minus, RefreshCw, Search, TrendingDown, TrendingUp } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { Line } from 'react-chartjs-2';
 import DataSourceBadge from '../components/DataSourceBadge';
 import { EmptyState, InlineLoading, PageError } from '../components/StatusState';
@@ -85,6 +85,7 @@ const PricingPage = () => {
   const [engine, setEngine] = useState(null);
   const [error, setError] = useState(null);
   const [partialWarnings, setPartialWarnings] = useState([]);
+  const latestRequestIdRef = useRef(0);
 
   const normalizedSearch = useMemo(() => ({
     crop_name: normalizePriceInput(search.cropName),
@@ -100,6 +101,9 @@ const PricingPage = () => {
       setError('Vui lòng nhập đủ nông sản và khu vực.');
       return;
     }
+
+    const requestId = latestRequestIdRef.current + 1;
+    latestRequestIdRef.current = requestId;
 
     if (forceRefresh) {
       setRefreshing(true);
@@ -129,6 +133,10 @@ const PricingPage = () => {
         ),
       ]);
 
+      if (latestRequestIdRef.current !== requestId) {
+        return;
+      }
+
       const currentResult = results[0];
       const forecastResult = results[1];
       const historyResult = results[2];
@@ -139,33 +147,47 @@ const PricingPage = () => {
       const nextHistory = historyResult.status === 'fulfilled' ? historyResult.value : null;
       const nextEngine = engineResult.status === 'fulfilled' ? engineResult.value : null;
 
+      const isRequestFailed = (result, value) => (
+        result.status === 'rejected' || Boolean(value && unwrapData(value)?._api_error)
+      );
+
       setCurrentPrice(nextCurrent);
       setForecast(nextForecast);
       setHistory(nextHistory);
       setEngine(nextEngine);
 
       const warnings = [];
-      if (currentResult.status === 'rejected' || (nextCurrent && unwrapData(nextCurrent)?._api_error)) {
+      if (isRequestFailed(currentResult, nextCurrent)) {
         warnings.push('Chưa tải được giá hiện tại.');
       }
-      if (forecastResult.status === 'rejected' || (nextForecast && unwrapData(nextForecast)?._api_error)) {
+      if (isRequestFailed(forecastResult, nextForecast)) {
         warnings.push('Chưa tải được dữ liệu dự báo giá.');
       }
-      if (historyResult.status === 'rejected' || !hasRenderableData(nextHistory)) {
+      if (isRequestFailed(historyResult, nextHistory)) {
         warnings.push('Chưa tải được lịch sử giá.');
       }
-      if (engineResult.status === 'rejected' || (nextEngine && unwrapData(nextEngine)?._api_error)) {
+      if (isRequestFailed(engineResult, nextEngine)) {
         warnings.push('Chưa tải được bộ phân tích giá AI.');
       }
       setPartialWarnings(warnings);
 
-      const hasAnySuccessfulData = [nextCurrent, nextForecast, nextHistory, nextEngine].some(hasRenderableData);
+      const hasAnySuccessfulData = [
+        [currentResult, nextCurrent],
+        [forecastResult, nextForecast],
+        [historyResult, nextHistory],
+        [engineResult, nextEngine],
+      ].some(([result, value]) => !isRequestFailed(result, value));
+
       if (!hasAnySuccessfulData) {
         setError('Không thể tải dữ liệu giá. Vui lòng thử lại sau.');
       } else if (currentResult.status === 'rejected' && hasAnySuccessfulData) {
         setError(getApiErrorMessage(currentResult.reason, 'Không thể tải giá realtime hiện tại, nhưng vẫn hiển thị được dữ liệu còn lại.'));
       }
     } catch (err) {
+      if (latestRequestIdRef.current !== requestId) {
+        return;
+      }
+
       setCurrentPrice(null);
       setForecast(null);
       setHistory(null);
@@ -173,6 +195,10 @@ const PricingPage = () => {
       setPartialWarnings([]);
       setError(getApiErrorMessage(err, 'Không thể tải giá realtime.'));
     } finally {
+      if (latestRequestIdRef.current !== requestId) {
+        return;
+      }
+
       setLoading(false);
       setRefreshing(false);
     }

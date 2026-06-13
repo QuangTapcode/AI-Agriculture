@@ -2,19 +2,22 @@ import { Line } from 'react-chartjs-2';
 import { translateUiText } from '../../utils/vietnameseText';
 
 const PriceChart = ({ forecast, days }) => {
-  if (!forecast || !forecast.forecast_data) {
+  const forecastData = Array.isArray(forecast?.forecast_data) ? forecast.forecast_data : [];
+  if (forecastData.length === 0) {
     return null;
   }
 
+  const formatUtcDateLabel = (dateValue) => {
+    const date = new Date(dateValue);
+    return `${date.getUTCDate()}/${date.getUTCMonth() + 1}`;
+  };
+
   const chartData = {
-    labels: forecast.forecast_data.map((d) => {
-      const date = new Date(d.date);
-      return `${date.getDate()}/${date.getMonth() + 1}`;
-    }),
+    labels: forecastData.map((d) => formatUtcDateLabel(d.date)),
     datasets: [
       {
         label: 'Giá dự báo',
-        data: forecast.forecast_data.map((d) => d.predicted_price),
+        data: forecastData.map((d) => d.predicted_price),
         borderColor: 'rgb(34, 197, 94)',
         backgroundColor: 'rgba(34, 197, 94, 0.1)',
         fill: true,

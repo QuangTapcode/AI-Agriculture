@@ -8,6 +8,7 @@ import {
   Mail,
   MapPin,
   Monitor,
+  RefreshCw,
   Save,
   Send,
   ShieldCheck,
@@ -15,10 +16,11 @@ import {
   User,
   XCircle,
 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import DataSourceBadge from '../components/DataSourceBadge';
 import { InlineLoading, PageError } from '../components/StatusState';
 import { useAuth } from '../contexts/AuthContext';
+import { useLanguage } from '../contexts/LanguageContext';
 import { getApiErrorMessage } from '../services/api';
 import { settingsApi } from '../services/settingsApi';
 
@@ -120,6 +122,7 @@ const ChannelStatus = ({ channel, status, testState, onTest }) => {
 
 const SettingsPage = () => {
   const { user } = useAuth();
+  const { language, setLanguage, t } = useLanguage();
   const [settings, setSettings] = useState({
     fullName: user?.name || '',
     email: user?.email || '',
@@ -127,7 +130,7 @@ const SettingsPage = () => {
     zaloUserId: '',
     regionKey: '',
     location: user?.region || '',
-    language: 'vi',
+    language: language,
     unit: 'hectare',
     theme: 'light',
     priceAlerts: true,
@@ -142,6 +145,7 @@ const SettingsPage = () => {
   const [sourceMeta, setSourceMeta] = useState({});
   const [saved, setSaved] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
   const [testState, setTestState] = useState({ channel: null, status: null, message: '' });
   const [passwordForm, setPasswordForm] = useState({ oldPassword: '', newPassword: '', message: '' });
@@ -151,70 +155,76 @@ const SettingsPage = () => {
     setChannelStatus(data);
   };
 
-  useEffect(() => {
-    let active = true;
-    const loadSettings = async () => {
+  const loadSettings = useCallback(async ({ background = false } = {}) => {
+    if (background) {
+      setRefreshing(true);
+    } else {
       setLoading(true);
-      setError(null);
-      try {
-        const results = await Promise.allSettled([
-          settingsApi.getProfile(),
-          settingsApi.getFarm(),
-          settingsApi.getAlertPreferences(),
-          settingsApi.getAiPreferences(),
-          settingsApi.getLocations(),
-          settingsApi.getChannelStatus(),
-        ]);
-        const [profileData, farmData, alertPrefs, aiPrefs, locationData, channelData] = results.map((item) => (
-          item.status === 'fulfilled' ? item.value : {}
-        ));
-        const failed = results.filter((item) => item.status === 'rejected');
-        if (!active) return;
-        setLocations(locationData.locations || []);
-        setChannelStatus(channelData);
-        setSourceMeta({
-          profile: profileData,
-          farm: farmData,
-          alerts: alertPrefs,
-          ai: aiPrefs,
-          channels: channelData,
-        });
-        setSettings((current) => ({
-          ...current,
-          fullName: profileData.full_name || user?.name || '',
-          email: profileData.email || user?.email || '',
-          phone: profileData.phone_number || user?.phone || '',
-          zaloUserId: profileData.zalo_user_id || '',
-          regionKey: profileData.region_key || '',
-          location: farmData.region || profileData.region || user?.region || '',
-          language: aiPrefs.language || current.language,
-          unit: profileData.unit || current.unit,
-          theme: profileData.theme || current.theme,
-          priceAlerts: Boolean(alertPrefs.price_alerts),
-          weatherAlerts: Boolean(alertPrefs.weather_alerts),
-          harvestReminders: Boolean(alertPrefs.harvest_reminders),
-          emailChannel: Boolean(alertPrefs.channels?.email),
-          zaloChannel: Boolean(alertPrefs.channels?.zalo),
-          smsChannel: Boolean(alertPrefs.channels?.sms),
-        }));
-        if (failed.length) {
-          setError('Một số cấu hình phản hồi chậm, trang đang hiển thị phần dữ liệu tải được.');
-        }
-      } catch (err) {
-        if (active) setError(getApiErrorMessage(err, 'Không thể tải cài đặt'));
-      } finally {
-        if (active) setLoading(false);
+    }
+    setError(null);
+    try {
+      const results = await Promise.allSettled([
+        settingsApi.getProfile(),
+        settingsApi.getFarm(),
+        settingsApi.getAlertPreferences(),
+        settingsApi.getAiPreferences(),
+        settingsApi.getLocations(),
+        settingsApi.getChannelStatus(),
+      ]);
+      const [profileData, farmData, alertPrefs, aiPrefs, locationData, channelData] = results.map((item) => (
+        item.status === 'fulfilled' ? item.value : {}
+      ));
+      const failed = results.filter((item) => item.status === 'rejected');
+      setLocations(locationData.locations || []);
+      setChannelStatus(channelData);
+      setSourceMeta({
+        profile: profileData,
+        farm: farmData,
+        alerts: alertPrefs,
+        ai: aiPrefs,
+        channels: channelData,
+      });
+      setSettings((current) => ({
+        ...current,
+        fullName: profileData.full_name || user?.name || '',
+        email: profileData.email || user?.email || '',
+        phone: profileData.phone_number || user?.phone || '',
+        zaloUserId: profileData.zalo_user_id || '',
+        regionKey: profileData.region_key || '',
+        location: farmData.region || profileData.region || user?.region || '',
+        language: current.language || aiPrefs.language || 'vi',
+        unit: profileData.unit || current.unit,
+        theme: profileData.theme || current.theme,
+        priceAlerts: Boolean(alertPrefs.price_alerts),
+        weatherAlerts: Boolean(alertPrefs.weather_alerts),
+        harvestReminders: Boolean(alertPrefs.harvest_reminders),
+        emailChannel: Boolean(alertPrefs.channels?.email),
+        zaloChannel: Boolean(alertPrefs.channels?.zalo),
+        smsChannel: Boolean(alertPrefs.channels?.sms),
+      }));
+      if (failed.length) {
+        setError('Một số cấu hình phản hồi chậm, trang đang hiển thị phần dữ liệu tải được.');
       }
-    };
-
-    loadSettings();
-    return () => {
-      active = false;
-    };
+    } catch (err) {
+      setError(getApiErrorMessage(err, 'Không thể tải cài đặt'));
+    } finally {
+      if (background) {
+        setRefreshing(false);
+        return;
+      }
+      setLoading(false);
+    }
   }, [user?.name, user?.email, user?.phone, user?.region]);
+
+  useEffect(() => {
+    loadSettings();
+  }, [loadSettings]);
 
   const updateSetting = (key, value) => {
     setSettings((current) => ({ ...current, [key]: value }));
+    if (key === 'language') {
+      setLanguage(value);
+    }
     setSaved(false);
   };
 
@@ -226,6 +236,10 @@ const SettingsPage = () => {
       location: region?.display_name || current.location,
     }));
     setSaved(false);
+  };
+
+  const handleRefresh = async () => {
+    await loadSettings({ background: true });
   };
 
   const handleSendTest = async (channel) => {
@@ -306,6 +320,7 @@ const SettingsPage = () => {
         regionKey: profile.region_key || current.regionKey,
         location: farm.region || profile.region || current.location,
       }));
+      setLanguage(settings.language);
       setSaved(true);
       if (failed.length) {
         setError('Một số mục cài đặt chưa lưu được do phản hồi chậm. Các mục còn lại đã được cập nhật.');
@@ -338,21 +353,30 @@ const SettingsPage = () => {
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div>
           <div className="flex flex-wrap items-center gap-2">
-            <p className="text-sm font-semibold uppercase tracking-wide text-green-700">Thiết lập vận hành</p>
+            <p className="text-sm font-semibold uppercase tracking-wide text-green-700">{t('operationSettings')}</p>
             <DataSourceBadge data={sourceMeta.profile || { source: 'database', source_name: 'Hồ sơ người dùng', confidence: 0.72 }} />
           </div>
-          <h1 className="mt-2 text-3xl font-bold text-gray-900">Cài đặt</h1>
-          <p className="mt-2 text-gray-600">
-            Hồ sơ, vùng chuẩn hóa, ma trận thông báo, trạng thái kênh gửi và bảo mật tài khoản.
-          </p>
+          <h1 className="mt-2 text-3xl font-bold text-gray-900">{t('settingsHeading')}</h1>
+          <p className="mt-2 text-gray-600">{t('settingsSubheading')}</p>
         </div>
-        <button
-          type="submit"
-          className="inline-flex items-center justify-center gap-2 rounded-lg bg-green-700 px-5 py-3 font-semibold text-white hover:bg-green-800"
-        >
-          <Save className="h-5 w-5" />
-          Lưu cài đặt
-        </button>
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            type="button"
+            onClick={handleRefresh}
+            disabled={refreshing}
+            className="inline-flex items-center justify-center gap-2 rounded-lg border border-blue-300 bg-blue-50 px-5 py-3 font-semibold text-blue-700 hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {refreshing ? <Loader2 className="h-5 w-5 animate-spin" /> : <RefreshCw className="h-5 w-5" />}
+            Refresh
+          </button>
+          <button
+            type="submit"
+            className="inline-flex items-center justify-center gap-2 rounded-lg bg-green-700 px-5 py-3 font-semibold text-white hover:bg-green-800"
+          >
+            <Save className="h-5 w-5" />
+            {t('saveSettings')}
+          </button>
+        </div>
       </div>
 
       {error && <PageError message={error} />}
@@ -424,14 +448,14 @@ const SettingsPage = () => {
                 <Monitor className="h-5 w-5" />
               </div>
               <div>
-                <h2 className="text-xl font-bold text-gray-900">Vùng và hiển thị</h2>
-                <p className="text-sm text-gray-600">Khu vực dùng chung cho giá, thời tiết và bảng điều khiển.</p>
+                <h2 className="text-xl font-bold text-gray-900">{t('regionAndDisplay')}</h2>
+                <p className="text-sm text-gray-600">{t('sharedRegion')}</p>
               </div>
             </div>
 
             <div className="grid gap-4 md:grid-cols-4">
               <div className="md:col-span-2">
-                <label className="mb-2 block text-sm font-medium text-gray-700">Khu vực chuẩn hóa</label>
+                <label className="mb-2 block text-sm font-medium text-gray-700">{t('normalizedRegion')}</label>
                 <select
                   value={settings.regionKey}
                   onChange={(event) => handleRegionChange(event.target.value)}
@@ -446,26 +470,26 @@ const SettingsPage = () => {
                 </select>
               </div>
               <div>
-                <label className="mb-2 block text-sm font-medium text-gray-700">Ngôn ngữ</label>
+                <label className="mb-2 block text-sm font-medium text-gray-700">{t('language')}</label>
                 <select
                   value={settings.language}
                   onChange={(event) => updateSetting('language', event.target.value)}
                   className="w-full rounded-lg border border-gray-300 px-4 py-3 outline-none focus:border-green-600 focus:ring-2 focus:ring-green-100"
                 >
-                  <option value="vi">Tiếng Việt</option>
-                  <option value="en">Tiếng Anh</option>
+                  <option value="vi">{t('vietnamese')}</option>
+                  <option value="en">{t('english')}</option>
                 </select>
               </div>
               <div>
-                <label className="mb-2 block text-sm font-medium text-gray-700">Giao diện</label>
+                <label className="mb-2 block text-sm font-medium text-gray-700">{t('theme')}</label>
                 <select
                   value={settings.theme}
                   onChange={(event) => updateSetting('theme', event.target.value)}
                   className="w-full rounded-lg border border-gray-300 px-4 py-3 outline-none focus:border-green-600 focus:ring-2 focus:ring-green-100"
                 >
-                  <option value="light">Sáng</option>
-                  <option value="dark">Tối</option>
-                  <option value="system">Theo hệ thống</option>
+                  <option value="light">{t('light')}</option>
+                  <option value="dark">{t('dark')}</option>
+                  <option value="system">{t('system')}</option>
                 </select>
               </div>
             </div>

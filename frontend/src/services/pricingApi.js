@@ -32,12 +32,13 @@ export const pricingApi = {
     return unwrap(response);
   },
 
-  refreshCurrentPrice: async (cropNameOrQuery, region, qualityGrade = 'grade_1') => {
-    const query = resolveQuery(cropNameOrQuery, region, qualityGrade);
+  refreshCurrentPrice: async (cropNameOrQuery, region, qualityGrade = 'grade_1', forceRefresh = false) => {
+    const query = resolveQuery(cropNameOrQuery, region, qualityGrade, forceRefresh);
     const response = await api.post('/api/pricing/refresh', {
       crop_name: query.crop_name,
       region: query.region,
       quality_grade: query.quality_grade,
+      force_refresh: query.force_refresh,
     });
     return unwrap(response);
   },

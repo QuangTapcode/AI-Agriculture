@@ -5,7 +5,11 @@ const RegionCompare = ({ data }) => {
     return null;
   }
 
-  const sortedRegions = [...data.regions].sort((a, b) => b.price - a.price);
+  const sortedRegions = [...data.regions].sort(
+    (a, b) =>
+      (Number(String(b.price).replace(/[^\d.-]/g, '')) || 0) -
+      (Number(String(a.price).replace(/[^\d.-]/g, '')) || 0)
+  );
 
   return (
     <div className="bg-white rounded-lg shadow p-6">
@@ -31,15 +35,15 @@ const RegionCompare = ({ data }) => {
 
             <div className="text-right">
               <p className="text-lg font-bold text-gray-900">
-                {region.price.toLocaleString()} đ/kg
+                {(Number(String(region.price).replace(/[^\d.-]/g, '')) || 0).toLocaleString()} đ/kg
               </p>
-              {index === 0 && (
+              {sortedRegions.length > 1 && index === 0 && (
                 <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
                   <TrendingUp className="h-3 w-3 mr-1" />
                   Cao nhất
                 </span>
               )}
-              {index === sortedRegions.length - 1 && (
+              {sortedRegions.length > 1 && index === sortedRegions.length - 1 && (
                 <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
                   <TrendingDown className="h-3 w-3 mr-1" />
                   Thấp nhất

@@ -86,12 +86,14 @@ class PriceAggregatorService:
             # even when the requested region (e.g. "Ha Noi") has no government price.
             if settings.FIRECRAWL_ENABLED and settings.FIRECRAWL_API_KEY:
                 raw = firecrawl_price_client.fetch_prices(selected_crop, region=None)
+                source_key = "firecrawl_price"
             else:
                 raw = thitruong_nongsan_price_client.fetch_prices(selected_crop, region=None)
+                source_key = "thitruongnongsan_price"
             records, rejected = clean_price_records(raw)
-            save_quarantine(rejected, source="thitruongnongsan_price")
+            save_quarantine(rejected, source=source_key)
             result = bulk_upsert_market_prices(db, records)
-            warn_count_mismatch("thitruongnongsan_price", len(records), result)
+            warn_count_mismatch(source_key, len(records), result)
             return {
                 "status": "success" if records else "empty",
                 "records_fetched": len(raw),
@@ -275,7 +277,7 @@ class PriceAggregatorService:
                     "enabled": True,
                     "configured": True,
                     "role": "Nguon chinh cho gia nong san Viet Nam",
-                    "status": external_circuit_breaker.status("thitruongnongsan_price:Cà phê"),
+                    "status": external_circuit_breaker.status("thitruongnongsan_price"),
                 },
                 {
                     "source_name": "MarketPrices DB",
@@ -352,11 +354,13 @@ class PriceAggregatorService:
                     continue
                 if (row.SourceType or "") in {"global_commodity", "global_futures_reference", "global_reference"}:
                     continue
-                if not target_region or normalize_text(row.Region) == target_region:
+                if not target_region:
+                    if fallback_row is None:
+                        fallback_row = row
+                    continue
+                if normalize_text(row.Region) == target_region:
                     return row
-                if fallback_row is None:
-                    fallback_row = row  # keep nearest match as fallback
-            return fallback_row  # return any-region data if no exact region match
+            return fallback_row
         except Exception:
             db.rollback()
             return None
@@ -382,7 +386,8 @@ class PriceAggregatorService:
         warning: str | None = None,
     ) -> dict:
         current_price = float(row.PricePerKg or 0)
-        previous = self._previous_price(db, crop_name, region, row.PriceID)
+        response_region = region or row.Region or ""
+        previous = self._previous_price(db, crop_name, response_region, row.PriceID)
         price_change = round(current_price - previous, 2) if previous else 0.0
         price_change_percent = round(price_change / previous * 100, 2) if previous else 0.0
         fetched_at = row.FetchedAt or row.UpdatedAt or datetime.now()
@@ -400,7 +405,7 @@ class PriceAggregatorService:
         payload = {
             "crop_name": crop_name.strip(),
             "crop": crop_name.strip(),
-            "region": region,
+            "region": response_region,
             "current_price": round(current_price, 2),
             "market_price": round(current_price, 2),
             "price": round(current_price, 2),
@@ -436,7 +441,7 @@ class PriceAggregatorService:
     def _no_realtime_price_response(
         *,
         crop_name: str,
-        region: str,
+        region: str | None,
         refresh_result: dict | None,
     ) -> dict:
         payload = realtime_error(
@@ -446,10 +451,10 @@ class PriceAggregatorService:
             source_url=OFFICIAL_PRICE_URL,
             detail="; ".join(refresh_result.get("errors") or []) if refresh_result else None,
         )
-        payload.update({"crop_name": crop_name.strip(), "region": region, "price": None, "refresh_result": refresh_result})
+        payload.update({"crop_name": crop_name.strip(), "region": region or "", "price": None, "refresh_result": refresh_result})
         return payload
 
-    def _previous_price(self, db: Session, crop_name: str, region: str, exclude_price_id: int) -> float | None:
+    def _previous_price(self, db: Session, crop_name: str, region: str | None, exclude_price_id: int) -> float | None:
         try:
             crop = ensure_crop(db, crop_name)
             rows = (
@@ -475,8 +480,11 @@ class PriceAggregatorService:
         return normalize_text(crop_name or "lua") or "lua"
 
     @staticmethod
-    def _clean_region(region: str | None) -> str:
-        return " ".join((region or "Vietnam").strip().split()) or "Vietnam"
+    def _clean_region(region: str | None) -> str | None:
+        if region is None:
+            return None
+        cleaned = " ".join(region.strip().split())
+        return cleaned or None
 
     @staticmethod
     def _display_unit(row: MarketPrice) -> str:

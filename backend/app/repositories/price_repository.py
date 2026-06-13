@@ -82,6 +82,7 @@ def create_market_price(
         db.refresh(market_price)
     except SQLAlchemyError:
         db.rollback()
+        raise
     return market_price
 
 
@@ -114,6 +115,7 @@ def create_pricing_request(
         db.refresh(request)
     except SQLAlchemyError:
         db.rollback()
+        raise
     return request
 
 
@@ -258,7 +260,8 @@ def bulk_upsert_market_prices(db: Session, records: list[dict]) -> dict:
                 MarketPrice.MarketType == market_type,
                 MarketPrice.PriceDate == record_date,
             )
-            normalized_region = normalize_text(record["region"])
+            region = record["region"].strip()
+            normalized_region = normalize_text(region)
             rows = query.order_by(desc(MarketPrice.PriceDate), desc(MarketPrice.UpdatedAt)).all()
             market_price = next((row for row in rows if normalize_text(row.Region) == normalized_region), None)
             if market_price is None and source_name:
@@ -269,7 +272,7 @@ def bulk_upsert_market_prices(db: Session, records: list[dict]) -> dict:
             if market_price is None:
                 market_price = MarketPrice(
                     CropID=crop.CropID,
-                    Region=record["region"],
+                    Region=region,
                     QualityGrade=quality_grade,
                     MarketType=market_type,
                     PriceDate=record_date,
@@ -290,12 +293,11 @@ def bulk_upsert_market_prices(db: Session, records: list[dict]) -> dict:
             market_price.IsMock = bool(record.get("is_mock", False))
             market_price.Metadata = record.get("metadata")
             market_price.UpdatedAt = timestamp
-            touched_history.add((crop.CropID, record["region"], record_date))
+            touched_history.add((crop.CropID, market_price.Region, record_date))
         except Exception as exc:
             errors.append(f"record {index}: {exc}")
 
     try:
-        db.commit()
         for crop_id, region, record_date in touched_history:
             _upsert_price_history(db, crop_id, region, record_date)
         db.commit()

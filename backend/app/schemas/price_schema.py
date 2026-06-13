@@ -1,18 +1,19 @@
 from datetime import date, datetime
+from decimal import Decimal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, constr
 
 
 class PriceRequest(BaseModel):
-    crop_name: str = Field(..., min_length=1)
-    region: str = Field(..., min_length=1)
+    crop_name: constr(strip_whitespace=True, min_length=1) = Field(...)
+    region: constr(strip_whitespace=True, min_length=1) = Field(...)
     quality_grade: str = "grade_1"
 
 
 class PriceResponse(BaseModel):
     crop_name: str
     region: str
-    current_price: float
+    current_price: Decimal
     quality_grade: str
     price_trend: str
     forecast_7days: list[dict] | None = None
@@ -26,8 +27,8 @@ class PriceResponse(BaseModel):
 
 
 class PricingSuggestRequest(BaseModel):
-    crop_name: str = Field(..., min_length=1)
-    region: str = Field(..., min_length=1)
+    crop_name: constr(strip_whitespace=True, min_length=1) = Field(...)
+    region: constr(strip_whitespace=True, min_length=1) = Field(...)
     quantity: float = Field(1, gt=0)
     quality_grade: str = "grade_1"
 
@@ -37,9 +38,9 @@ class PricingSuggestResponse(BaseModel):
     region: str
     quantity: float
     quality_grade: str
-    min_price: float
-    suggested_price: float
-    max_price: float
+    min_price: Decimal
+    suggested_price: Decimal
+    max_price: Decimal
     unit: str = "VND/kg"
     nearby_region_prices: list[dict] = Field(default_factory=list)
     message: str
@@ -52,9 +53,9 @@ class PricingSuggestResponse(BaseModel):
 
 
 class PriceImportItem(BaseModel):
-    crop_name: str = Field(..., min_length=1)
-    region: str = Field(..., min_length=1)
-    price: float = Field(..., gt=0)
+    crop_name: constr(strip_whitespace=True, min_length=1) = Field(...)
+    region: constr(strip_whitespace=True, min_length=1) = Field(...)
+    price: Decimal = Field(..., gt=0)
     unit: str = "VND/kg"
     quality_grade: str = "grade_1"
     source_name: str = "manual"
@@ -76,8 +77,8 @@ class PriceImportResponse(BaseModel):
 
 
 class PriceForecastRequest(BaseModel):
-    crop_name: str = Field(..., min_length=1)
-    region: str = Field(..., min_length=1)
+    crop_name: constr(strip_whitespace=True, min_length=1) = Field(...)
+    region: constr(strip_whitespace=True, min_length=1) = Field(...)
     days: int = Field(7, ge=1, le=30)
 
 
@@ -90,16 +91,16 @@ class PriceForecastResponse(BaseModel):
 
 
 class PricePredictionRequest(BaseModel):
-    crop_name: str = Field(..., min_length=1)
-    region: str = Field(..., min_length=1)
+    crop_name: constr(strip_whitespace=True, min_length=1) = Field(...)
+    region: constr(strip_whitespace=True, min_length=1) = Field(...)
     forecast_days: int = Field(7, ge=1, le=30)
 
 
 class PredictedPrice(BaseModel):
     date: date
-    predicted_price: float
-    min_price: float
-    max_price: float
+    predicted_price: Decimal
+    min_price: Decimal
+    max_price: Decimal
 
 
 class PricePredictionResponse(BaseModel):

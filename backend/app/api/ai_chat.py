@@ -633,12 +633,17 @@ async def _call_gemini(request: AIChatMessageRequest, context: dict) -> tuple[st
         raise RuntimeError("missing_google_api_key")
 
     configured_model = (os.getenv("GEMINI_MODEL") or "").strip()
-    model_names = [configured_model] if configured_model else [
+    default_model_names = [
         "gemini-2.5-flash-lite",
         "gemini-2.0-flash-lite",
         "gemini-2.0-flash",
         "gemini-2.5-flash",
     ]
+    model_names = (
+        [configured_model, *[name for name in default_model_names if name != configured_model]]
+        if configured_model
+        else default_model_names
+    )
     system_instruction, prompt = _build_gemini_prompt(request, context)
     client = genai.Client(api_key=api_key)
 
@@ -713,9 +718,9 @@ def _save_gemini_conversation(
             TokenUsage=None,
         ))
         db.commit()
-    except Exception:
+    except Exception as exc:
         db.rollback()
-
+        _log.error("Failed to save AI conversation for user_id=%s session_id=%s: %s", user_id, session_id, exc)
 
 def _success_payload(
     *,
@@ -973,6 +978,7 @@ async def ai_chat_message(
         crop_name=crop or context.get("crop_name"),
         context=context,
         model_name=model_name,
+        provider=provider,
     )
     return response_payload
 
@@ -994,7 +1000,10 @@ def ai_chat_history(
 ):
     from app.models.conversation import AIConversation
 
-    base_query = db.query(AIConversation).filter(AIConversation.UserID == current_user.UserID)
+    base_query = db.query(AIConversation).filter(
+        AIConversation.UserID == current_user.UserID,
+        AIConversation.deleted_at.is_(None),
+    )
     total = base_query.count()
     rows = (
         base_query
@@ -1029,12 +1038,16 @@ async def delete_chat_history_item(
     from app.models.conversation import AIConversation
     row = (
         db.query(AIConversation)
-        .filter(AIConversation.ConvID == conv_id, AIConversation.UserID == current_user.UserID)
+        .filter(
+            AIConversation.ConvID == conv_id,
+            AIConversation.UserID == current_user.UserID,
+            AIConversation.deleted_at.is_(None),
+        )
         .first()
     )
     if not row:
         raise HTTPException(status_code=404, detail="Không tìm thấy tin nhắn")
-    db.delete(row)
+    row.deleted_at = datetime.utcnow()
     db.commit()
     return api_response({"deleted": True, "conv_id": conv_id}, source="database", source_name="AIConversations DB")
 
@@ -1045,10 +1058,14 @@ async def clear_chat_history(
     current_user: User = Depends(get_current_user),
 ):
     from app.models.conversation import AIConversation
+    deleted_at = datetime.utcnow()
     count = (
         db.query(AIConversation)
-        .filter(AIConversation.UserID == current_user.UserID)
-        .delete(synchronize_session=False)
+        .filter(
+            AIConversation.UserID == current_user.UserID,
+            AIConversation.deleted_at.is_(None),
+        )
+        .update({AIConversation.deleted_at: deleted_at}, synchronize_session=False)
     )
     db.commit()
     return api_response({"deleted_count": count}, source="database", source_name="AIConversations DB")

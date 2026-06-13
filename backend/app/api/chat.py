@@ -64,9 +64,8 @@ def _save_conversation(db: Session, user_id: int | None, question: str, answer: 
     try:
         db.add(row)
         db.commit()
-    except Exception as exc:
+    except Exception:
         db.rollback()
-        raise RuntimeError(f"Failed to save conversation: {exc}") from exc
 
 
 class ChatRequest(BaseModel):
@@ -261,6 +260,7 @@ async def ask_farming_advice(
         return ChatResponse(answer=GENERAL_CAPABILITY_REPLY)
 
     # Legacy /api/chat now reuses the same context builder used by /api/ai-chat.
+    fallback_answer = ""
     try:
         from app.services.ai_context_service import ai_context_service
         from app.services.claude_service import claude_service
@@ -298,20 +298,14 @@ async def ask_farming_advice(
                 region=context.get("region"),
                 crop=context.get("crop_name"),
             )
-        _save_conversation(db, current_user.UserID if current_user else None, q, answer, intent)
-        return ChatResponse(answer=answer)
+        fallback_answer = answer
     except Exception:
-        answer = _build_local_fallback_answer(
+        fallback_answer = _build_local_fallback_answer(
             q,
             topic=intent,
             region=extract_region_from_message(q) or _detect_region(q),
             crop=extract_crop_from_message(q) or _detect_crop(q),
         )
-        try:
-            _save_conversation(db, current_user.UserID if current_user else None, q, answer, intent)
-        except Exception as exc:
-            raise HTTPException(status_code=500, detail=str(exc)) from exc
-        return ChatResponse(answer=answer)
 
     # RAG 1: Bổ sung giá thị trường từ DB nếu câu hỏi liên quan đến giá
     if _question_contains(q, _PRICE_KEYWORDS):
@@ -385,15 +379,19 @@ async def ask_farming_advice(
 
     combined_context = "\n\n".join(context_parts)
 
+    answer = fallback_answer
     try:
-        answer = await gemini_client.get_farming_advice(
+        gemini_answer = await gemini_client.get_farming_advice(
             question=q,
             context_data=combined_context
         )
-        _save_conversation(db, current_user.UserID if current_user else None, q, answer)
-        return ChatResponse(answer=answer)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Lỗi khi kết nối AI: {str(e)}")
+        if gemini_answer:
+            answer = gemini_answer
+    except Exception:
+        pass
+
+    _save_conversation(db, current_user.UserID if current_user else None, q, answer)
+    return ChatResponse(answer=answer)
 
 
 @router.post("/price-qa", response_model=PriceQAResponse)
@@ -438,9 +436,9 @@ async def price_qa(
             region=region,
             extra_context=context,
         )
-        answer = result.get("answer") or result.get("error")
-        if not answer:
-            answer = _build_local_fallback_answer(q, topic="price_query", region=region, crop=crop)
+        answer = result.get("answer") or result.get("error") or _build_local_fallback_answer(
+            q, topic="price_query", region=region, crop=crop
+        )
         _save_conversation(db, current_user.UserID if current_user else None, q, answer, "price_query")
         return PriceQAResponse(
             answer=answer,
@@ -806,6 +804,7 @@ def delete_chat_message(
     current_user: User = Depends(get_current_user),
 ):
     """Xóa một tin nhắn khỏi lịch sử chat."""
+    from datetime import datetime
     from app.models.conversation import AIConversation
     row = (
         db.query(AIConversation)
@@ -814,7 +813,7 @@ def delete_chat_message(
     )
     if not row:
         raise HTTPException(status_code=404, detail="Không tìm thấy tin nhắn")
-    db.delete(row)
+    row.deleted_at = datetime.utcnow()
     db.commit()
     return {"deleted": conv_id}
 
@@ -825,11 +824,13 @@ def clear_chat_history(
     current_user: User = Depends(get_current_user),
 ):
     """Xóa toàn bộ lịch sử chat của người dùng."""
+    from datetime import datetime
     from app.models.conversation import AIConversation
+    deleted_at = datetime.utcnow()
     count = (
         db.query(AIConversation)
         .filter(AIConversation.UserID == current_user.UserID)
-        .delete()
+        .update({AIConversation.deleted_at: deleted_at})
     )
     db.commit()
     return {"deleted_count": count}

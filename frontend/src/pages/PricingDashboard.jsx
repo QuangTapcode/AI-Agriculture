@@ -82,6 +82,11 @@ const PricingDashboard = () => {
   const fetchData = useCallback(async () => {
     setLoading(true);
     setError('');
+    setCurrentPrice(null);
+    setHistory([]);
+    setForecast([]);
+    setRegionData([]);
+
     try {
       const [priceRes, histRes, fcRes, regionRes] = await Promise.allSettled([
         pricingApi.getCurrentPrice(selectedCrop, DEFAULT_REGION),
@@ -94,6 +99,15 @@ const PricingDashboard = () => {
       if (histRes.status === 'fulfilled') setHistory(histRes.value?.history || []);
       if (fcRes.status === 'fulfilled') setForecast(fcRes.value?.forecast_data || []);
       if (regionRes.status === 'fulfilled') setRegionData(regionRes.value?.regions || []);
+
+      if (
+        priceRes.status === 'rejected' ||
+        histRes.status === 'rejected' ||
+        fcRes.status === 'rejected' ||
+        regionRes.status === 'rejected'
+      ) {
+        setError('Không thể tải dữ liệu giá');
+      }
     } catch {
       setError('Không thể tải dữ liệu giá');
     } finally {
@@ -131,7 +145,9 @@ const PricingDashboard = () => {
       },
       {
         label: 'Dự báo AI',
-        data: [...Array(histLabels.length - 1).fill(null), bridgePoint, ...forecast.slice(0, 30).map((f) => f.predicted_price || null)],
+        data: histLabels.length > 0
+          ? [...Array(histLabels.length - 1).fill(null), bridgePoint, ...forecast.slice(0, 30).map((f) => f.predicted_price || null)]
+          : forecast.slice(0, 30).map((f) => f.predicted_price || null),
         borderColor: '#15803d',
         backgroundColor: 'rgba(21, 128, 61, 0.04)',
         borderWidth: 2.5,

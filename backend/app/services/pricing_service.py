@@ -175,8 +175,17 @@ class PricingService:
             raw_market_price = result.get("market_price")
 
         if raw_market_price is not None:
-            raw_market_price = round(float(raw_market_price), 2)
-
+            try:
+                raw_market_price = round(float(raw_market_price), 2)
+            except (TypeError, ValueError):
+                return {
+                    "_api_error": True,
+                    "error_code": "INVALID_PRICE_DATA",
+                    "error_message": "Dữ liệu giá từ nguồn upstream không hợp lệ.",
+                    "crop_name": crop_name.strip(),
+                    "region": selected_region,
+                    "is_mock": False,
+                }
         multiplier = self.quality_multipliers.get(selected_grade, 1.0)
         adjusted_price = raw_market_price
         if raw_market_price is not None and multiplier != 1.0:
@@ -775,7 +784,11 @@ class PricingService:
             season_label,
             news_label,
         ]
-        if best_platform_price and abs(best_platform_price - market_price) / max(market_price, 1) > 0.05:
+        if (
+            best_platform_price
+            and market_price > 0
+            and abs(best_platform_price - market_price) / market_price > 0.05
+        ):
             reasons.append(
                 f"Sàn nông sản trực tuyến ({best_platform_source}) có giá {best_platform_price:,.0f} VNĐ/kg"
                 f" — chênh lệch {(best_platform_price - market_price) / market_price * 100:+.1f}%."
@@ -935,6 +948,7 @@ class PricingService:
         regions = regions or ["Ha Noi", "TP.HCM", "Da Nang", "Can Tho"]
         items = [self.get_current_price(db, crop_name, region, include_weather=False) for region in regions]
         items = [item for item in items if not item.get("_api_error")]
+        items = [item for item in items if not item.get("is_mock")]
         has_real_data = bool(items)
         if not has_real_data:
             return {
@@ -1374,7 +1388,7 @@ class PricingService:
             from app.models.crop import CropType
             from app.models.price import MarketPrice
 
-            crop = db.query(CropType).filter(CropType.CropName == crop_name).first()
+            crop = ensure_crop(db, self._clean_crop(crop_name))
             if not crop:
                 return []
             rows = (

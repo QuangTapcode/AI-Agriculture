@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.api.response import api_response
 from app.core.database import get_db
+from app.models.crop import CropType
 from app.models.price import MarketPrice
 from app.services.location_service import location_service
 from app.services.pricing_service import pricing_service
@@ -57,8 +58,8 @@ def get_current_price(
     resolved_region = location_service.resolve_region(db, region_key or region)
 
     if crop_id:
-        crop = db.query(MarketPrice).filter(MarketPrice.CropID == crop_id).first()
-        resolved_crop_name = _resolve_crop_name(crop.Crop.CropName if crop and getattr(crop, "Crop", None) else crop_name)
+        crop = db.get(CropType, crop_id)
+        resolved_crop_name = _resolve_crop_name(crop.CropName if crop else crop_name)
     else:
         resolved_crop_name = _resolve_crop_name(crop_name)
 
@@ -83,7 +84,7 @@ def get_current_price(
         source=data.get("source", "database"),
         source_name=data.get("source_name"),
         is_mock=data.get("is_mock", False),
-        is_realtime=data.get("source") == "realtime",
+        is_realtime=data.get("source") == "realtime_api",
         cache_status=data.get("cache_status", "from_db"),
         last_updated=data.get("last_updated"),
         fetched_at=data.get("fetched_at"),

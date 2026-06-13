@@ -30,7 +30,11 @@ class PricingEngineRequest(BaseModel):
 
     @property
     def resolved_crop(self) -> str:
-        return (self.crop_name or self.crop or "lua").strip()
+        crop_name = (self.crop_name or "").strip()
+        if crop_name:
+            return crop_name
+        crop = (self.crop or "").strip()
+        return crop or "lua"
 
 
 class PricingRefreshRequest(BaseModel):
@@ -60,7 +64,7 @@ async def get_current_price_query(
         source=data.get("source", "database"),
         source_name=data.get("source_name"),
         is_mock=data.get("is_mock", False),
-        is_realtime=data.get("source") == "realtime",
+        is_realtime=data.get("source") == "realtime_api",
         cache_status=data.get("cache_status", "from_db"),
         last_updated=data.get("last_updated"),
         fetched_at=data.get("fetched_at"),
@@ -84,7 +88,7 @@ async def get_current_price(request: PriceLookupRequest, db: Session = Depends(g
         source=data.get("source", "database"),
         source_name=data.get("source_name"),
         is_mock=data.get("is_mock", False),
-        is_realtime=data.get("source") == "realtime",
+        is_realtime=data.get("source") == "realtime_api",
         cache_status=data.get("cache_status", "from_db"),
         last_updated=data.get("last_updated"),
         fetched_at=data.get("fetched_at"),
@@ -106,7 +110,7 @@ async def refresh_price(request: PricingRefreshRequest, db: Session = Depends(ge
         source=data.get("source", "database"),
         source_name=data.get("source_name"),
         is_mock=data.get("is_mock", False),
-        is_realtime=data.get("source") == "realtime",
+        is_realtime=data.get("source") == "realtime_api",
         cache_status=data.get("cache_status", "from_db"),
         last_updated=data.get("last_updated"),
         fetched_at=data.get("fetched_at"),
@@ -172,7 +176,7 @@ async def get_price_history_query(
 
 
 @router.get("/history/{crop_name}/{region}")
-async def get_price_history(crop_name: str, region: str, days: int = 30, db: Session = Depends(get_db)):
+async def get_price_history(crop_name: str, region: str, days: int = Query(default=30, ge=1, le=365), db: Session = Depends(get_db)):
     history = pricing_service.get_price_history(db, crop_name, region, days)
     is_mock = any(item.get("is_mock") for item in history)
     data = {
