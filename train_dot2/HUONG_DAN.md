@@ -19,7 +19,31 @@ Kết quả cuối: **1 model duy nhất** nhận diện cả quả lẫn rau c�
 
 **2. Khối lượng label rất lớn.** 80 class mới, mỗi class nên có tối thiểu **150–300 ảnh đã gán bounding box** → khoảng **12.000–24.000 ảnh** cần label. Đây là phần tốn công nhất. Gợi ý chia nhỏ: làm trước 5 loại → train thử → rồi mở rộng dần, thay vì làm hết 20 loại cùng lúc.
 
-**3. File `efficientnet_quality.pt` bạn upload bị 0 byte** (tải lỗi). Nếu pipeline đợt 1 có dùng EfficientNet riêng để phân loại chất lượng thì cần tải lại. Nhưng với hướng "1 model YOLO 96 class" thì **không cần** file này.
+**3. Checkpoint đợt 1 nằm ở `Training/`, không phải thư mục này.**
+
+| File | Đường dẫn thật | Dung lượng |
+|---|---|---|
+| YOLO11 đợt 1 (16 class) | `Training/best.pt` | 5.5 MB |
+| EfficientNet đợt 1 (16 class) | `Training/efficientnet_quality.pt` | 16.4 MB |
+
+Cả hai đều bình thường (ghi chú cũ nói `efficientnet_quality.pt` bị 0 byte là **sai**, đã kiểm tra lại).
+
+Backend nạp weights từ `backend/ai_models/weights/` — thư mục này bị `.gitignore` chặn nên phải copy sang bằng:
+
+```bash
+python scripts/setup_models.py
+```
+
+**4. Nếu train lại EfficientNet với số class khác 16**, xuất kèm file tên class đặt cạnh weights:
+
+```
+backend/ai_models/weights/efficientnet_quality.pt
+backend/ai_models/weights/efficientnet_quality.classes.json   ← mảng JSON, đúng thứ tự index
+```
+
+Ví dụ `["Apple Fresh", "Apple Rotten", ..., "Sweet Potato Semirotten"]` (96 phần tử).
+Code tự đọc số class từ checkpoint và tên từ file này — **không cần sửa Python**.
+Thiếu file sidecar mà model khác 16 class thì tên sẽ thành `class_0, class_1, …`.
 
 ---
 
@@ -69,7 +93,7 @@ Script tự remap index (đợt 1: 0–15, đợt 2: 16–95) và sinh `data.yam
 Mở **`train_yolo11_dot2.ipynb`** trên **Google Colab** (Runtime → GPU T4), chạy lần lượt các cell:
 
 1. Cài ultralytics + roboflow
-2. Upload `best_dot1.pt` (đã copy sẵn trong thư mục này)
+2. Upload `Training/best.pt` (checkpoint đợt 1) lên Colab
 3. Tải dataset gộp từ Roboflow (điền API key)
 4. Kiểm tra `nc = 96`
 5. `model.train(...)` — 80 epochs, transfer từ checkpoint đợt 1
@@ -91,7 +115,6 @@ Cấu hình train đã đặt sẵn (epochs 80, imgsz 640, batch 16 — giảm c
 
 | File | Công dụng |
 |---|---|
-| `best_dot1.pt` | Checkpoint YOLO11 đợt 1 (16 class) — dùng làm điểm xuất phát |
 | `data.yaml` | Cấu trúc 96 class mục tiêu (sửa tên 20 loại tuỳ ý) |
 | `train_yolo11_dot2.ipynb` | Notebook train trên Colab |
 | `merge_datasets.py` | Gộp 2 dataset YOLO + remap index (chỉ dùng khi export riêng) |
