@@ -29,9 +29,9 @@ def test_quality_check_calls_yolo_pipeline(tmp_path):
     # _run_yolo_pipeline is a @staticmethod — patch at class level
     original = QualityService._run_yolo_pipeline
 
-    def spy_yolo(image_path):
+    def spy_yolo(image_path, crop_name=""):
         call_log.append(("yolo", image_path))
-        return original(image_path)
+        return original(image_path, crop_name=crop_name)
 
     with patch.object(QualityService, '_run_yolo_pipeline', staticmethod(spy_yolo)):
         from app.core.database import SessionLocal
