@@ -867,14 +867,25 @@ class WeatherService:
         # Prefer DB cache first
         rows = get_weather_forecast(db, norm, days)
         cache_status = "miss"
+        has_full_cache = False
         if rows:
             cached = self._forecast_rows_to_dict(rows, days, fallback_used=False, timeout=False)
             cache_status = cached[0].get("cache_status") if cached else "miss"
-            if cached and cache_status in {"fresh_cache", "stale_cache"} and not force_refresh:
+            # Cache phải đủ `days` ngày mới dùng được. Thiếu ngày thì đi fetch bù:
+            # get_current_weather ghi trước 1 dòng cho hôm nay, nếu không kiểm tra
+            # số ngày thì "dự báo 7 ngày" bị cắt còn đúng hôm nay.
+            has_full_cache = len(cached) >= days
+            if (
+                cached
+                and has_full_cache
+                and cache_status in {"fresh_cache", "stale_cache"}
+                and not force_refresh
+            ):
                 return cached
 
-        # Only bail out early if DB had rows (even stale) — empty cache always tries live fetch
-        if not force_refresh and rows:
+        # Cache đủ ngày nhưng đã hết hạn => miss thật, không gọi lại API.
+        # Cache thiếu ngày (hoặc rỗng) thì rơi xuống live fetch bên dưới.
+        if not force_refresh and has_full_cache:
             return []
 
         # Live fetch
