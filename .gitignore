@@ -76,3 +76,6 @@ docker-compose.override.yml
 .pytest_cache/
 .coverage
 htmlcov/
+
+# Crawler runtime artifacts (anh debug, raw dump, quarantine)
+backend/storage/raw_crawl/
