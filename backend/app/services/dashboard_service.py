@@ -9,6 +9,9 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.database import SessionLocal
+from app.repositories.common import normalize_text
+from app.models.crop import CropType
+from app.models.price import MarketPrice
 from app.core.real_data import OFFICIAL_AGRI_SOURCE_NAME, OFFICIAL_NEWS_URL, OFFICIAL_PRICE_URL, OPEN_METEO_FORECAST_URL, OPEN_METEO_SOURCE_NAME, external_circuit_breaker, realtime_error
 from app.core.redis_client import redis_client
 from app.integrations.weather_client import WeatherClient
@@ -30,6 +33,18 @@ from app.services.weather_service import weather_service
 
 DEFAULT_REGIONS = ["Ha Noi", "TP.HCM", "Da Nang", "Can Tho", "Lam Dong", "Dak Lak"]
 logger = logging.getLogger(__name__)
+
+
+def _gia_hoac_none(item: dict) -> float | None:
+    """Giá thật, hoặc None khi thiếu — không bao giờ quy về 0."""
+    for key in ("current_price", "market_price", "price"):
+        gia = item.get(key)
+        if gia is not None and gia != "":
+            try:
+                return float(gia)
+            except (TypeError, ValueError):
+                continue
+    return None
 
 
 class DashboardService:
@@ -76,53 +91,53 @@ class DashboardService:
                 module_status,
             )
 
-        featured = self._safe_dashboard_call(
-            "featured_crop",
-            lambda: self.get_featured_crop(
-                db,
-                crop_name=selected_crop,
-                region=selected_region,
-                force_refresh=False,
+        # 5 lời gọi dưới đây độc lập nhau nhưng trước kia chạy nối đuôi, khiến
+        # /api/dashboard/summary mất ~7s trong khi các endpoint khác chỉ vài
+        # trăm ms. Chạy song song, MỖI LUỒNG MỘT SESSION RIÊNG vì SQLAlchemy
+        # Session không thread-safe — dùng chung sẽ hỏng dữ liệu ngẫu nhiên.
+        jobs = {
+            "featured_crop": (
+                lambda sess: self.get_featured_crop(
+                    sess, crop_name=selected_crop, region=selected_region, force_refresh=False
+                ),
+                lambda: self._fallback_featured_crop(selected_crop, selected_region),
             ),
-            lambda: self._fallback_featured_crop(selected_crop, selected_region),
-            module_status,
-        )
-        weather_risk = self._safe_dashboard_call(
-            "weather_risk",
-            lambda: self.get_weather_risk(
-                db,
-                region=selected_region,
-                crop_name=selected_crop,
-                force_refresh=force_refresh_weather,
+            "weather_risk": (
+                lambda sess: self.get_weather_risk(
+                    sess, region=selected_region, crop_name=selected_crop,
+                    force_refresh=force_refresh_weather,
+                ),
+                lambda: self._fallback_weather_risk(selected_region, selected_crop),
             ),
-            lambda: self._fallback_weather_risk(selected_region, selected_crop),
-            module_status,
-        )
-        trend = self._safe_dashboard_call(
-            "price_trend",
-            lambda: self.get_price_trend(db, crop_name=selected_crop, region=selected_region, days=7),
-            lambda: self._fallback_price_trend(selected_crop, selected_region),
-            module_status,
-        )
-        news = self._safe_dashboard_call(
-            "market_news",
-            lambda: self.get_news(db, limit=6, crop_name=selected_crop, region=None, force_refresh=False),
-            lambda: self._fallback_news(),
-            module_status,
-        )
-        regional_price_data = self._safe_dashboard_call(
-            "regional_prices",
-            lambda: self.get_regional_prices(db, crop_name=selected_crop),
-            {
-                "regions": [],
-                "source": "realtime_api",
-                "source_name": "Regional price service",
-                "is_mock": False,
-                "error": "Không thể tải giá theo khu vực realtime.",
-                "cache_status": "miss",
-            },
-            module_status,
-        )
+            "price_trend": (
+                lambda sess: self.get_price_trend(
+                    sess, crop_name=selected_crop, region=selected_region, days=7
+                ),
+                lambda: self._fallback_price_trend(selected_crop, selected_region),
+            ),
+            "market_news": (
+                lambda sess: self.get_news(
+                    sess, limit=6, crop_name=selected_crop, region=None, force_refresh=False
+                ),
+                lambda: self._fallback_news(),
+            ),
+            "regional_prices": (
+                lambda sess: self.get_regional_prices(sess, crop_name=selected_crop),
+                {
+                    "regions": [],
+                    "source": "realtime_api",
+                    "source_name": "Regional price service",
+                    "is_mock": False,
+                    "error": "Không thể tải giá theo khu vực realtime.",
+                },
+            ),
+        }
+        ket_qua = self._run_dashboard_jobs(jobs, module_status)
+        featured = ket_qua["featured_crop"]
+        weather_risk = ket_qua["weather_risk"]
+        trend = ket_qua["price_trend"]
+        news = ket_qua["market_news"]
+        regional_price_data = ket_qua["regional_prices"]
         regional_prices = regional_price_data.get("regions", [])
 
         # Reuse featured instead of calling get_featured_crop() again inside get_realtime_market()
@@ -282,6 +297,60 @@ class DashboardService:
         summary["cache_status"] = "reset_refreshed"
         return summary
 
+
+    def _run_dashboard_jobs(self, jobs: dict, module_status: list[dict]) -> dict:
+        """Chạy các khối dashboard song song, mỗi khối một DB session riêng.
+
+        SQLAlchemy Session không thread-safe nên không dùng chung session của
+        request; mỗi luồng tự mở và tự đóng session của mình.
+        """
+        def chay(ten, fn, fallback):
+            sess = SessionLocal()
+            try:
+                return ten, self._safe_dashboard_call(
+                    ten, lambda: fn(sess), fallback, module_status
+                )
+            finally:
+                sess.close()
+
+        out: dict = {}
+        with ThreadPoolExecutor(max_workers=len(jobs)) as pool:
+            futures = [pool.submit(chay, ten, fn, fb) for ten, (fn, fb) in jobs.items()]
+            for f in as_completed(futures):
+                ten, gia_tri = f.result()
+                out[ten] = gia_tri
+        return out
+
+    def _crop_with_recent_price(self, db: Session, region: str, exclude: str = "") -> str | None:
+        """Cây có giá mới nhất ở vùng này, theo đúng dữ liệu đang có trong DB.
+
+        Trước đây dò từng cây bằng cách gọi pricing_service nhiều lần — mỗi lần
+        có thể chạm mạng, khiến /api/dashboard/summary gọi get_current_price
+        tới 10 lần. Một truy vấn thẳng vào MarketPrices rẻ hơn hẳn và luôn
+        đúng với dữ liệu thật, không cần bảng cây-theo-vùng viết tay.
+        """
+        try:
+            muc_tieu = normalize_text(region or "")
+            rows = (
+                db.query(CropType.CropName, MarketPrice.Region)
+                .join(MarketPrice, MarketPrice.CropID == CropType.CropID)
+                .order_by(MarketPrice.PriceDate.desc(), MarketPrice.UpdatedAt.desc())
+                .limit(200)
+                .all()
+            )
+            bo_qua = normalize_text(exclude)
+            for ten, vung in rows:
+                # Phải đúng vùng: cây mới nhất toàn quốc thường không có giá ở
+                # vùng người dùng, chọn nó chỉ tốn thêm một lượt gọi rồi vẫn hỏng.
+                if normalize_text(vung or "") != muc_tieu:
+                    continue
+                ung_vien = normalize_text(ten)
+                if ung_vien and ung_vien != bo_qua:
+                    return ung_vien
+        except SQLAlchemyError as exc:
+            logger.warning("[dashboard] khong tra duoc cay theo vung: %s", exc)
+        return None
+
     def get_featured_crop(
         self,
         db: Session,
@@ -295,6 +364,19 @@ class DashboardService:
             price_aggregator_service.refresh_prices(db, crop_name=selected_crop)
 
         current = pricing_service.get_current_price(db, selected_crop, selected_region)
+
+        # Cây được hỏi không có giá ở vùng này, nhưng vùng có thể đang có giá
+        # cây khác. Mặc định crop_name="lua" áp cho mọi vùng khiến nông dân
+        # Đắk Lắk (vùng cà phê) thấy card chính trống, dù DB có giá cà phê.
+        substituted_for = None
+        if current.get("_api_error"):
+            ung_vien = self._crop_with_recent_price(db, selected_region, exclude=selected_crop)
+            if ung_vien:
+                thu = pricing_service.get_current_price(db, ung_vien, selected_region)
+                if not thu.get("_api_error"):
+                    substituted_for = selected_crop
+                    selected_crop, current = ung_vien, thu
+
         if current.get("_api_error"):
             current.update(
                 {
@@ -307,6 +389,7 @@ class DashboardService:
                 }
             )
             return current
+        current["substituted_for"] = substituted_for
         current_price = float(current["current_price"])
         last_updated = current.get("last_updated") or datetime.now()
         source_name = current.get("source_name") or "pricing_service"
@@ -320,6 +403,7 @@ class DashboardService:
 
         return {
             "name": selected_crop,
+            "substituted_for": substituted_for,
             "display_name": self._display_crop(selected_crop),
             "location": selected_region,
             "price": current_price,
@@ -559,7 +643,9 @@ class DashboardService:
         regions_data = [
             {
                 "region": item.get("region"),
-                "price": float(item.get("current_price") or item.get("market_price") or 0),
+                # `or 0` cu bien gia thieu thanh 0 dong — cung loi voi
+                # Number(null)===0 ben frontend. Thieu gia thi de None.
+                "price": _gia_hoac_none(item),
                 "unit": item.get("unit") or "VND/kg",
                 "source": item.get("source"),
                 "source_name": item.get("source_name"),
