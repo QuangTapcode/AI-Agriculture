@@ -7,7 +7,17 @@ from pathlib import Path
 
 from app.core.config import settings
 
-logger = logging.getLogger(__name__)  # noqa
+logger = logging.getLogger(__name__)
+
+
+class AIUnavailableError(RuntimeError):
+    """AI chưa cấu hình hoặc không gọi được.
+
+    Ném lỗi thay vì trả chuỗi giả: chuỗi giả đi thẳng vào trường `answer` như
+    một câu trả lời bình thường, không cờ nào phân biệt, nên nông dân không
+    thể biết đó là bịa (TOD0 §1 cấm dữ liệu giả lọt ra API công khai).
+    """
+  # noqa
 
 # Tìm và đọc file .env một cách tường minh từ thư mục gốc của dự án (backend)
 env_path = Path(__file__).parent.parent.parent / '.env'
@@ -47,7 +57,10 @@ class GeminiClient:
     async def get_price_answer(self, question: str, region: str, context_data: str = "") -> str:
         """Trả lời ngắn gọn về giá nông sản — không lải nhải."""
         if not self.client:
-            return f"[Test] Câu trả lời giả lập cho: '{question}'"
+            raise AIUnavailableError(
+                "Trợ lý AI chưa được cấu hình (thiếu GEMINI_API_KEY). "
+                "Vui lòng liên hệ quản trị viên."
+            )
 
         system_instruction = (
             f"Bạn là hệ thống thông tin giá nông sản tự động tại Việt Nam.\n"
@@ -131,7 +144,10 @@ class GeminiClient:
     async def get_agri_answer(self, question: str, topic: str = "general", region: str = "", context_data: str = "") -> str:
         """Trả lời nông nghiệp với system prompt phù hợp theo chủ đề."""
         if not self.client:
-            return f"[Test] Câu trả lời giả lập cho: '{question}'"
+            raise AIUnavailableError(
+                "Trợ lý AI chưa được cấu hình (thiếu GEMINI_API_KEY). "
+                "Vui lòng liên hệ quản trị viên."
+            )
 
         sys_prompt = self._TOPIC_PROMPTS.get(topic, self._TOPIC_PROMPTS["general"])
         if region:
@@ -164,7 +180,10 @@ class GeminiClient:
 
     async def get_farming_advice(self, question: str, context_data: str = "") -> str:
         if not self.client:
-            return f"[Chế độ Test] Đây là câu trả lời giả lập từ AI cho câu hỏi: '{question}'. Để dùng AI thật, bạn cần thêm GEMINI_API_KEY vào file .env!"
+            raise AIUnavailableError(
+                "Trợ lý AI chưa được cấu hình (thiếu GEMINI_API_KEY). "
+                "Vui lòng liên hệ quản trị viên."
+            )
 
         system_instruction = """Bạn là chuyên gia nông nghiệp hàng đầu Việt Nam với 20 năm kinh nghiệm thực tiễn,
 am hiểu sâu về: kỹ thuật canh tác, sinh lý cây trồng, bảo vệ thực vật, thổ nhưỡng, thủy lợi,
