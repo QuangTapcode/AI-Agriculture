@@ -1,4 +1,4 @@
-from sqlalchemy import Boolean, Column, DateTime, Float, ForeignKey, Integer, String, Text
+from sqlalchemy import Boolean, Column, DateTime, Float, ForeignKey, Integer, Unicode, UnicodeText
 from sqlalchemy.orm import synonym
 from sqlalchemy.sql import func
 
@@ -11,11 +11,11 @@ class PriceAlert(Base):
     AlertID = Column("AlertID", Integer, primary_key=True, index=True)
     UserID = Column("UserID", Integer, ForeignKey("Users.UserID"), nullable=False, index=True)
     CropID = Column("CropID", Integer, ForeignKey("CropTypes.CropID"), nullable=False, index=True)
-    Region = Column("Region", String(100), nullable=False, index=True)
+    Region = Column("Region", Unicode(100), nullable=False, index=True)
     TargetPrice = Column("TargetPrice", Float, nullable=False)
-    AlertType = Column("AlertType", String(20), nullable=False, default="Tren")
-    NotifyMethod = Column("NotifyMethod", String(20), nullable=False, default="Email")
-    Receiver = Column("Receiver", String(255), nullable=True)
+    AlertType = Column("AlertType", Unicode(20), nullable=False, default="Tren")
+    NotifyMethod = Column("NotifyMethod", Unicode(20), nullable=False, default="Email")
+    Receiver = Column("Receiver", Unicode(255), nullable=True)
     IsActive = Column("IsActive", Boolean, nullable=False, default=True)
     LastTriggered = Column("LastTriggered", DateTime, nullable=True)
     CreatedAt = Column("CreatedAt", DateTime, server_default=func.now(), nullable=False)
@@ -41,14 +41,14 @@ class AlertNotification(Base):
     NotificationID = Column("NotificationID", Integer, primary_key=True, index=True)
     AlertID = Column("AlertID", Integer, ForeignKey("AlertSubscriptions.AlertID"), nullable=False, index=True)
     CurrentPrice = Column("CurrentPrice", Float, nullable=True)
-    Message = Column("Message", Text, nullable=True)
-    NotifyMethod = Column("NotifyMethod", String(20), nullable=True)
-    SendStatus = Column("SendStatus", String(20), nullable=False, default="Pending")
-    Channel = Column("Channel", String(20), nullable=True)
-    Receiver = Column("Receiver", String(255), nullable=True)
-    Status = Column("Status", String(30), nullable=True)
-    ProviderMessageID = Column("ProviderMessageID", String(100), nullable=True)
-    ErrorMessage = Column("ErrorMessage", Text, nullable=True)
+    Message = Column("Message", UnicodeText, nullable=True)
+    NotifyMethod = Column("NotifyMethod", Unicode(20), nullable=True)
+    SendStatus = Column("SendStatus", Unicode(20), nullable=False, default="Pending")
+    Channel = Column("Channel", Unicode(20), nullable=True)
+    Receiver = Column("Receiver", Unicode(255), nullable=True)
+    Status = Column("Status", Unicode(30), nullable=True)
+    ProviderMessageID = Column("ProviderMessageID", Unicode(100), nullable=True)
+    ErrorMessage = Column("ErrorMessage", UnicodeText, nullable=True)
     SentAt = Column("SentAt", DateTime, server_default=func.now(), nullable=False)
 
     id = synonym("NotificationID")

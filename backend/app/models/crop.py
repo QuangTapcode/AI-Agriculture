@@ -1,4 +1,4 @@
-from sqlalchemy import Column, DateTime, Float, Integer, String, Unicode, UnicodeText
+from sqlalchemy import Column, DateTime, Float, Integer, Unicode, UnicodeText
 from sqlalchemy.orm import synonym
 from sqlalchemy.sql import func
 
@@ -11,13 +11,13 @@ class Crop(Base):
     CropID = Column("CropID", Integer, primary_key=True, index=True)
     CropName = Column("CropName", Unicode(100), nullable=False, unique=True, index=True)
     CropNameEN = Column("CropNameEN", Unicode(100), nullable=True)
-    Category = Column("Category", Unicode(50), nullable=False, default="Khác")
+    Category = Column("Category", Unicode(50), nullable=False, default="Khac")  # khop CHECK constraint: khong dau
     GrowthDurationDays = Column("GrowthDurationDays", Integer, nullable=True)
     HarvestSeason = Column("HarvestSeason", Unicode(100), nullable=True)
     TypicalPriceMin = Column("TypicalPriceMin", Float, nullable=True)
     TypicalPriceMax = Column("TypicalPriceMax", Float, nullable=True)
     Description = Column("Description", UnicodeText, nullable=True)
-    ImageURL = Column("ImageURL", String(500), nullable=True)
+    ImageURL = Column("ImageURL", Unicode(500), nullable=True)
     CreatedAt = Column("CreatedAt", DateTime, server_default=func.now(), nullable=False)
 
     id = synonym("CropID")

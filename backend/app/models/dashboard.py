@@ -1,4 +1,4 @@
-from sqlalchemy import Boolean, Column, DateTime, Float, Integer, String, Text
+from sqlalchemy import Boolean, Column, DateTime, Float, Integer, Unicode, UnicodeText
 from sqlalchemy.orm import synonym
 from sqlalchemy.sql import func
 
@@ -9,13 +9,13 @@ class DataSource(Base):
     __tablename__ = "DataSources"
 
     SourceID = Column("SourceID", Integer, primary_key=True, index=True)
-    Name = Column("Name", String(120), nullable=False, unique=True, index=True)
-    Type = Column("Type", String(50), nullable=False, default="api")
-    URL = Column("URL", String(500), nullable=True)
+    Name = Column("Name", Unicode(120), nullable=False, unique=True, index=True)
+    Type = Column("Type", Unicode(50), nullable=False, default="api")
+    URL = Column("URL", Unicode(500), nullable=True)
     RefreshInterval = Column("RefreshInterval", Integer, nullable=True)
     ReliabilityScore = Column("ReliabilityScore", Float, nullable=True)
     LastSuccessAt = Column("LastSuccessAt", DateTime, nullable=True)
-    LastError = Column("LastError", Text, nullable=True)
+    LastError = Column("LastError", UnicodeText, nullable=True)
     IsActive = Column("IsActive", Boolean, nullable=False, default=True)
     CreatedAt = Column("CreatedAt", DateTime, server_default=func.now(), nullable=False)
 
@@ -36,14 +36,14 @@ class RegionalPriceSnapshot(Base):
 
     SnapshotID = Column("SnapshotID", Integer, primary_key=True, index=True)
     CropID = Column("CropID", Integer, nullable=False, index=True)
-    Region = Column("Region", String(100), nullable=False, index=True)
+    Region = Column("Region", Unicode(100), nullable=False, index=True)
     AvgPrice = Column("AvgPrice", Float, nullable=False)
     MinPrice = Column("MinPrice", Float, nullable=True)
     MaxPrice = Column("MaxPrice", Float, nullable=True)
     PriceDate = Column("PriceDate", DateTime, nullable=False, index=True)
     SourceID = Column("SourceID", Integer, nullable=True, index=True)
-    SourceName = Column("SourceName", String(120), nullable=True)
-    SourceURL = Column("SourceURL", String(500), nullable=True)
+    SourceName = Column("SourceName", Unicode(120), nullable=True)
+    SourceURL = Column("SourceURL", Unicode(500), nullable=True)
     CreatedAt = Column("CreatedAt", DateTime, server_default=func.now(), nullable=False)
 
     id = synonym("SnapshotID")
@@ -63,14 +63,14 @@ class AirQualityObservation(Base):
     __tablename__ = "AirQualityObservations"
 
     ObservationID = Column("ObservationID", Integer, primary_key=True, index=True)
-    Region = Column("Region", String(100), nullable=False, index=True)
+    Region = Column("Region", Unicode(100), nullable=False, index=True)
     ObservedAt = Column("ObservedAt", DateTime, nullable=False, index=True)
     AQI = Column("AQI", Float, nullable=True)
     PM25 = Column("PM25", Float, nullable=True)
     PM10 = Column("PM10", Float, nullable=True)
     O3 = Column("O3", Float, nullable=True)
     RiskScore = Column("RiskScore", Float, nullable=True)
-    SourceName = Column("SourceName", String(100), nullable=True)
+    SourceName = Column("SourceName", Unicode(100), nullable=True)
     SourceUpdatedAt = Column("SourceUpdatedAt", DateTime, nullable=True)
     CreatedAt = Column("CreatedAt", DateTime, server_default=func.now(), nullable=False)
 
@@ -91,8 +91,8 @@ class DashboardCache(Base):
     __tablename__ = "DashboardCache"
 
     CacheID = Column("CacheID", Integer, primary_key=True, index=True)
-    Key = Column("Key", String(255), nullable=False, unique=True, index=True)
-    PayloadJSON = Column("PayloadJSON", Text, nullable=False)
+    Key = Column("Key", Unicode(255), nullable=False, unique=True, index=True)
+    PayloadJSON = Column("PayloadJSON", UnicodeText, nullable=False)
     ExpiresAt = Column("ExpiresAt", DateTime, nullable=False, index=True)
     CreatedAt = Column("CreatedAt", DateTime, server_default=func.now(), nullable=False)
 

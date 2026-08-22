@@ -1,4 +1,4 @@
-from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String, Text, Unicode, UnicodeText
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, Unicode, UnicodeText
 from sqlalchemy.orm import synonym
 from sqlalchemy.sql import func
 
@@ -10,15 +10,15 @@ class Notification(Base):
 
     NotificationID = Column("NotificationID", Integer, primary_key=True, index=True)
     UserID = Column("UserID", Integer, ForeignKey("Users.UserID"), nullable=False, index=True)
-    Type = Column("Type", String(50), nullable=False, default="system", index=True)
+    Type = Column("Type", Unicode(50), nullable=False, default="system", index=True)
     Title = Column("Title", Unicode(255), nullable=False)
     Message = Column("Message", UnicodeText, nullable=False)
-    Priority = Column("Priority", String(30), nullable=False, default="medium")
+    Priority = Column("Priority", Unicode(30), nullable=False, default="medium")
     IsRead = Column("IsRead", Boolean, nullable=False, default=False)
     IsDeleted = Column("IsDeleted", Boolean, nullable=False, default=False)
-    RelatedEntityType = Column("RelatedEntityType", String(50), nullable=True)
+    RelatedEntityType = Column("RelatedEntityType", Unicode(50), nullable=True)
     RelatedEntityID = Column("RelatedEntityID", Integer, nullable=True)
-    Channel = Column("Channel", String(30), nullable=False, default="app")
+    Channel = Column("Channel", Unicode(30), nullable=False, default="app")
     CreatedAt = Column("CreatedAt", DateTime, server_default=func.now(), nullable=False)
     ReadAt = Column("ReadAt", DateTime, nullable=True)
 
@@ -42,10 +42,10 @@ class NotificationDelivery(Base):
 
     DeliveryID = Column("DeliveryID", Integer, primary_key=True, index=True)
     NotificationID = Column("NotificationID", Integer, ForeignKey("Notifications.NotificationID"), nullable=False, index=True)
-    Channel = Column("Channel", String(30), nullable=False)
-    Receiver = Column("Receiver", String(255), nullable=True)
-    Status = Column("Status", String(30), nullable=False, default="pending")
-    ProviderMessageID = Column("ProviderMessageID", String(100), nullable=True)
+    Channel = Column("Channel", Unicode(30), nullable=False)
+    Receiver = Column("Receiver", Unicode(255), nullable=True)
+    Status = Column("Status", Unicode(30), nullable=False, default="pending")
+    ProviderMessageID = Column("ProviderMessageID", Unicode(100), nullable=True)
     ErrorMessage = Column("ErrorMessage", UnicodeText, nullable=True)
     SentAt = Column("SentAt", DateTime, server_default=func.now(), nullable=False)
 

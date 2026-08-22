@@ -1,4 +1,4 @@
-from sqlalchemy import Boolean, Column, DateTime, Float, ForeignKey, Integer, JSON, String, Text
+from sqlalchemy import Boolean, Column, DateTime, Float, ForeignKey, Integer, JSON, Unicode, UnicodeText
 from sqlalchemy.orm import synonym
 from sqlalchemy.sql import func
 
@@ -11,13 +11,13 @@ class MarketSuggestion(Base):
     SuggestionID = Column("SuggestionID", Integer, primary_key=True, index=True)
     UserID = Column("UserID", Integer, ForeignKey("Users.UserID"), nullable=False, index=True)
     CropID = Column("CropID", Integer, ForeignKey("CropTypes.CropID"), nullable=False, index=True)
-    Region = Column("Region", String(100), nullable=False)
+    Region = Column("Region", Unicode(100), nullable=False)
     QuantityKg = Column("QuantityKg", Float, nullable=False)
-    QualityGrade = Column("QualityGrade", String(20), nullable=True)
-    RecommendedChannel = Column("RecommendedChannel", String(50), nullable=True)
+    QualityGrade = Column("QualityGrade", Unicode(20), nullable=True)
+    RecommendedChannel = Column("RecommendedChannel", Unicode(50), nullable=True)
     EstimatedProfit = Column("EstimatedProfit", Float, nullable=True)
-    Reason = Column("Reason", Text, nullable=True)
-    Warning = Column("Warning", Text, nullable=True)
+    Reason = Column("Reason", UnicodeText, nullable=True)
+    Warning = Column("Warning", UnicodeText, nullable=True)
     CreatedAt = Column("CreatedAt", DateTime, server_default=func.now(), nullable=False)
 
     id = synonym("SuggestionID")
@@ -37,13 +37,13 @@ class MarketChannel(Base):
     __tablename__ = "MarketChannels"
 
     ChannelID = Column("ChannelID", Integer, primary_key=True, index=True)
-    ChannelCode = Column("ChannelCode", String(50), nullable=False, unique=True, index=True)
-    ChannelName = Column("ChannelName", String(100), nullable=False)
+    ChannelCode = Column("ChannelCode", Unicode(50), nullable=False, unique=True, index=True)
+    ChannelName = Column("ChannelName", Unicode(100), nullable=False)
     CommissionRate = Column("CommissionRate", Float, nullable=False, default=0)
     MinQuantityKg = Column("MinQuantityKg", Float, nullable=False, default=0)
     RequiredQualityRank = Column("RequiredQualityRank", Integer, nullable=False, default=1)
     PriceFactor = Column("PriceFactor", Float, nullable=False, default=1)
-    Region = Column("Region", String(100), nullable=True, index=True)
+    Region = Column("Region", Unicode(100), nullable=True, index=True)
     IsActive = Column("IsActive", Integer, nullable=False, default=1)
     CreatedAt = Column("CreatedAt", DateTime, server_default=func.now(), nullable=False)
     UpdatedAt = Column("UpdatedAt", DateTime, server_default=func.now(), nullable=False)
@@ -65,14 +65,14 @@ class RetailPriceSnapshot(Base):
     __tablename__ = "RetailPriceSnapshots"
 
     SnapshotID = Column("SnapshotID", Integer, primary_key=True, index=True)
-    CropName = Column("CropName", String(100), nullable=False, index=True)
-    ProductName = Column("ProductName", String(300), nullable=True)
-    Region = Column("Region", String(100), nullable=True, index=True)
-    RetailerName = Column("RetailerName", String(120), nullable=False, index=True)
+    CropName = Column("CropName", Unicode(100), nullable=False, index=True)
+    ProductName = Column("ProductName", Unicode(300), nullable=True)
+    Region = Column("Region", Unicode(100), nullable=True, index=True)
+    RetailerName = Column("RetailerName", Unicode(120), nullable=False, index=True)
     PricePerKg = Column("PricePerKg", Float, nullable=False)
-    Unit = Column("Unit", String(50), nullable=True, default="VND/kg")
-    SourceName = Column("SourceName", String(120), nullable=False)
-    SourceURL = Column("SourceURL", String(500), nullable=False)
+    Unit = Column("Unit", Unicode(50), nullable=True, default="VND/kg")
+    SourceName = Column("SourceName", Unicode(120), nullable=False)
+    SourceURL = Column("SourceURL", Unicode(500), nullable=False)
     ObservedAt = Column("ObservedAt", DateTime, nullable=True)
     FetchedAt = Column("FetchedAt", DateTime, nullable=False)
     IsRealtime = Column("IsRealtime", Boolean, nullable=False, default=False)
@@ -101,16 +101,16 @@ class MarketAnalysisResult(Base):
     __tablename__ = "MarketAnalysisResults"
 
     AnalysisID = Column("AnalysisID", Integer, primary_key=True, index=True)
-    CropName = Column("CropName", String(100), nullable=False, index=True)
-    Region = Column("Region", String(100), nullable=False, index=True)
-    PayloadJSON = Column("PayloadJSON", Text, nullable=False)
-    SourceName = Column("SourceName", String(120), nullable=False)
-    SourceURL = Column("SourceURL", String(500), nullable=False)
+    CropName = Column("CropName", Unicode(100), nullable=False, index=True)
+    Region = Column("Region", Unicode(100), nullable=False, index=True)
+    PayloadJSON = Column("PayloadJSON", UnicodeText, nullable=False)
+    SourceName = Column("SourceName", Unicode(120), nullable=False)
+    SourceURL = Column("SourceURL", Unicode(500), nullable=False)
     FetchedAt = Column("FetchedAt", DateTime, nullable=False, index=True)
     IsRealtime = Column("IsRealtime", Boolean, nullable=False, default=False)
     IsMock = Column("IsMock", Boolean, nullable=False, default=False)
-    Status = Column("Status", String(30), nullable=False, default="ready")
-    ErrorMessage = Column("ErrorMessage", Text, nullable=True)
+    Status = Column("Status", Unicode(30), nullable=False, default="ready")
+    ErrorMessage = Column("ErrorMessage", UnicodeText, nullable=True)
     CreatedAt = Column("CreatedAt", DateTime, server_default=func.now(), nullable=False)
 
     id = synonym("AnalysisID")

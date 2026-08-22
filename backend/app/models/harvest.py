@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Date, DateTime, Float, ForeignKey, Integer, String, Text
+from sqlalchemy import Column, Date, DateTime, Float, ForeignKey, Integer, Unicode, UnicodeText
 from sqlalchemy.orm import synonym
 from sqlalchemy.sql import func
 
@@ -13,15 +13,15 @@ class HarvestSchedule(Base):
     CropID = Column("CropID", Integer, ForeignKey("CropTypes.CropID"), nullable=False, index=True)
     PlantingDate = Column("PlantingDate", Date, nullable=False)
     AreaSize = Column("AreaSize", Float, nullable=True)
-    Region = Column("Region", String(100), nullable=False)
+    Region = Column("Region", Unicode(100), nullable=False)
     ExpectedHarvestDate = Column("ExpectedHarvestDate", Date, nullable=True)
     ActualHarvestDate = Column("ActualHarvestDate", Date, nullable=True)
     EstimatedYieldKg = Column("EstimatedYieldKg", Float, nullable=True)
     ActualYieldKg = Column("ActualYieldKg", Float, nullable=True)
-    FertilizerUsed = Column("FertilizerUsed", String(200), nullable=True)
-    PesticideUsed = Column("PesticideUsed", String(200), nullable=True)
-    Status = Column("Status", String(50), nullable=False, default="Dang trong")
-    Notes = Column("Notes", Text, nullable=True)
+    FertilizerUsed = Column("FertilizerUsed", Unicode(200), nullable=True)
+    PesticideUsed = Column("PesticideUsed", Unicode(200), nullable=True)
+    Status = Column("Status", Unicode(50), nullable=False, default="Dang trong")
+    Notes = Column("Notes", UnicodeText, nullable=True)
     CreatedAt = Column("CreatedAt", DateTime, server_default=func.now(), nullable=False)
     UpdatedAt = Column("UpdatedAt", DateTime, server_default=func.now(), nullable=False)
 
@@ -48,10 +48,10 @@ class HarvestForecast(Base):
     ScheduleID = Column("ScheduleID", Integer, ForeignKey("HarvestSchedule.ScheduleID"), nullable=False, index=True)
     ExpectedHarvestDate = Column("ExpectedHarvestDate", Date, nullable=False)
     ConfidenceScore = Column("ConfidenceScore", Float, nullable=True)
-    WeatherWarning = Column("WeatherWarning", Text, nullable=True)
-    LaborRecommendation = Column("LaborRecommendation", Text, nullable=True)
-    TransportRecommendation = Column("TransportRecommendation", Text, nullable=True)
-    ModelVersion = Column("ModelVersion", String(50), nullable=True, default="mock-v1")
+    WeatherWarning = Column("WeatherWarning", UnicodeText, nullable=True)
+    LaborRecommendation = Column("LaborRecommendation", UnicodeText, nullable=True)
+    TransportRecommendation = Column("TransportRecommendation", UnicodeText, nullable=True)
+    ModelVersion = Column("ModelVersion", Unicode(50), nullable=True, default="mock-v1")
     GeneratedAt = Column("GeneratedAt", DateTime, server_default=func.now(), nullable=False)
 
     id = synonym("ForecastID")

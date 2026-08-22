@@ -1,4 +1,4 @@
-from sqlalchemy import Boolean, Column, DateTime, Float, ForeignKey, Integer, JSON, String, Unicode, UnicodeText
+from sqlalchemy import Boolean, Column, DateTime, Float, ForeignKey, Integer, JSON, Unicode, UnicodeText
 from sqlalchemy.orm import synonym
 from sqlalchemy.sql import func
 
@@ -12,17 +12,17 @@ class MarketNews(Base):
     Title = Column("Title", Unicode(300), nullable=False)
     Summary = Column("Summary", UnicodeText, nullable=True)
     Content = Column("Content", UnicodeText, nullable=True)
-    URL = Column("URL", String(500), nullable=True)
+    URL = Column("URL", Unicode(500), nullable=True)
     SourceName = Column("SourceName", Unicode(100), nullable=True)
-    SourceURL = Column("SourceURL", String(500), nullable=True, unique=True)
+    SourceURL = Column("SourceURL", Unicode(500), nullable=True, unique=True)
     PublishedAt = Column("PublishedAt", DateTime, nullable=True, index=True)
     FetchedAt = Column("FetchedAt", DateTime, nullable=True)
     CropID = Column("CropID", Integer, ForeignKey("CropTypes.CropID"), nullable=True, index=True)
     Region = Column("Region", Unicode(100), nullable=True, index=True)
     CropTags = Column("CropTags", JSON, nullable=True)
     RegionTags = Column("RegionTags", JSON, nullable=True)
-    Sentiment = Column("Sentiment", String(20), nullable=True)
-    ImpactLevel = Column("ImpactLevel", String(20), nullable=True)
+    Sentiment = Column("Sentiment", Unicode(20), nullable=True)
+    ImpactLevel = Column("ImpactLevel", Unicode(20), nullable=True)
     ImpactScore = Column("ImpactScore", Float, nullable=True)
     IsRealtime = Column("IsRealtime", Boolean, nullable=True, default=False)
     IsMock = Column("IsMock", Boolean, nullable=True, default=False)
