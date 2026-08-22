@@ -40,6 +40,20 @@ WEATHER_CONDITIONS = {
 }
 
 
+# Nhãn mức rủi ro và lời khuyên tương ứng, dùng cho cảnh báo gửi nông dân.
+_RISK_LABEL_VI = {
+    "low": "Rủi ro thấp",
+    "medium": "Cảnh báo",
+    "high": "Rủi ro cao",
+}
+
+_RISK_MESSAGE_VI = {
+    "low": "Thời tiết thuận lợi. Có thể tưới, phun thuốc và thu hoạch theo lịch thường.",
+    "medium": "Thời tiết có biến động. Nên xem kỹ dự báo trước khi tưới, phun thuốc hoặc thu hoạch.",
+    "high": "Thời tiết bất lợi. Hoãn phun thuốc và thu hoạch, kiểm tra thoát nước cho vườn.",
+}
+
+
 class AlertService:
     def create_price_alert(self, db: Session, request: AlertCreateRequest, user: User | None = None) -> dict:
         region = location_service.resolve_region(db, request.region_key or request.region)
@@ -126,8 +140,11 @@ class AlertService:
         alerts = [
             {
                 "alert_type": "weather",
-                "title": f"Weather risk {risk_level} in {region}",
-                "message": "Review weather risk before irrigation, spraying or harvest.",
+                # Nội dung gửi thẳng tới nông dân nên phải là tiếng Việt ngay
+                # từ nguồn. Trước đây sinh tiếng Anh rồi trông chờ frontend
+                # dịch, kết quả ra câu lai "Thời tiết risk high in Dak Lak".
+                "title": f"{_RISK_LABEL_VI.get(risk_level, 'Rủi ro')} thời tiết tại {region}",
+                "message": _RISK_MESSAGE_VI.get(risk_level, _RISK_MESSAGE_VI["low"]),
                 "severity": risk_level,
                 "priority": "high" if risk_level == "high" else "medium",
                 "suggested_action": "; ".join(weather_risk.get("reasons", [])[:2]),
