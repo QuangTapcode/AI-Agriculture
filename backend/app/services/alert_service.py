@@ -11,6 +11,7 @@ from app.models.notification import Notification, NotificationDelivery
 from app.models.price import MarketPrice, PriceHistory
 from app.models.user import User
 from app.models.weather import WeatherAlert
+from app.repositories.common import normalize_text
 from app.repositories.alert_repository import (
     create_alert,
     deactivate_alert,
@@ -41,6 +42,22 @@ WEATHER_CONDITIONS = {
 
 
 # Nhãn mức rủi ro và lời khuyên tương ứng, dùng cho cảnh báo gửi nông dân.
+def region_display(region: str | None) -> str:
+    """Tên vùng dạng hiển thị, có dấu tiếng Việt.
+
+    Bên trong hệ thống dùng dạng không dấu để so khớp, nhưng chuỗi đưa ra
+    màn hình phải có dấu — nếu không cảnh báo hiện "tại Dak Lak" trong khi
+    mọi chỗ khác là "Đắk Lắk". Dùng lại bảng alias của pricing_service để
+    không sinh ra nguồn sự thật thứ hai.
+    """
+    from app.services.pricing_service import REGION_DISPLAY_ALIASES
+
+    raw = " ".join((region or "").strip().split())
+    if not raw:
+        return raw
+    return REGION_DISPLAY_ALIASES.get(normalize_text(raw), raw)
+
+
 _RISK_LABEL_VI = {
     "low": "Rủi ro thấp",
     "medium": "Cảnh báo",
@@ -143,7 +160,7 @@ class AlertService:
                 # Nội dung gửi thẳng tới nông dân nên phải là tiếng Việt ngay
                 # từ nguồn. Trước đây sinh tiếng Anh rồi trông chờ frontend
                 # dịch, kết quả ra câu lai "Thời tiết risk high in Dak Lak".
-                "title": f"{_RISK_LABEL_VI.get(risk_level, 'Rủi ro')} thời tiết tại {region}",
+                "title": f"{_RISK_LABEL_VI.get(risk_level, 'Rủi ro')} thời tiết tại {region_display(region)}",
                 "message": _RISK_MESSAGE_VI.get(risk_level, _RISK_MESSAGE_VI["low"]),
                 "severity": risk_level,
                 "priority": "high" if risk_level == "high" else "medium",
