@@ -26,24 +26,13 @@ import { seasonApi } from '../services/seasonApi';
 import { weatherApi } from '../services/weatherApi';
 import { dedupeMessages } from '../utils/apiResponse';
 import { statusLabel, translateUiText } from '../utils/vietnameseText';
-
-const formatNumber = (value, digits = 0) => {
-  const number = Number(value);
-  if (!Number.isFinite(number)) return 'N/A';
-  return number.toLocaleString('vi-VN', { maximumFractionDigits: digits });
-};
+import { formatNumber, formatPct, hasValue } from '../utils/format';
 
 const formatDate = (value) => {
   if (!value) return '';
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return String(value);
   return date.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' });
-};
-
-const formatPct = (value) => {
-  const number = Number(value);
-  if (!Number.isFinite(number)) return '+0.0%';
-  return `${number >= 0 ? '+' : ''}${number.toFixed(1)}%`;
 };
 
 const REGION_LABELS = {
@@ -500,8 +489,22 @@ const Dashboard = () => {
                 <span className="pb-1 text-sm font-medium text-slate-500">{featured.unit || 'VND/kg'}</span>
               </div>
               <div className="mt-2 text-xs text-slate-500">
-                Nguồn: {featured.source_name || 'MarketPrices DB'}
-                {featured.last_updated ? ` · Cập nhật ${new Date(featured.last_updated).toLocaleString('vi-VN')}` : ''}
+                {hasValue(featured.price) ? (
+                  <>
+                    Nguồn: {featured.source_name || 'MarketPrices DB'}
+                    {featured.last_updated
+                      ? ` · Cập nhật ${new Date(featured.last_updated).toLocaleString('vi-VN')}`
+                      : ''}
+                  </>
+                ) : (
+                  /* Chưa có giá thật: không nêu nguồn/thời gian cho một con số
+                     không tồn tại — nếu không người dùng tưởng đó là giá đã
+                     xác thực từ nguồn chính thống. */
+                  <span className="text-amber-700">
+                    Chưa có giá thật cho lựa chọn này. Hệ thống đang chờ dữ liệu
+                    từ nguồn chính thống, chưa thể hiển thị con số nào.
+                  </span>
+                )}
               </div>
             </div>
 

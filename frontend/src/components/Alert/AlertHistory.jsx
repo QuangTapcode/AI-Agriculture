@@ -1,4 +1,5 @@
 import { CloudSun, History, MailCheck, Trash2, TrendingDown, TrendingUp } from 'lucide-react';
+import { formatNumber } from '../../utils/format';
 import { useEffect, useState } from 'react';
 import { alertApi } from '../../services/alertApi';
 import { getApiErrorMessage } from '../../services/api';
@@ -7,7 +8,6 @@ import DataSourceBadge from '../DataSourceBadge';
 import { EmptyState, InlineLoading, PageError } from '../StatusState';
 
 const formatCurrency = (value) => Number(value || 0).toLocaleString('vi-VN');
-const formatNumber = (value) => Number(value || 0).toLocaleString('vi-VN', { maximumFractionDigits: 1 });
 const formatDate = (value) => (value ? new Date(value).toLocaleString('vi-VN') : 'Chưa kích hoạt');
 
 const statusClass = (status) => {
