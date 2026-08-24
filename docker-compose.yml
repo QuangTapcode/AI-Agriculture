@@ -30,6 +30,14 @@ services:
     environment:
       DATABASE_URL: "mssql+pymssql://sa:YourStrongPassword123!@db:1433/NongNghiepAI"
       REDIS_URL: "redis://redis:6379/0"
+      # Ollama chay tren may host, khong trong container. "localhost" o day la
+      # chinh container nen phai dung host.docker.internal de goi nguoc ra.
+      AI_PROVIDER: "ollama"
+      AI_BASE_URL: "http://host.docker.internal:11434"
+      AI_MODEL_NAME: "qwen2.5:3b-instruct-q4_K_M"
+    extra_hosts:
+      # Docker Desktop (Windows/Mac) co san; dong nay de Linux cung chay duoc
+      - "host.docker.internal:host-gateway"
     ports:
       - "8000:8000"
     depends_on:
@@ -62,6 +70,13 @@ services:
     environment:
       DATABASE_URL: "mssql+pymssql://sa:YourStrongPassword123!@db:1433/NongNghiepAI"
       REDIS_URL: "redis://redis:6379/0"
+      # Ollama chay tren may host, khong trong container. "localhost" o day la
+      # chinh container nen phai dung host.docker.internal de goi nguoc ra.
+      AI_PROVIDER: "ollama"
+      AI_BASE_URL: "http://host.docker.internal:11434"
+      AI_MODEL_NAME: "qwen2.5:3b-instruct-q4_K_M"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     command: ["celery", "-A", "app.tasks.celery_app.celery_app", "worker", "--loglevel=INFO"]
     depends_on:
       backend:
