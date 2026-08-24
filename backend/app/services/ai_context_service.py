@@ -1,3 +1,7 @@
+import logging
+from concurrent.futures import (ThreadPoolExecutor, TimeoutError,
+                                as_completed)
+
 from sqlalchemy.orm import Session
 
 from app.services.agri_data_aggregator_service import agri_data_aggregator_service
@@ -5,8 +9,45 @@ from app.services.data_source_service import data_source_service
 from app.services.ai_intent_service import normalize_intent
 from app.services.pricing_service import pricing_service
 
+logger = logging.getLogger(__name__)
+
 
 class AIContextService:
+
+    # Ngan sach cho toan bo viec dung context.
+    NGAN_SACH_GIAY = 3.5
+
+    def _chay_trong_ngan_sach(self, viec: dict) -> dict:
+        """Chay cac nguon song song, cat theo ngan sach.
+
+        Nguon nao khong kip thi giu gia tri mac dinh — co cache thi tra loi
+        bang cache, khong co thi noi that. Tuyet doi khong de mot nguon cham
+        chan ca cau tra loi cho nong dan.
+        """
+        if not viec:
+            return {}
+
+        ket_qua = {ten: mac_dinh for ten, (_, mac_dinh) in viec.items()}
+        with ThreadPoolExecutor(max_workers=len(viec)) as pool:
+            futures = {pool.submit(self._safe, ham, ten): ten
+                       for ten, (ham, _) in viec.items()}
+            try:
+                for f in as_completed(futures, timeout=self.NGAN_SACH_GIAY):
+                    try:
+                        ket_qua[futures[f]] = f.result()
+                    except Exception:
+                        pass
+            except TimeoutError:
+                cham = [t for f, t in futures.items() if not f.done()]
+                logger.warning(
+                    "[ai-context] het ngan sach %.1fs, bo qua nguon cham: %s",
+                    self.NGAN_SACH_GIAY, cham,
+                )
+            for f in futures:
+                f.cancel()
+        return ket_qua
+
+
     def build_ai_context(
         self,
         db: Session,
@@ -29,37 +70,39 @@ class AIContextService:
         needs_harvest = selected_intent == "harvest_analysis" or needs_all
         needs_settings = needs_all
 
-        weather_bundle = self._safe(
-            lambda: agri_data_aggregator_service.get_weather_bundle(db, region=selected_region, crop=selected_crop),
-            "weather",
-        ) if needs_weather else {}
-        pricing_bundle = self._safe(
-            lambda: agri_data_aggregator_service.get_pricing_bundle(db, crop=selected_crop, region=selected_region),
-            "pricing",
-        ) if needs_pricing else {}
-        market_bundle = self._safe(
-            lambda: agri_data_aggregator_service.get_market_bundle(db, crop=selected_crop, region=selected_region),
-            "market",
-        ) if needs_market else {}
-        market_analysis = self._safe(
-            lambda: pricing_service.analyze_market(
-                db,
-                crop_name=selected_crop,
-                region=selected_region,
-                quantity=1000,
-                quality_grade="grade_2",
-            ),
-            "market_analysis",
-        ) if needs_pricing else {}
-        alert_bundle = self._safe(
-            lambda: agri_data_aggregator_service.get_alert_notification_bundle(
-                db,
-                user_id=user_id,
-                crop=selected_crop,
-                region=selected_region,
-            ),
-            "alerts",
-        ) if needs_alerts else {}
+        # 5 nguon duoi day doc lap nhau. Truoc kia goi noi duoi nen /api/chat
+        # mat 8.2s ngay ca khi crawler nen da tat: moi nguon cham timeout
+        # 3.18s va cong don. Chay song song kem ngan sach — nguon nao khong
+        # kip thi dung mac dinh, khong chan cau tra loi (TOD0 §4).
+        viec = {}
+        if needs_weather:
+            viec["weather"] = (
+                lambda: agri_data_aggregator_service.get_weather_bundle(
+                    db, region=selected_region, crop=selected_crop), {})
+        if needs_pricing:
+            viec["pricing"] = (
+                lambda: agri_data_aggregator_service.get_pricing_bundle(
+                    db, crop=selected_crop, region=selected_region), {})
+            viec["market_analysis"] = (
+                lambda: pricing_service.analyze_market(
+                    db, crop_name=selected_crop, region=selected_region,
+                    quantity=1000, quality_grade="grade_2"), {})
+        if needs_market:
+            viec["market"] = (
+                lambda: agri_data_aggregator_service.get_market_bundle(
+                    db, crop=selected_crop, region=selected_region), {})
+        if needs_alerts:
+            viec["alerts"] = (
+                lambda: agri_data_aggregator_service.get_alert_notification_bundle(
+                    db, user_id=user_id, crop=selected_crop,
+                    region=selected_region), {})
+
+        thu = self._chay_trong_ngan_sach(viec)
+        weather_bundle = thu.get("weather", {})
+        pricing_bundle = thu.get("pricing", {})
+        market_bundle = thu.get("market", {})
+        market_analysis = thu.get("market_analysis", {})
+        alert_bundle = thu.get("alerts", {})
 
         quality_history = agri_data_aggregator_service.get_quality_history(db, user_id) if needs_quality else []
         harvest_status = agri_data_aggregator_service.get_harvest_status(db, user_id) if needs_harvest else {}
