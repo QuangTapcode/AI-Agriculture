@@ -16,6 +16,7 @@ from sqlalchemy.orm import Session
 from app.api.auth import get_current_user, get_optional_current_user
 from app.api.response import api_response
 from app.core.config import settings
+from app.integrations.ai_provider import get_ai_client
 from app.core.database import get_db
 from app.models.user import User
 from app.services.ai_context_service import ai_context_service
@@ -607,6 +608,46 @@ PHONG CÁCH: Như người cán bộ khuyến nông địa phương — am hiể
     return system_instruction, prompt
 
 
+def _chon_provider():
+    """(hàm gọi, tên provider) theo settings.AI_PROVIDER.
+
+    Mặc định chạy local: không tốn phí theo token và dữ liệu nông dân không
+    rời khỏi máy chủ. Chỉ dùng dịch vụ ngoài khi được cấu hình rõ ràng.
+    """
+    provider = (settings.AI_PROVIDER or "").strip().lower()
+    if provider == "gemini":
+        return _call_gemini, "gemini"
+    if provider == "claude":
+        return _call_claude, "claude"
+    return _call_local_ai, "ollama"
+
+
+async def _call_local_ai(request: AIChatMessageRequest, context: dict) -> tuple[str, str]:
+    """Gọi AI qua seam chung — chạy được với Ollama (local) lẫn Claude.
+
+    Model chạy local không "biết" giá cà phê hôm nay; nó chỉ diễn giải được
+    số liệu ta đưa vào. Nên toàn bộ context lấy từ DB được nhồi thẳng vào
+    prompt (RAG đơn giản, không cần vector store).
+    """
+    system_instruction, prompt = _build_gemini_prompt(request, context)
+
+    client = get_ai_client()
+    ket_qua = await asyncio.to_thread(
+        client.complete,
+        [{"role": "user", "content": prompt}],
+        system_instruction,
+        1500,
+    )
+
+    if ket_qua.get("error"):
+        raise RuntimeError(f"local_ai_failed: {ket_qua['error']}")
+
+    reply = (ket_qua.get("answer") or "").strip()
+    if not reply:
+        raise RuntimeError("empty_local_ai_response")
+    return reply, ket_qua.get("model") or ""
+
+
 async def _call_claude(request: AIChatMessageRequest, context: dict) -> tuple[str, str]:
     from app.integrations.claude_client import ai_client
     if not ai_client.client:
@@ -885,12 +926,12 @@ async def ai_chat_message(
         response_payload["data"]["suggested_actions"] = response_payload["data"]["recommendations"]
         return response_payload
 
-    provider = "gemini"
+    _goi_ai, provider = _chon_provider()
     reply = model_name = None
     final_exc: Exception | None = None
 
     try:
-        reply, model_name = await _call_gemini(request, context)
+        reply, model_name = await _goi_ai(request, context)
     except (RuntimeError, asyncio.TimeoutError, Exception) as gemini_exc:
         gemini_str = str(gemini_exc)
         gemini_quota_fail = (

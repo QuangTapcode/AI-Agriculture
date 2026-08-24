@@ -20,9 +20,12 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
 
     CLAUDE_API_KEY: str = ""
-    AI_PROVIDER: str = "claude"
+    # Mac dinh chay local qua Ollama: khong ton phi theo token, du lieu
+    # nong dan khong roi khoi may chu, va chay duoc ca khi mat mang.
+    AI_PROVIDER: str = "ollama"
     AI_API_KEY: str = ""
-    AI_MODEL_NAME: str = "claude-3-5-sonnet-latest"
+    AI_BASE_URL: str = "http://localhost:11434"
+    AI_MODEL_NAME: str = "qwen2.5:7b-instruct-q4_K_M"
     AI_TIMEOUT_SECONDS: float = 45.0
     EXTERNAL_CONNECT_TIMEOUT_SECONDS: float = 3.0
     EXTERNAL_READ_TIMEOUT_SECONDS: float = 8.0
