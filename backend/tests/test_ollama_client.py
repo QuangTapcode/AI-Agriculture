@@ -71,7 +71,8 @@ async def test_dua_du_lieu_he_thong_vao_prompt():
         "Giá cà phê hôm nay?", context_data="Cà phê Đắk Lắk: 96.433 đ/kg"
     )
 
-    prompt = nhan_duoc["body"]["messages"][0]["content"]
+    msgs = nhan_duoc["body"]["messages"]
+    prompt = next(m["content"] for m in msgs if m["role"] == "user")
     assert "96.433" in prompt, "Số liệu thật không được đưa vào prompt"
     assert "Giá cà phê hôm nay?" in prompt
 

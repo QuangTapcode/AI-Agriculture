@@ -91,3 +91,25 @@ async def test_endpoint_uu_tien_provider_local(monkeypatch):
 
     assert ten == "ollama"
     assert goi == ["local"], f"Gọi sai thứ tự: {goi}"
+
+
+def test_api_chat_dung_provider_local(monkeypatch):
+    """/api/chat (router chat.py) cũng phải qua seam chung, không cứng Gemini."""
+    from fastapi.testclient import TestClient
+    from app.main import app
+
+    class FakeLocal:
+        model = "qwen2.5:3b-instruct-q4_K_M"
+        async def get_farming_advice(self, question, context_data=""):
+            return "Cà chua cần đất tơi xốp, thoát nước tốt."
+        def complete(self, messages, system_prompt="", max_tokens=1024):
+            return {"answer": "Cà chua cần đất tơi xốp, thoát nước tốt.",
+                    "provider": "ollama", "model": self.model,
+                    "token_usage": None, "is_mock": False, "error": None}
+
+    monkeypatch.setattr("app.api.chat.get_ai_client", lambda: FakeLocal(), raising=False)
+
+    r = TestClient(app).post("/api/chat", json={"question": "Trồng cà chua thế nào?"})
+    assert r.status_code == 200
+    answer = r.json().get("answer", "")
+    assert "tơi xốp" in answer, f"Không dùng model local: {answer[:100]!r}"

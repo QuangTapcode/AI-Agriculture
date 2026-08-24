@@ -15,6 +15,7 @@ import logging
 import httpx
 
 from app.core.config import settings
+from app.integrations.ai_grounding import SYSTEM_RULES
 
 logger = logging.getLogger(__name__)
 
@@ -28,7 +29,7 @@ class OllamaClient:
                  transport: httpx.BaseTransport | None = None):
         self.base_url = (base_url or getattr(settings, "AI_BASE_URL", "")
                          or "http://localhost:11434").rstrip("/")
-        self.model = model or settings.AI_MODEL_NAME or "qwen2.5:7b-instruct-q4_K_M"
+        self.model = model or settings.AI_MODEL_NAME or "qwen2.5:3b-instruct-q4_K_M"
         # transport tiêm vào để test không cần Ollama chạy thật
         self._transport = transport
 
@@ -48,7 +49,10 @@ class OllamaClient:
             async with self._client() as c:
                 r = await c.post("/api/chat", json={
                     "model": self.model,
-                    "messages": [{"role": "user", "content": prompt}],
+                    "messages": [
+                        {"role": "system", "content": SYSTEM_RULES},
+                        {"role": "user", "content": prompt},
+                    ],
                     "stream": False,
                 })
                 r.raise_for_status()
