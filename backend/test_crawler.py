@@ -21,22 +21,6 @@ import re
 
 # ─── Sample data fallback (dùng khi website không phản hồi) ──────────────────
 
-SAMPLE_PRICES = [
-    {"crop_name": "Sầu riêng", "region": "Tiền Giang",   "price_per_kg": 65000},
-    {"crop_name": "Sầu riêng", "region": "Đắk Lắk",      "price_per_kg": 60000},
-    {"crop_name": "Sầu riêng", "region": "Bình Phước",    "price_per_kg": 55000},
-    {"crop_name": "Sầu riêng", "region": "Đà Nẵng",       "price_per_kg": 70000},
-    {"crop_name": "Sầu riêng", "region": "TP.HCM",        "price_per_kg": 75000},
-    {"crop_name": "Lúa",       "region": "Cần Thơ",       "price_per_kg": 8500},
-    {"crop_name": "Lúa",       "region": "Đồng Tháp",     "price_per_kg": 8200},
-    {"crop_name": "Cà phê",    "region": "Đắk Lắk",       "price_per_kg": 110000},
-    {"crop_name": "Cà phê",    "region": "Gia Lai",        "price_per_kg": 108000},
-    {"crop_name": "Hồ tiêu",   "region": "Gia Lai",        "price_per_kg": 75000},
-    {"crop_name": "Xoài",      "region": "Đồng Tháp",     "price_per_kg": 28000},
-    {"crop_name": "Thanh long","region": "Bình Thuận",    "price_per_kg": 20000},
-    {"crop_name": "Cà chua",   "region": "Lâm Đồng",      "price_per_kg": 18000},
-    {"crop_name": "Ngô",       "region": "Đắk Lắk",       "price_per_kg": 6500},
-]
 
 
 # ─── Scraper functions ────────────────────────────────────────────────────────
@@ -72,25 +56,6 @@ def scrape_giavn():
         print(f"  [gia.vn] Lỗi: {e}")
     return results
 
-
-def scrape_sample():
-    """Trả về sample data thực tế (dùng khi website không có dữ liệu)."""
-    import random
-    results = []
-    for item in SAMPLE_PRICES:
-        # Thêm biến động ±5% để giả lập thực tế
-        factor = random.uniform(0.95, 1.05)
-        results.append({
-            "crop_name": item["crop_name"],
-            "region": item["region"],
-            "price_per_kg": round(item["price_per_kg"] * factor, -2),  # làm tròn 100 đồng
-            "source": "sample_data",
-            "date": date.today().isoformat(),
-        })
-    return results
-
-
-# ─── DB save ─────────────────────────────────────────────────────────────────
 
 def save_to_db(items):
     """Lưu danh sách items vào MarketPrices trong DB."""
@@ -180,10 +145,11 @@ def main():
         items = scrape_giavn()
         all_items.extend(items)
 
-    if args.spider in ("sample", "all") or not all_items:
-        print("\n[2] Dùng sample data thực tế...")
-        items = scrape_sample()
-        all_items.extend(items)
+    # Truoc day cho nay tu dong dung "sample data" khi cao that that bai:
+    # gia duoc sinh ngau nhien +-5% nhung van luu vao DB voi
+    # source="sample_data". Cao khong ra thi phai noi that (TOD0 muc 1).
+    if not all_items:
+        print("\nKhong cao duoc du lieu that nao. Khong luu gi vao DB.")
 
     # In kết quả
     print(f"\n{'─'*60}")

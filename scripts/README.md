@@ -63,30 +63,3 @@ Utility scripts for development and deployment.
 
 ### Database
 
-**init_db.py**
-- Initialize database
-- Create tables
-- Insert sample data
-
-```bash
-docker-compose exec backend python scripts/init_db.py
-```
-
-## Usage
-
-Make scripts executable:
-```bash
-chmod +x scripts/*.sh
-```
-
-Run any script:
-```bash
-./scripts/<script-name>.sh
-```
-
-## Requirements
-
-- Bash (Linux/Mac) or Git Bash (Windows)
-- Docker & Docker Compose
-- curl (for API testing)
-- jq (optional, for JSON formatting)

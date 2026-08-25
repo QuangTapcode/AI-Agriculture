@@ -20,8 +20,12 @@ NHAN_NGUON_THAT = ("thitruongnongsan.gov.vn", "Thông tin thị trường nông 
 
 
 def _file_python_goc():
-    """Script ở gốc backend/ — bỏ qua app/, tests/, venv/."""
-    return [p for p in BACKEND.glob("*.py")]
+    """Script ở gốc backend/ và scripts/ — bỏ qua app/, tests/, venv/.
+
+    Phải quét cả scripts/: init_db.py nằm ở đó và sinh giá bằng
+    random.randint, mà README còn hướng dẫn người dùng chạy nó.
+    """
+    return list(BACKEND.glob("*.py")) + list((BACKEND.parent / "scripts").glob("*.py"))
 
 
 def test_khong_script_nao_bia_du_lieu_thi_truong():
@@ -38,6 +42,17 @@ def test_khong_script_nao_bia_du_lieu_thi_truong():
     assert not pham_loi, (
         f"Script bịa dữ liệu thị trường gắn nhãn nguồn thật: {pham_loi}"
     )
+
+
+def test_khong_script_nao_sinh_gia_ngau_nhien():
+    """random.randint/uniform tren du lieu gia la bia so, khong phai seed."""
+    pham_loi = []
+    for p in _file_python_goc():
+        text = p.read_text(encoding="utf-8", errors="ignore")
+        if ("random." in text and
+                any(b in text for b in BANG_THI_TRUONG + ("price", "Price"))):
+            pham_loi.append(p.name)
+    assert not pham_loi, f"Script sinh gia ngau nhien: {pham_loi}"
 
 
 def test_seed_prices_da_bi_xoa():
