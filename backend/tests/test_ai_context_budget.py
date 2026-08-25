@@ -71,3 +71,47 @@ def test_van_tra_ve_du_khoa_khi_nguon_cham(db, monkeypatch):
     ctx = ai_context_service.build_ai_context(db, region="Đắk Lắk", crop="ca phe",
                                               intent="price_analysis")
     assert isinstance(ctx, dict) and ctx, "Context rỗng khi nguồn chậm"
+
+
+def test_moi_nguon_dung_session_rieng(db):
+    """SQLAlchemy Session KHÔNG thread-safe — dùng chung sẽ hỏng ngẫu nhiên.
+
+    Bug thật đã gặp: 5 lambda cùng bắt `db` của request rồi chạy song song.
+    Backend suy kiệt dần, login treo vô hạn (>10 phút) trong khi /health vẫn
+    nhanh; restart là hết — dấu hiệu kinh điển của session/connection hỏng.
+    """
+    import threading
+    luong_chinh = threading.get_ident()
+    goi = []   # (id session, co phai luong phu khong)
+
+    def ghi_lai(sess, *a, **kw):
+        goi.append((id(sess), threading.get_ident() != luong_chinh))
+        return {"cache_status": "miss"}
+
+    import app.services.ai_context_service as mod
+    goc = mod.agri_data_aggregator_service
+
+    class Gia:
+        def __getattr__(self, ten):
+            return ghi_lai
+
+    mod.agri_data_aggregator_service = Gia()
+    try:
+        ai_context_service.build_ai_context(
+            db, region="Đắk Lắk", crop="ca phe", intent="full_farm_analysis"
+        )
+    finally:
+        mod.agri_data_aggregator_service = goc
+
+    assert goi, "Không nguồn nào được gọi"
+
+    # Goi tuan tu tren luong chinh dung `db` la an toan. Chi luong phu moi cam.
+    tren_luong_phu = [sid for sid, phu in goi if phu]
+    assert tren_luong_phu, "Không có nguồn nào chạy song song"
+    assert id(db) not in tren_luong_phu, (
+        "Nguồn chạy trên luồng phụ đang dùng CHUNG session của request — "
+        "Session không thread-safe, sẽ hỏng dữ liệu và cạn kết nối"
+    )
+    # Không kiểm tính duy nhất của id(session): CPython tái dùng địa chỉ sau
+    # khi session đóng, nên hai luồng chạy nối tiếp có thể trùng id một cách
+    # hợp lệ. Điều thực sự quan trọng là không đụng vào session của request.

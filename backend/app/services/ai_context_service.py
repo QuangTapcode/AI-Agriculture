@@ -4,6 +4,8 @@ from concurrent.futures import (ThreadPoolExecutor, TimeoutError,
 
 from sqlalchemy.orm import Session
 
+from app.core.database import SessionLocal
+
 from app.services.agri_data_aggregator_service import agri_data_aggregator_service
 from app.services.data_source_service import data_source_service
 from app.services.ai_intent_service import normalize_intent
@@ -28,8 +30,16 @@ class AIContextService:
             return {}
 
         ket_qua = {ten: mac_dinh for ten, (_, mac_dinh) in viec.items()}
+
+        def chay(ten, ham):
+            sess = SessionLocal()
+            try:
+                return self._safe(lambda: ham(sess), ten)
+            finally:
+                sess.close()
+
         with ThreadPoolExecutor(max_workers=len(viec)) as pool:
-            futures = {pool.submit(self._safe, ham, ten): ten
+            futures = {pool.submit(chay, ten, ham): ten
                        for ten, (ham, _) in viec.items()}
             try:
                 for f in as_completed(futures, timeout=self.NGAN_SACH_GIAY):
@@ -74,27 +84,31 @@ class AIContextService:
         # mat 8.2s ngay ca khi crawler nen da tat: moi nguon cham timeout
         # 3.18s va cong don. Chay song song kem ngan sach — nguon nao khong
         # kip thi dung mac dinh, khong chan cau tra loi (TOD0 §4).
+        # Ham nhan `sess` — moi luong duoc cap session rieng o
+        # _chay_trong_ngan_sach. TUYET DOI khong bat `db` cua request vao
+        # closure: Session khong thread-safe, dung chung se hong du lieu va
+        # can kiet connection pool (da gap: login treo vo han sau mot luc).
         viec = {}
         if needs_weather:
             viec["weather"] = (
-                lambda: agri_data_aggregator_service.get_weather_bundle(
-                    db, region=selected_region, crop=selected_crop), {})
+                lambda sess: agri_data_aggregator_service.get_weather_bundle(
+                    sess, region=selected_region, crop=selected_crop), {})
         if needs_pricing:
             viec["pricing"] = (
-                lambda: agri_data_aggregator_service.get_pricing_bundle(
-                    db, crop=selected_crop, region=selected_region), {})
+                lambda sess: agri_data_aggregator_service.get_pricing_bundle(
+                    sess, crop=selected_crop, region=selected_region), {})
             viec["market_analysis"] = (
-                lambda: pricing_service.analyze_market(
-                    db, crop_name=selected_crop, region=selected_region,
+                lambda sess: pricing_service.analyze_market(
+                    sess, crop_name=selected_crop, region=selected_region,
                     quantity=1000, quality_grade="grade_2"), {})
         if needs_market:
             viec["market"] = (
-                lambda: agri_data_aggregator_service.get_market_bundle(
-                    db, crop=selected_crop, region=selected_region), {})
+                lambda sess: agri_data_aggregator_service.get_market_bundle(
+                    sess, crop=selected_crop, region=selected_region), {})
         if needs_alerts:
             viec["alerts"] = (
-                lambda: agri_data_aggregator_service.get_alert_notification_bundle(
-                    db, user_id=user_id, crop=selected_crop,
+                lambda sess: agri_data_aggregator_service.get_alert_notification_bundle(
+                    sess, user_id=user_id, crop=selected_crop,
                     region=selected_region), {})
 
         thu = self._chay_trong_ngan_sach(viec)
