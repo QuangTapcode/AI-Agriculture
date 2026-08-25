@@ -75,3 +75,33 @@ def test_sidecar_refuses_empty_class_list(tmp_path):
     """Sidecar rỗng vô dụng mà lại che mất lỗi — phải nổ ngay."""
     with pytest.raises(ValueError):
         write_classes_sidecar(tmp_path / "best.pt", [])
+
+
+# ── Recipe phải nói rõ chạy được ở đâu ────────────────────────────────────
+
+def test_recipe_ghi_ro_vram_can_thiet():
+    """Không ghi VRAM thì người dùng chạy rồi mới biết OOM sau vài phút."""
+    from train_dot2 import recipe
+
+    assert getattr(HIGH_LEVEL, "vram_gb", None), (
+        "HIGH_LEVEL không nêu VRAM tối thiểu — GTX 1650 (4GB) sẽ OOM ngay"
+    )
+    assert HIGH_LEVEL.vram_gb >= 12, "yolo11m @768 batch16 cần khoảng 13GB"
+
+
+def test_co_recipe_chay_duoc_tren_gpu_4gb():
+    """Máy dev dùng GTX 1650 4GB — phải có lựa chọn train được tại chỗ."""
+    from train_dot2.recipe import LOCAL_4GB
+
+    assert LOCAL_4GB.vram_gb <= 4, f"LOCAL_4GB cần {LOCAL_4GB.vram_gb}GB, không vừa"
+    assert LOCAL_4GB.model.startswith("yolo11"), "Vẫn phải là họ YOLO11"
+    assert LOCAL_4GB.batch <= 8, "Batch lớn sẽ tràn VRAM 4GB"
+    # Giữ nguyên bài học về màu — đây là nhãn của bài toán, không phải nhiễu
+    assert LOCAL_4GB.hsv_s <= 0.3
+
+
+def test_moi_recipe_deu_khai_vram():
+    from train_dot2.recipe import BASELINE_NANO, LOCAL_4GB
+
+    for r in (HIGH_LEVEL, BASELINE_NANO, LOCAL_4GB):
+        assert getattr(r, "vram_gb", None), f"{r.name} thiếu vram_gb"
