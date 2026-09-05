@@ -104,6 +104,22 @@ _HINT_TO_FRUIT: dict[str, tuple[str, str]] = {
 }
 
 
+def resolve_fruit_hint(crop_name_hint: str) -> tuple[str, str]:
+    """Gợi ý loại quả của người dùng → (tên tiếng Anh, tên tiếng Việt).
+
+    Bỏ dấu và không phân biệt hoa thường, nên "Xoài", "xoai", "XOÀI" như nhau.
+    Không nhận ra thì trả ("", "") — nguồn duy nhất cho mọi nhánh dùng hint,
+    tránh cảnh mỗi nhánh giữ một bảng map riêng rồi lệch nhau khi thêm rau củ.
+    """
+    if not crop_name_hint or not crop_name_hint.strip():
+        return "", ""
+
+    import unicodedata as _ud
+    key = _ud.normalize("NFD", crop_name_hint.strip().lower()).replace("đ", "d")
+    key = "".join(c for c in key if _ud.category(c) != "Mn")
+    return _HINT_TO_FRUIT.get(key, ("", ""))
+
+
 def override_fruit_type(detections: list[dict], crop_name_hint: str) -> list[dict]:
     """Override YOLO fruit type with user's crop selection.
 
@@ -116,14 +132,10 @@ def override_fruit_type(detections: list[dict], crop_name_hint: str) -> list[dic
     if not crop_name_hint or not detections:
         return detections
 
-    import unicodedata as _ud
-    key = _ud.normalize("NFD", crop_name_hint.strip().lower()).replace("đ", "d")
-    key = "".join(c for c in key if _ud.category(c) != "Mn")
-    fruit_override = _HINT_TO_FRUIT.get(key)
-    if fruit_override is None:
+    en_type, vi_type = resolve_fruit_hint(crop_name_hint)
+    if not en_type:
         return detections  # unknown hint, keep YOLO result
 
-    en_type, vi_type = fruit_override
     result = []
     for det in detections:
         d = dict(det)
@@ -438,14 +450,13 @@ class FruitQualityPipeline:
         hsv_result = hsv_analyzer.analyze(bgr)
         eff_result = eff_classifier.classify(bgr)
 
-        # Map crop_name_hint to English for matching
-        _HINT_MAP = {
-            "xoài": "Mango", "xoai": "Mango",
-            "chuối": "Banana", "chuoi": "Banana",
-            "táo": "Apple", "tao": "Apple",
-            "cam": "Orange",
-        }
-        hint_en = _HINT_MAP.get(crop_name_hint.strip().lower(), "")
+        # Classifier không chạy được (thiếu weights, state_dict lệch...) — kết quả
+        # degraded phải lộ ra, nếu không nó sẽ mang nhãn "Fresh" mặc định và bị
+        # chấm Loại 1 y như một lần phân tích thành công.
+        if eff_result.get("error"):
+            return _full_image_fallback(crop_name_hint, eff_result["error"])
+
+        hint_en, _ = resolve_fruit_hint(crop_name_hint)
 
         # If EfficientNet agrees with hint (or no hint), trust it
         eff_fruit = eff_result.get("fruit_type", "")
@@ -501,11 +512,12 @@ class FruitQualityPipeline:
     def analyze(self, image_path: str, conf: float = 0.15, crop_name_hint: str = "") -> dict:
         """Run YOLO inference. Retries at lower conf if nothing detected.
 
+        conf mặc định thấp là có chủ đích, ưu tiên recall — xem
+        tests/test_recall_improvement.py trước khi đổi.
+
         crop_name_hint: user-selected crop (e.g. "xoai") — overrides YOLO fruit
         type while preserving quality level. Fixes color-confusion errors like
         orange-colored mango being classified as Orange.
-        """
-        """Run inference on image_path.
 
         Returns:
             {

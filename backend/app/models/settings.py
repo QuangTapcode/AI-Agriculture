@@ -1,4 +1,4 @@
-from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, Unicode
 from sqlalchemy.orm import synonym
 from sqlalchemy.sql import func
 
@@ -10,9 +10,9 @@ class UserSettings(Base):
 
     UserSettingID = Column("UserSettingID", Integer, primary_key=True, index=True)
     UserID = Column("UserID", Integer, ForeignKey("Users.UserID"), nullable=False, unique=True, index=True)
-    Language = Column("Language", String(10), nullable=False, default="vi")
-    Unit = Column("Unit", String(30), nullable=False, default="hectare")
-    Theme = Column("Theme", String(30), nullable=False, default="light")
+    Language = Column("Language", Unicode(10), nullable=False, default="vi")
+    Unit = Column("Unit", Unicode(30), nullable=False, default="hectare")
+    Theme = Column("Theme", Unicode(30), nullable=False, default="light")
     PriceAlerts = Column("PriceAlerts", Boolean, nullable=False, default=True)
     WeatherAlerts = Column("WeatherAlerts", Boolean, nullable=False, default=True)
     HarvestReminders = Column("HarvestReminders", Boolean, nullable=False, default=True)
@@ -44,10 +44,10 @@ class NotificationPreference(Base):
 
     PreferenceID = Column("PreferenceID", Integer, primary_key=True, index=True)
     UserID = Column("UserID", Integer, ForeignKey("Users.UserID"), nullable=False, index=True)
-    Channel = Column("Channel", String(30), nullable=False)
-    EventType = Column("EventType", String(50), nullable=False)
+    Channel = Column("Channel", Unicode(30), nullable=False)
+    EventType = Column("EventType", Unicode(50), nullable=False)
     IsEnabled = Column("IsEnabled", Boolean, nullable=False, default=True)
-    Receiver = Column("Receiver", String(255), nullable=True)
+    Receiver = Column("Receiver", Unicode(255), nullable=True)
     CreatedAt = Column("CreatedAt", DateTime, server_default=func.now(), nullable=False)
     UpdatedAt = Column("UpdatedAt", DateTime, server_default=func.now(), onupdate=func.now(), nullable=False)
 

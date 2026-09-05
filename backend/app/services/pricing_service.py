@@ -13,9 +13,11 @@ import unicodedata
 
 from datetime import date as date_type
 
+from concurrent.futures import ThreadPoolExecutor
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
+from app.core.database import SessionLocal
 from app.models.price import MarketPrice
 from app.repositories.common import ensure_crop, normalize_text, to_db_grade
 from app.repositories.price_repository import (
@@ -946,7 +948,20 @@ class PricingService:
 
     def get_price_comparison(self, db: Session, crop_name: str, regions: list[str]) -> dict:
         regions = regions or ["Ha Noi", "TP.HCM", "Da Nang", "Can Tho"]
-        items = [self.get_current_price(db, crop_name, region, include_weather=False) for region in regions]
+        # So vung thuong 6+, moi vung co the cham mang -> noi duoi rat cham.
+        # Chay song song, MOI LUONG MOT SESSION RIENG vi SQLAlchemy Session
+        # khong thread-safe.
+        def _gia_vung(region: str) -> dict:
+            sess = SessionLocal()
+            try:
+                return self.get_current_price(sess, crop_name, region, include_weather=False)
+            except Exception:
+                return {"_api_error": True, "region": region}
+            finally:
+                sess.close()
+
+        with ThreadPoolExecutor(max_workers=min(len(regions), 8)) as pool:
+            items = list(pool.map(_gia_vung, regions))
         items = [item for item in items if not item.get("_api_error")]
         items = [item for item in items if not item.get("is_mock")]
         has_real_data = bool(items)

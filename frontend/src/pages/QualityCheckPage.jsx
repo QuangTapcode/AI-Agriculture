@@ -107,7 +107,7 @@ const QualityCheckPage = () => {
       <div>
         <h1 className="text-3xl font-bold text-gray-900 mb-2">Kiểm Tra Chất Lượng</h1>
         <p className="text-gray-600">
-          🍌🍊🥭🍎 Dùng <strong>YOLO11 + EfficientNet</strong> cho quả đã train. Rau củ dùng Gemini Vision.
+          🍌🍊🥭🍎 Phân tích bằng <strong>YOLO11 + EfficientNet + HSV</strong> — chạy ngay trên máy chủ, không gửi ảnh ra dịch vụ ngoài.
         </p>
       </div>
 
@@ -135,7 +135,7 @@ const QualityCheckPage = () => {
                     <option value="tao">Táo</option>
                     <option value="cam">Cam</option>
                   </optgroup>
-                  <optgroup label="🥬 Rau củ (Gemini Vision)">
+                  <optgroup label="🥬 Rau củ (chưa train — độ chính xác thấp hơn)">
                     <option value="ca chua">Cà chua</option>
                     <option value="dua chuot">Dưa chuột</option>
                     <option value="rau muong">Rau muống</option>
@@ -256,10 +256,6 @@ const QualityCheckPage = () => {
                 {analysisResult.ai_source === 'yolo_efficientnet' || analysisResult.ai_source === 'efficientnet_fullimage' ? (
                   <span className="inline-flex items-center gap-1 text-xs bg-white/20 rounded-full px-3 py-1 font-medium">
                     🤖 YOLO11 + EfficientNet + HSV
-                  </span>
-                ) : analysisResult.ai_source === 'gemini_vision' ? (
-                  <span className="inline-flex items-center gap-1 text-xs bg-white/20 rounded-full px-3 py-1 font-medium">
-                    ✨ Gemini Vision AI
                   </span>
                 ) : null}
               </div>

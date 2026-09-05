@@ -1,4 +1,4 @@
-from sqlalchemy import Boolean, Column, Date, DateTime, Float, ForeignKey, Index, Integer, JSON, String, Unicode, UniqueConstraint
+from sqlalchemy import Boolean, Column, Date, DateTime, Float, ForeignKey, Index, Integer, JSON, Unicode, UniqueConstraint
 from sqlalchemy.orm import synonym
 from sqlalchemy.sql import func
 
@@ -22,9 +22,9 @@ class MarketPrice(Base):
     PricePerKg = Column("PricePerKg", Float, nullable=False)
     QualityGrade = Column("QualityGrade", Unicode(20), nullable=False, default="Loai 1")
     MarketType = Column("MarketType", Unicode(50), nullable=False, default="Ban le")
-    SourceURL = Column("SourceURL", String(500), nullable=True)
-    SourceName = Column("SourceName", String(100), nullable=True)
-    SourceType = Column("SourceType", String(50), nullable=True)
+    SourceURL = Column("SourceURL", Unicode(500), nullable=True)
+    SourceName = Column("SourceName", Unicode(100), nullable=True)
+    SourceType = Column("SourceType", Unicode(50), nullable=True)
     ObservedAt = Column("ObservedAt", DateTime, nullable=True)
     FetchedAt = Column("FetchedAt", DateTime, nullable=True)
     ConfidenceScore = Column("ConfidenceScore", Float, nullable=True)
@@ -101,7 +101,7 @@ class PriceForecastResult(Base):
     ConfidenceLow = Column("ConfidenceLow", Float, nullable=True)
     ConfidenceHigh = Column("ConfidenceHigh", Float, nullable=True)
     PriceTrend = Column("PriceTrend", Unicode(20), nullable=True)
-    ModelVersion = Column("ModelVersion", String(50), nullable=True, default="mock-v1")
+    ModelVersion = Column("ModelVersion", Unicode(50), nullable=True, default="mock-v1")
     GeneratedAt = Column("GeneratedAt", DateTime, server_default=func.now(), nullable=False)
 
     id = synonym("ForecastID")

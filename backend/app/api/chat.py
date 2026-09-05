@@ -2,6 +2,7 @@ from fastapi import APIRouter, HTTPException, Depends, Query
 from pydantic import BaseModel, model_validator
 from sqlalchemy.orm import Session
 from app.integrations.gemini_client import GeminiClient
+from app.integrations.ai_provider import get_ai_client
 from app.core.database import get_db
 from app.api.auth import get_optional_current_user, get_current_user
 from app.models.user import User
@@ -381,12 +382,14 @@ async def ask_farming_advice(
 
     answer = fallback_answer
     try:
-        gemini_answer = await gemini_client.get_farming_advice(
+        # Qua seam chung: chay local (Ollama) hay dich vu ngoai deu duoc,
+        # tuy settings.AI_PROVIDER. Truoc day cung nhac gemini_client.
+        ai_answer = await get_ai_client().get_farming_advice(
             question=q,
-            context_data=combined_context
+            context_data=combined_context,
         )
-        if gemini_answer:
-            answer = gemini_answer
+        if ai_answer:
+            answer = ai_answer
     except Exception:
         pass
 

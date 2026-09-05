@@ -39,6 +39,6 @@ python -m pip install -r "%REQ_FILE%"
 :start_server
 REM Start server
 echo [INFO] Starting backend server using virtual environment...
-python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 5000
+python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 
 endlocal

@@ -6,6 +6,7 @@ from email.utils import parsedate_to_datetime
 from xml.etree import ElementTree
 
 from app.core.config import settings
+from app.core.real_data import external_circuit_breaker
 from app.core.resilience import build_timeout, resilient_request
 
 
@@ -30,13 +31,24 @@ class RSSClient:
         return [url for url in urls if isinstance(url, str) and url.startswith(("http://", "https://"))]
 
     def _fetch_feed(self, url: str) -> list[dict]:
-        response = resilient_request(
-            "GET",
-            url,
-            timeout=build_timeout(total=20, connect=5, read=10),
-            retries=2,
-            service_name="RSS market news",
-        )
+        # Nguon RSS chet ma van goi lai mai thi moi luot ton tron thoi gian
+        # timeout — dung kieu da do o /api/chat (3.18s moi luot). Circuit
+        # breaker dung chung voi price/news client: du so lan hong thi ngung
+        # goi trong mot khoang thay vi hanh nguon da chet.
+        key = f"rss_feed:{self._host_name(url)}"
+        external_circuit_breaker.before_call(key)
+        try:
+            response = resilient_request(
+                "GET",
+                url,
+                timeout=build_timeout(total=20, connect=5, read=10),
+                retries=2,
+                service_name="RSS market news",
+            )
+        except Exception as exc:
+            external_circuit_breaker.record_failure(key, exc)
+            raise
+        external_circuit_breaker.record_success(key)
         root = ElementTree.fromstring(response.content)
         channel_title = root.findtext("./channel/title") or self._host_name(url)
         records = []

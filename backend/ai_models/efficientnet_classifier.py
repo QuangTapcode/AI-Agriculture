@@ -4,12 +4,18 @@ EfficientNet-B0 quality classifier.
 Input : BGR crop từ YOLO bounding box (numpy array)
 Output: class probabilities + top prediction
 
-16 classes mirror the YOLO model:
+Số class lấy từ chính checkpoint, tên class lấy từ file sidecar
+`<weights>.classes.json` (một mảng JSON, thứ tự đúng bằng index của model).
+Nhờ vậy mở rộng đợt 2 lên 96 class chỉ cần thay weights + sidecar.
+
+Không có sidecar thì dùng 16 class đợt 1:
   Apple / Banana / Mango / Orange  ×  Fresh / Rotten / Semifresh / Semirotten
 """
 from __future__ import annotations
 
+import json
 import logging
+from pathlib import Path
 from typing import Any
 
 import cv2
@@ -18,13 +24,50 @@ import numpy as np
 logger = logging.getLogger(__name__)
 
 # Class order must match the training dataset folder sort order (alphabetical)
-CLASS_NAMES: list[str] = [
+DEFAULT_CLASS_NAMES: list[str] = [
     "Apple Fresh",    "Apple Rotten",    "Apple Semifresh",    "Apple Semirotten",
     "Banana Fresh",   "Banana Rotten",   "Banana Semifresh",   "Banana Semirotten",
     "Mango Fresh",    "Mango Rotten",    "Mango Semifresh",    "Mango Semirotten",
     "Orange Fresh",   "Orange Rotten",   "Orange Semifresh",   "Orange Semirotten",
 ]
-NUM_CLASSES = len(CLASS_NAMES)  # 16
+
+# Giữ tên cũ cho code đã import CLASS_NAMES/NUM_CLASSES.
+CLASS_NAMES: list[str] = DEFAULT_CLASS_NAMES
+NUM_CLASSES = len(DEFAULT_CLASS_NAMES)  # 16
+
+
+def _sidecar_path(model_path: str) -> Path:
+    """`.../best.pt` -> `.../best.classes.json`"""
+    return Path(model_path).with_suffix(".classes.json")
+
+
+def load_class_names(model_path: str, num_classes: int) -> list[str]:
+    """Tên class cho checkpoint: sidecar nếu có và khớp số lượng, không thì suy ra.
+
+    Sidecar sai số lượng là lỗi cấu hình dễ gây gán nhãn lệch hàng loạt, nên
+    bị bỏ qua kèm cảnh báo thay vì dùng bừa.
+    """
+    path = _sidecar_path(model_path)
+    if path.is_file():
+        try:
+            names = json.loads(path.read_text(encoding="utf-8"))
+            if isinstance(names, list) and len(names) == num_classes:
+                return [str(n) for n in names]
+            logger.warning(
+                "[EfficientNet] %s có %s tên nhưng model có %s class — bỏ qua sidecar",
+                path, len(names) if isinstance(names, list) else "?", num_classes,
+            )
+        except Exception as exc:
+            logger.warning("[EfficientNet] Không đọc được %s: %s", path, exc)
+
+    if num_classes == len(DEFAULT_CLASS_NAMES):
+        return list(DEFAULT_CLASS_NAMES)
+
+    logger.warning(
+        "[EfficientNet] Model %s class nhưng thiếu %s — dùng tên tạm class_N",
+        num_classes, path.name,
+    )
+    return [f"class_{i}" for i in range(num_classes)]
 
 # ImageNet normalization (EfficientNet standard)
 _MEAN = [0.485, 0.456, 0.406]
@@ -38,6 +81,7 @@ class EfficientNetClassifier:
     def __init__(self, model_path: str = "ai_models/weights/efficientnet_quality.pt"):
         self.model_path = model_path
         self._model: Any = None
+        self._class_names: list[str] = list(DEFAULT_CLASS_NAMES)
 
     # ── Public interface ──────────────────────────────────────────────────────
 
@@ -65,8 +109,9 @@ class EfficientNetClassifier:
         if probs is None:
             return self._fallback("inference_failed")
 
+        names = self._class_names
         top_idx = int(probs.argmax())
-        top_class = CLASS_NAMES[top_idx]
+        top_class = names[top_idx]
         parts = top_class.split(" ", 1)
         fruit_type = parts[0]
         quality_level = parts[1] if len(parts) == 2 else "Fresh"
@@ -79,8 +124,8 @@ class EfficientNetClassifier:
             "fruit_type":    fruit_type,
             "quality_level": quality_level,
             "confidence":    round(prob_list[top_idx], 4),
-            "top3":          [(CLASS_NAMES[i], round(p, 4)) for i, p in top3],
-            "probabilities": {CLASS_NAMES[i]: round(p, 4) for i, p in enumerate(prob_list)},
+            "top3":          [(names[i], round(p, 4)) for i, p in top3],
+            "probabilities": {names[i]: round(p, 4) for i, p in enumerate(prob_list)},
         }
 
     # ── Internal ──────────────────────────────────────────────────────────────
@@ -93,13 +138,22 @@ class EfficientNetClassifier:
             import torch.nn as nn
             from torchvision import models
 
-            model = models.efficientnet_b0(weights=None)
-            model.classifier[1] = nn.Linear(1280, NUM_CLASSES)
             state = torch.load(self.model_path, map_location="cpu", weights_only=True)
+
+            # Số class do checkpoint quyết định, không hardcode — nếu không,
+            # weights đợt 2 (96 class) sẽ mismatch và bị nuốt lỗi thành model=None.
+            num_classes = int(state["classifier.1.weight"].shape[0])
+
+            model = models.efficientnet_b0(weights=None)
+            model.classifier[1] = nn.Linear(1280, num_classes)
             model.load_state_dict(state)
             model.eval()
+
             self._model = model
-            logger.info("[EfficientNet] Loaded from %s", self.model_path)
+            self._class_names = load_class_names(self.model_path, num_classes)
+            logger.info(
+                "[EfficientNet] Loaded from %s (%s class)", self.model_path, num_classes
+            )
         except Exception as exc:
             logger.error("[EfficientNet] Failed to load: %s", exc)
             self._model = None

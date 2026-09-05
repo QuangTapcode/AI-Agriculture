@@ -58,7 +58,7 @@ class ClaudeClient:
     def complete(self, messages: list[dict], system_prompt: str = "", max_tokens: int = 1024) -> dict:
         if not self.sync_client:
             return {
-                "answer": "[Test] Câu trả lời giả lập từ Claude.",
+                "answer": None,
                 "provider": "claude",
                 "model": self.model,
                 "token_usage": None,

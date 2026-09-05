@@ -37,20 +37,22 @@ class QualityService:
     ) -> dict:
         """
         Kiểm tra chất lượng nông sản:
-        1. Gemini Vision phân tích ảnh thực tế (màu sắc, khuyết tật, loại nông sản)
+        1. YOLO11 + EfficientNet + HSV phân tích ảnh (chạy local, không cần API key)
         2. Lấy pricing từ pricing_service
         3. Lưu kết quả qua repository
         4. Trả về kết quả đầy đủ
         """
         normalized_region = self._normalize_region(region)
 
-        # 1. Phân tích ảnh — ưu tiên YOLO+EfficientNet (local), fallback Gemini Vision
+        # 1. Phân tích ảnh — hoàn toàn local: YOLO11 detect, thiếu bbox thì
+        #    EfficientNet chấm toàn ảnh. Không phụ thuộc dịch vụ ngoài.
         vision_result = self._run_yolo_pipeline(image_path, crop_name=crop_name)
         _used_source = "yolo_efficientnet"
 
-        if vision_result is None and crop_name:
-            # YOLO không detect bbox nhưng user cung cấp crop_name
-            # → classify toàn ảnh bằng EfficientNet + HSV
+        if vision_result is None:
+            # YOLO không ra bbox → classify toàn ảnh bằng EfficientNet + HSV.
+            # Chạy cả khi người dùng không chọn loại quả: crop_name chỉ là gợi ý
+            # giúp khử nhầm màu, không phải điều kiện để được phân tích.
             try:
                 from ai_models.fruit_quality_pipeline import fruit_quality_pipeline
                 det = fruit_quality_pipeline.classify_full_image(image_path, crop_name_hint=crop_name)
@@ -80,57 +82,20 @@ class QualityService:
                 logging.getLogger(__name__).warning("[QualityService] classify_full_image failed: %s", exc)
 
         if vision_result is None:
-            # YOLO không detect quả → thử Gemini Vision
-            _used_source = "gemini_vision"
-            analyzer = self._get_detector()
-            if analyzer is None:
-                if self._realtime_only():
-                    return {
-                        "_api_error": True,
-                        "error_code": "REALTIME_API_FAILED",
-                        "error_message": "Không thể kết nối AI kiểm định chất lượng. Vui lòng thử lại sau.",
-                        "source": "realtime_api",
-                    }
-                grade, confidence, defects = self._mock_grade(image_path)
-                vision_result = {
-                    "detected_crop": crop_name or "unknown",
-                    "is_produce": True,
-                    "color_assessment": "",
-                    "ripeness": "unknown",
-                    "defects": defects,
-                    "quality_grade": grade,
-                    "confidence": confidence,
-                    "reasoning": "mock fallback",
-                }
-                _used_source = "mock"
-            else:
-                try:
-                    with open(image_path, "rb") as f:
-                        image_bytes = f.read()
-                    if hasattr(analyzer, "analyze"):
-                        vision_result = analyzer.analyze(image_bytes)
-                    else:
-                        detector_result = analyzer.analyze_image(image_path, crop_name)
-                        vision_result = self._vision_from_detector_result(detector_result, crop_name)
-                except Exception as e:
-                    if self._realtime_only():
-                        return {
-                            "_api_error": True,
-                            "error_code": "REALTIME_API_FAILED",
-                            "error_message": "Không thể kết nối AI kiểm định chất lượng. Vui lòng thử lại sau.",
-                            "source": "realtime_api",
-                        }
-                    vision_result = {
-                        "detected_crop": "không xác định",
-                        "is_produce": False,
-                        "color_assessment": f"Lỗi đọc ảnh: {e}",
-                        "ripeness": "unknown",
-                        "defects": [],
-                        "quality_grade": "grade_2",
-                        "confidence": 0.0,
-                        "reasoning": str(e),
-                    }
-                    _used_source = "fallback"
+            # Không model local nào đọc được ảnh → nói thật, không chấm bừa.
+            # Trước đây nhánh này gọi một dịch vụ vision bên ngoài (cần API
+            # key) rồi khi lỗi thì gán grade_2/confidence 0.0, khiến ảnh không
+            # phân tích được vẫn hiện ra như một kết quả thật.
+            return {
+                "_api_error": True,
+                "error_code": "QUALITY_ANALYSIS_FAILED",
+                "error_message": (
+                    "Không nhận diện được nông sản trong ảnh. "
+                    "Vui lòng chụp rõ hơn hoặc chọn loại nông sản."
+                ),
+                "source": "local_model",
+                "is_mock": False,
+            }
 
         detected_crop = vision_result.get("detected_crop", "không xác định")
         is_produce = vision_result.get("is_produce", False)
@@ -255,9 +220,7 @@ class QualityService:
             "source": "mock" if source_is_mock else "ai_generated",
             "source_name": (
                 "YOLO11 + EfficientNet + HSV" if _used_source == "yolo_efficientnet"
-                else "EfficientNet full image" if _used_source == "efficientnet_fullimage"
-                else "Gemini Vision Quality" if _used_source == "gemini_vision"
-                else "Rule-based fallback"
+                else "EfficientNet full image"
             ),
             "is_mock": source_is_mock,
             "cache_status": "computed",
@@ -310,15 +273,15 @@ class QualityService:
     def _run_yolo_pipeline(image_path: str, crop_name: str = "") -> dict | None:
         """Run YOLO11+EfficientNet+HSV pipeline.
 
-        Returns a vision_result dict (same shape as Gemini result) when at least
-        one fruit is detected, or None when the image has no detectable fruit.
+        Returns a vision_result dict when at least one fruit is detected,
+        or None when the image has no detectable fruit.
         """
         try:
             from ai_models.fruit_quality_pipeline import fruit_quality_pipeline
             result = fruit_quality_pipeline.analyze(image_path, crop_name_hint=crop_name)
             detections = result.get("detections", [])
             if not detections:
-                return None   # caller decides: try classify_full_image or Gemini
+                return None   # caller sẽ thử classify_full_image
 
             best = max(detections, key=lambda d: d["confidence"])
 
@@ -363,26 +326,6 @@ class QualityService:
             import logging
             logging.getLogger(__name__).warning("[QualityService] YOLO pipeline failed: %s", exc)
             return None
-
-    @staticmethod
-    def _get_detector():
-        from app.integrations.gemini_vision_quality import GeminiVisionAnalyzer
-        return GeminiVisionAnalyzer()
-
-    @staticmethod
-    def _vision_from_detector_result(result: dict, crop_name: str) -> dict:
-        grade = result.get("quality_grade", "grade_2")
-        defects = result.get("defects", [])
-        return {
-            "detected_crop": crop_name or "unknown",
-            "is_produce": True,
-            "color_assessment": "",
-            "ripeness": "unknown",
-            "defects": defects,
-            "quality_grade": grade,
-            "confidence": result.get("confidence", 0.0),
-            "reasoning": ", ".join(defects) if defects else "",
-        }
 
     @staticmethod
     def _save_quality_record_direct(
@@ -510,16 +453,6 @@ class QualityService:
             "multiplier": multiplier,
             "source": source,
         }
-
-    @staticmethod
-    def _mock_grade(image_path: str) -> tuple[str, float, list[str]]:
-        """Phân loại dựa trên tên file (fallback khi không có AI)."""
-        lowered = image_path.lower()
-        if "bad" in lowered or "grade3" in lowered or "grade_3" in lowered:
-            return "grade_3", 0.68, ["surface_damage"]
-        if "medium" in lowered or "grade2" in lowered or "grade_2" in lowered:
-            return "grade_2", 0.76, ["minor_spot"]
-        return "grade_1", 0.86, []
 
     @staticmethod
     def _damage_level(grade: str) -> str:

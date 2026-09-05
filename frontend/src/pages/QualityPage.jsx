@@ -40,8 +40,8 @@ const YOLO_CROPS = [
   { value: 'tao',    label: 'Táo',    emoji: '🍎' },
   { value: 'cam',    label: 'Cam',    emoji: '🍊' },
 ];
-// Other crops use Gemini Vision fallback
-const GEMINI_CROPS = [
+// Các loại khác chưa được train riêng — dùng EfficientNet trên toàn ảnh
+const UNTRAINED_CROPS = [
   { value: 'ca chua',    label: 'Cà chua'    },
   { value: 'dua chuot',  label: 'Dưa chuột'  },
   { value: 'sau rieng',  label: 'Sầu riêng'  },
@@ -756,8 +756,8 @@ const QualityPage = () => {
             <h1 className="text-xl font-bold text-gray-900">Kiểm định chất lượng nông sản</h1>
             <p className="text-sm text-gray-500">
               {YOLO_CROPS.some((c) => c.value === cropName)
-                ? '🤖 YOLO11 + EfficientNet — AI local, nhanh, không cần internet'
-                : '✨ Gemini Vision — AI cloud, nhận diện đa dạng nông sản'}
+                ? '🤖 YOLO11 + EfficientNet — đã train riêng cho loại này, chính xác nhất'
+                : '🤖 EfficientNet + HSV — chưa train riêng, độ chính xác thấp hơn'}
             </p>
           </div>
         </div>
@@ -785,8 +785,8 @@ const QualityPage = () => {
                     <option key={c.value} value={c.value}>{c.emoji} {c.label}</option>
                   ))}
                 </optgroup>
-                <optgroup label="✨ Gemini Vision (AI cloud)">
-                  {GEMINI_CROPS.map((c) => (
+                <optgroup label="🥬 Chưa train riêng (độ chính xác thấp hơn)">
+                  {UNTRAINED_CROPS.map((c) => (
                     <option key={c.value || '_auto'} value={c.value}>{c.label}</option>
                   ))}
                 </optgroup>
@@ -998,10 +998,6 @@ const QualityPage = () => {
                         {result.ai_source === 'yolo_efficientnet' || result.ai_source === 'efficientnet_fullimage' ? (
                           <span className="rounded-full bg-white/20 px-3 py-1 text-xs font-semibold flex items-center gap-1">
                             🤖 YOLO11 + EfficientNet + HSV
-                          </span>
-                        ) : result.ai_source === 'gemini_vision' ? (
-                          <span className="rounded-full bg-white/20 px-3 py-1 text-xs font-semibold">
-                            ✨ Gemini Vision
                           </span>
                         ) : (
                           <DataSourceBadge data={result} className="bg-white/90" />

@@ -177,36 +177,6 @@ class TestPricePredictor:
 
 
 # ═════════════════════════════════════════════════════════════════════════════
-# P2-03  QUALITY DETECTOR (MVP / YOLO stub)
-# ═════════════════════════════════════════════════════════════════════════════
-
-class TestQualityDetector:
-    def test_returns_quality_grade_when_model_loaded(self):
-        from ai_models.quality_check.detector import QualityDetector
-        with patch("ai_models.quality_check.detector.YOLO") as mock_yolo_cls:
-            mock_yolo_cls.return_value = MagicMock()
-            detector = QualityDetector()
-            result = detector.analyze_image("test_image.jpg")
-            assert "quality_grade" in result
-
-    def test_returns_error_when_model_fails(self):
-        from ai_models.quality_check.detector import QualityDetector
-        with patch("ai_models.quality_check.detector.YOLO", side_effect=Exception("model error")):
-            detector = QualityDetector()
-            assert detector.model is None
-            result = detector.analyze_image("test_image.jpg")
-            assert "error" in result
-
-    def test_analyze_image_returns_dict(self):
-        from ai_models.quality_check.detector import QualityDetector
-        with patch("ai_models.quality_check.detector.YOLO") as mock_yolo_cls:
-            mock_yolo_cls.return_value = MagicMock()
-            detector = QualityDetector()
-            result = detector.analyze_image("some_path.jpg")
-            assert isinstance(result, dict)
-
-
-# ═════════════════════════════════════════════════════════════════════════════
 # P2-03  QUALITY SERVICE (helpers & logic)
 # ═════════════════════════════════════════════════════════════════════════════
 
@@ -215,27 +185,10 @@ class TestQualityServiceHelpers:
         from app.services.quality_service import QualityService
         self.service = QualityService()
 
-    # --- _mock_grade ---
-    def test_mock_grade_bad_filename(self):
-        grade, conf, defects = self.service._mock_grade("bad_apple.jpg")
-        assert grade == "grade_3"
-        assert "surface_damage" in defects
-        assert conf < 0.80
-
-    def test_mock_grade_grade3_keyword(self):
-        grade, conf, defects = self.service._mock_grade("tomato_grade3.jpg")
-        assert grade == "grade_3"
-
-    def test_mock_grade_medium_filename(self):
-        grade, conf, defects = self.service._mock_grade("medium_quality.jpg")
-        assert grade == "grade_2"
-        assert "minor_spot" in defects
-
-    def test_mock_grade_default_grade1(self):
-        grade, conf, defects = self.service._mock_grade("fresh_tomato.jpg")
-        assert grade == "grade_1"
-        assert defects == []
-        assert conf >= 0.80
+    # --- Không còn chấm điểm theo tên file ---
+    def test_no_filename_based_grading(self):
+        """`_mock_grade` đã bị gỡ: chất lượng phải do model quyết, không do tên file."""
+        assert not hasattr(self.service, "_mock_grade")
 
     # --- _damage_level ---
     def test_damage_level_grade1_is_low(self):
@@ -300,7 +253,7 @@ class TestQualityServiceHelpers:
 
 
 class TestQualityServiceCheckQuality:
-    """Kiểm tra check_quality() với DB và detector được mock."""
+    """check_quality() chạy hoàn toàn local — không mock, không đoán theo tên file."""
 
     def _make_db_with_crop(self):
         db = make_mock_db()
@@ -312,50 +265,52 @@ class TestQualityServiceCheckQuality:
         db.query.return_value.filter.return_value.first.return_value = mock_crop
         return db
 
-    @patch("app.services.quality_service.QualityService._get_detector", return_value=None)
     @patch("app.services.quality_service.create_quality_check")
-    @patch("app.services.quality_service.pricing_service")
-    @patch("app.core.redis_client.redis_client.get", return_value=None)
-    @patch("app.core.redis_client.redis_client.set")
-    def test_check_quality_grade1_path(self, _mock_set, _mock_get, mock_pricing, mock_create, _mock_detector):
-        mock_pricing.suggest_price.return_value = {
+    @patch("app.services.quality_service.pricing_service.suggest_price")
+    def test_unreadable_image_returns_error_not_a_grade(self, mock_suggest, mock_create):
+        """Ảnh không đọc được => báo lỗi, tuyệt đối không chấm loại."""
+        mock_suggest.return_value = {
             "suggested_price": 22000, "min_price": 20000, "max_price": 24000,
         }
-        mock_record = MagicMock()
-        mock_record.checked_at = datetime.now()
-        mock_create.return_value = mock_record
+        mock_create.return_value = MagicMock(checked_at=datetime.now())
 
         from app.services.quality_service import QualityService
-        svc = QualityService()
-        db = self._make_db_with_crop()
 
-        result = svc.check_quality(db, image_path="fresh_tomato.jpg",
-                                   crop_name="Cà chua", region="Hà Nội")
+        result = QualityService().check_quality(
+            self._make_db_with_crop(),
+            image_path="khong_ton_tai.jpg",
+            crop_name="Cà chua",
+            region="Hà Nội",
+        )
 
-        assert result["quality_grade"] == "grade_1"
+        assert result["_api_error"] is True
+        assert result["error_code"] == "QUALITY_ANALYSIS_FAILED"
+        assert "quality_grade" not in result, "Không được chấm loại cho ảnh hỏng"
+
+    @patch("app.services.quality_service.create_quality_check")
+    @patch("app.services.quality_service.pricing_service.suggest_price")
+    def test_real_image_is_graded_by_local_model(self, mock_suggest, mock_create, tmp_path):
+        """Ảnh đọc được => model local chấm, kèm giá và khuyến nghị."""
+        import cv2, numpy as np
+        mock_suggest.return_value = {
+            "suggested_price": 22000, "min_price": 20000, "max_price": 24000,
+        }
+        mock_create.return_value = MagicMock(checked_at=datetime.now())
+
+        image = str(tmp_path / "ca_chua.jpg")
+        cv2.imwrite(image, np.full((640, 640, 3), 160, dtype=np.uint8))
+
+        from app.services.quality_service import QualityService
+
+        result = QualityService().check_quality(
+            self._make_db_with_crop(), image_path=image,
+            crop_name="Cà chua", region="Hà Nội",
+        )
+
+        assert result["quality_grade"] in {"grade_1", "grade_2", "grade_3", "damaged"}
+        assert result["ai_source"] in {"yolo_efficientnet", "efficientnet_fullimage"}
         assert "suggested_price" in result
         assert "recommendations" in result
-        assert "disease_detected" in result
-
-    @patch("app.services.quality_service.QualityService._get_detector", return_value=None)
-    @patch("app.services.quality_service.create_quality_check")
-    @patch("app.services.quality_service.pricing_service")
-    @patch("app.core.redis_client.redis_client.get", return_value=None)
-    @patch("app.core.redis_client.redis_client.set")
-    def test_check_quality_bad_filename_gives_grade3(self, _mock_set, _mock_get, mock_pricing, mock_create, _mock_detector):
-        mock_pricing.suggest_price.return_value = {
-            "suggested_price": 10000, "min_price": 9000, "max_price": 11000,
-        }
-        mock_create.return_value = MagicMock(checked_at=None)
-
-        from app.services.quality_service import QualityService
-        svc = QualityService()
-        db = self._make_db_with_crop()
-
-        result = svc.check_quality(db, image_path="bad_tomato.jpg",
-                                   crop_name="Cà chua", region="Hà Nội")
-        assert result["quality_grade"] == "grade_3"
-        assert result["disease_detected"] is True
 
 
 # ═════════════════════════════════════════════════════════════════════════════
@@ -392,73 +347,113 @@ class TestPricingServiceHelpers:
         key = self.service._normalize_key("Cà chua")
         assert key == "ca chua"
 
-    def test_mock_price_known_crop(self):
-        price = self.service._mock_price("Cà chua", "Hà Nội", "grade_1")
-        assert price > 0
+    # Spec anti-mock (TOD0 §1): không còn `_mock_price`, không sinh giá synthetic.
+    # Thiếu dữ liệu thật => báo lỗi rõ ràng, không đoán bừa.
 
-    def test_mock_price_unknown_crop_uses_default(self):
-        price = self.service._mock_price("Cây siêu lạ", "TP.HCM", "grade_1")
-        assert price > 0
+    def test_mock_price_is_a_tripwire(self):
+        """`_mock_price` giữ lại làm bẫy: caller sót lại phải nổ, không trả số."""
+        with pytest.raises(RuntimeError):
+            self.service._mock_price("Cà chua", "Hà Nội", "grade_1")
 
-    def test_mock_price_grade3_lower_than_grade1(self):
-        p1 = self.service._mock_price("Cà chua", "Hà Nội", "grade_1")
-        p3 = self.service._mock_price("Cà chua", "Hà Nội", "grade_3")
-        assert p3 < p1
-
-    def test_forecast_price_returns_n_items(self):
+    def test_forecast_without_db_returns_error_not_numbers(self):
+        """Không có DB session => trả lỗi, tuyệt đối không bịa forecast."""
         result = self.service.forecast_price("Cà chua", "Hà Nội", days=7)
-        assert len(result["forecast_data"]) == 7
 
-    def test_forecast_price_dates_are_future(self):
-        result = self.service.forecast_price("Cà chua", "Hà Nội", days=5)
-        today = date.today().isoformat()
-        for item in result["forecast_data"]:
-            assert item["date"] > today
+        assert result["_api_error"] is True
+        assert result["error_code"] == "INSUFFICIENT_PRICE_HISTORY"
+        assert result["forecast_data"] == []
 
-    def test_forecast_price_has_trend(self):
+    def test_forecast_without_db_is_flagged_as_miss(self):
+        """Metadata phải nói thật: miss + không realtime + không mock."""
+        result = self.service.forecast_price("Cà chua", "Hà Nội", days=7)
+
+        assert result["cache_status"] == "miss"
+        assert result["is_mock"] is False
+        assert result["is_realtime"] is False
+
+    def test_forecast_error_still_carries_official_source(self):
+        """Kể cả khi lỗi, phải chỉ được nguồn chính thống để người dùng tự tra."""
         result = self.service.forecast_price("Lúa", "Cần Thơ", days=3)
-        assert result["trend"] in ("increasing", "decreasing", "stable")
+
+        assert result["source_url"]
+        assert result["source_name"]
+
+    def test_forecast_with_empty_db_returns_error(self):
+        """DB rỗng => miss, không rơi về đường sinh số ngẫu nhiên."""
+        result = self.service.forecast_price_with_db(
+            make_mock_db(), "Cà chua", "Hà Nội", days=7
+        )
+
+        assert result["_api_error"] is True
+        assert result["forecast_data"] == []
+        assert result["is_mock"] is False
 
 
 class TestPricingServiceGetCurrentPrice:
-    """get_current_price() với Redis miss và DB miss → mock fallback."""
+    """get_current_price() theo spec anti-mock: hết dữ liệu thật => báo miss."""
 
     @patch("app.core.redis_client.redis_client.get", return_value=None)
     @patch("app.core.redis_client.redis_client.set")
     @patch("app.repositories.price_repository.get_latest_price", return_value=None)
     @patch("app.repositories.price_repository.get_recent_market_prices", return_value=[])
-    def test_returns_dict_with_required_keys(self, _mock_recent, _mock_latest, _mock_set, _mock_get):
+    def test_no_data_returns_error_without_price(self, _mock_recent, _mock_latest, _mock_set, _mock_get):
+        """Redis miss + DB miss => KHÔNG có `current_price`, chỉ có lỗi."""
         from app.services.pricing_service import PricingService
         svc = PricingService()
-        db = make_mock_db()
-        result = svc.get_current_price(db, "Cà chua", "Hà Nội")
-        for key in ("crop_name", "region", "current_price", "quality_grade", "price_trend"):
-            assert key in result
+
+        result = svc.get_current_price(make_mock_db(), "Cà chua", "Hà Nội")
+
+        assert result["_api_error"] is True
+        assert result["cache_status"] == "miss"
+        assert "current_price" not in result, "Không được bịa giá khi thiếu dữ liệu"
 
     @patch("app.core.redis_client.redis_client.get", return_value=None)
     @patch("app.core.redis_client.redis_client.set")
     @patch("app.repositories.price_repository.get_latest_price", return_value=None)
     @patch("app.repositories.price_repository.get_recent_market_prices", return_value=[])
-    def test_current_price_is_positive(self, _mock_recent, _mock_latest, _mock_set, _mock_get):
+    def test_error_response_keeps_context_and_metadata(self, _mock_recent, _mock_latest, _mock_set, _mock_get):
+        """Lỗi vẫn phải nói rõ hỏi cây gì / vùng nào và không phải mock."""
         from app.services.pricing_service import PricingService
         svc = PricingService()
-        db = make_mock_db()
-        result = svc.get_current_price(db, "Lúa", "Cần Thơ")
-        assert result["current_price"] > 0
 
-    @patch("app.core.redis_client.redis_client.get")
-    def test_uses_cache_when_available(self, mock_get):
-        cached = {
+        result = svc.get_current_price(make_mock_db(), "Lúa", "Cần Thơ")
+
+        assert result["crop_name"]
+        assert result["region"]
+        assert result["is_mock"] is False
+
+    @patch("app.services.pricing_service.price_aggregator_service.get_best_current_price")
+    def test_passes_through_real_price_from_aggregator(self, mock_aggregator):
+        """Aggregator có giá thật (cache hoặc live) => trả nguyên giá đó."""
+        mock_aggregator.return_value = {
             "crop_name": "Lúa", "region": "Cần Thơ",
-            "current_price": 8500, "quality_grade": "grade_1",
-            "price_trend": "stable", "last_updated": "2024-01-01T00:00:00",
+            "current_price": 8500, "cache_status": "fresh_cache",
+            "is_mock": False, "fetched_at": datetime.now(),
         }
-        mock_get.return_value = cached
         from app.services.pricing_service import PricingService
         svc = PricingService()
-        db = make_mock_db()
-        result = svc.get_current_price(db, "Lúa", "Cần Thơ")
+
+        result = svc.get_current_price(make_mock_db(), "Lúa", "Cần Thơ")
+
         assert result["current_price"] == 8500
+        assert result["official_price"] == 8500
+
+    @patch("app.services.pricing_service.price_aggregator_service.get_best_current_price")
+    def test_applies_quality_multiplier_to_official_price(self, mock_aggregator):
+        """Loại thấp hơn phải rẻ hơn giá chính thống, giá gốc vẫn giữ lại."""
+        mock_aggregator.return_value = {
+            "crop_name": "Lúa", "region": "Cần Thơ",
+            "current_price": 10000, "cache_status": "fresh_cache", "is_mock": False,
+        }
+        from app.services.pricing_service import PricingService
+        svc = PricingService()
+
+        result = svc.get_current_price(
+            make_mock_db(), "Lúa", "Cần Thơ", quality_grade="grade_3"
+        )
+
+        assert result["official_price"] == 10000
+        assert result["current_price"] < 10000
 
 
 class TestAnalyzePriceTrend:
@@ -566,24 +561,37 @@ class TestPriceForecastServiceHelpers:
 
 
 class TestPriceForecastServicePredict:
-    """predict_price() – test các nhánh mock fallback."""
+    """predict_price() – nhánh thiếu dữ liệu phải báo miss, không dự báo bừa."""
 
     @patch("app.services.price_forecast_service.PriceForecastService._load_price_history", return_value=[])
     @patch("app.services.price_forecast_service.PriceForecastService._get_model", return_value=None)
-    @patch("app.services.price_forecast_service.pricing_service")
-    def test_final_fallback_when_no_history(self, mock_pricing, _mock_model, _mock_history):
-        mock_pricing.get_current_price.return_value = {"current_price": 20000}
-
+    def test_no_history_returns_miss_not_invented_forecast(self, _mock_model, _mock_history):
+        """Không model + không lịch sử => dự báo rỗng kèm lỗi, không sinh 7 con số."""
         from app.services.price_forecast_service import PriceForecastService
         from app.schemas.price_schema import PricePredictionRequest
         svc = PriceForecastService()
-        db = make_mock_db()
         req = PricePredictionRequest(crop_name="Cà chua", region="Hà Nội", forecast_days=7)
-        result = svc.predict_price(db, req)
 
-        assert "predicted_prices" in result
-        assert len(result["predicted_prices"]) == 7
-        assert result["trend"] in ("increasing", "decreasing", "stable")
+        result = svc.predict_price(make_mock_db(), req)
+
+        assert result["predicted_prices"] == []
+        assert result["trend"] is None
+        assert result["error_code"] == "PRICE_FORECAST_CACHE_MISS"
+        assert result["is_mock"] is False
+
+    @patch("app.services.price_forecast_service.PriceForecastService._load_price_history", return_value=[])
+    @patch("app.services.price_forecast_service.PriceForecastService._get_model", return_value=None)
+    def test_no_history_warns_user_why(self, _mock_model, _mock_history):
+        """Người dùng phải biết vì sao không có dự báo, không im lặng."""
+        from app.services.price_forecast_service import PriceForecastService
+        from app.schemas.price_schema import PricePredictionRequest
+        svc = PriceForecastService()
+        req = PricePredictionRequest(crop_name="Cà chua", region="Hà Nội", forecast_days=7)
+
+        result = svc.predict_price(make_mock_db(), req)
+
+        assert result["warning"]
+        assert result["source_url"]
 
     @patch("app.services.price_forecast_service.PriceForecastService._get_model", return_value=None)
     @patch("app.services.price_forecast_service.PriceForecastService._load_price_history")
@@ -878,26 +886,39 @@ def client():
 
 class TestPricingAPI:
     def test_forecast_endpoint(self, client):
+        """Có lịch sử => forecast_data; chưa có => miss có lý do, không bịa."""
         response = client.post("/api/pricing/forecast", json={
             "crop_name": "Cà chua",
             "region": "Hà Nội",
             "days": 7,
         })
         assert response.status_code == 200
-        data = response.json()
-        assert "forecast_data" in data or "predicted_prices" in data
+        body = response.json()
+        assert body["is_mock"] is False
+
+        if body["success"]:
+            assert "forecast_data" in body["data"] or "predicted_prices" in body["data"]
+        else:
+            assert body["data"] is None
+            assert body["error"]["code"]
 
     def test_suggest_endpoint(self, client):
+        """Giá gợi ý phải từ nguồn thật, thiếu thì báo miss."""
         response = client.post("/api/pricing/suggest", json={
             "crop_name": "Lúa",
             "region": "Cần Thơ",
             "quantity": 500,
             "quality_grade": "grade_1",
         })
-        assert response.status_code in (200, 422, 500)
-        if response.status_code == 200:
-            data = response.json()
-            assert "suggested_price" in data
+        assert response.status_code == 200
+        body = response.json()
+        assert body["is_mock"] is False
+
+        if body["success"]:
+            assert body["data"]["suggested_price"] > 0
+        else:
+            assert body["data"] is None
+            assert body["cache_status"] == "miss"
 
     def test_current_price_endpoint(self, client):
         response = client.get("/api/pricing/current?crop_name=Cà chua&region=Hà Nội")
@@ -948,15 +969,21 @@ class TestAlertAPI:
 
 class TestPriceForecastAPI:
     def test_predict_endpoint(self, client):
+        """Dự báo chỉ xuất hiện khi có dữ liệu thật, ngược lại là miss."""
         response = client.post("/api/price-forecast/predict", json={
             "crop_name": "Cà chua",
             "region": "Hà Nội",
             "forecast_days": 7,
         })
-        assert response.status_code in (200, 422, 500)
-        if response.status_code == 200:
-            data = response.json()
-            assert "predicted_prices" in data
+        assert response.status_code == 200
+        body = response.json()
+        assert body["is_mock"] is False
+
+        if body["success"]:
+            assert "predicted_prices" in body["data"]
+        else:
+            assert body["data"] is None
+            assert body["error"]["code"]
 
 
 class TestChatAPI:

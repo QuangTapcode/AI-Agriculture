@@ -108,7 +108,7 @@ export default function LoginPage() {
           setError(detail || "Dữ liệu không hợp lệ. Vui lòng kiểm tra lại.");
         }
       } else if (!err?.response) {
-        setError("Không thể kết nối máy chủ. Vui lòng kiểm tra backend đang chạy trên cổng 5000.");
+        setError("Không thể kết nối máy chủ. Vui lòng kiểm tra backend đang chạy trên cổng 8000.");
       } else {
         setError(detail || err?.message || "Đã xảy ra lỗi. Vui lòng thử lại.");
       }

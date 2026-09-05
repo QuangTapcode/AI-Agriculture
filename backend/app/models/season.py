@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Date, DateTime, Float, ForeignKey, Integer, String, Unicode, UnicodeText
+from sqlalchemy import Column, Date, DateTime, Float, ForeignKey, Integer, Unicode, UnicodeText
 from sqlalchemy.orm import synonym
 from sqlalchemy.sql import func
 
@@ -14,12 +14,12 @@ class Season(Base):
     Region = Column("Region", Unicode(100), nullable=False, index=True)
     FarmName = Column("FarmName", Unicode(150), nullable=True)
     Area = Column("Area", Float, nullable=True)
-    AreaUnit = Column("AreaUnit", String(20), nullable=False, default="ha")
+    AreaUnit = Column("AreaUnit", Unicode(20), nullable=False, default="ha")
     StartDate = Column("StartDate", Date, nullable=False)
     ExpectedHarvestDate = Column("ExpectedHarvestDate", Date, nullable=False, index=True)
     ActualHarvestDate = Column("ActualHarvestDate", Date, nullable=True)
-    Status = Column("Status", String(30), nullable=False, default="active", index=True)
-    HealthStatus = Column("HealthStatus", String(30), nullable=False, default="good", index=True)
+    Status = Column("Status", Unicode(30), nullable=False, default="active", index=True)
+    HealthStatus = Column("HealthStatus", Unicode(30), nullable=False, default="good", index=True)
     Note = Column("Note", UnicodeText, nullable=True)
     CreatedAt = Column("CreatedAt", DateTime, server_default=func.now(), nullable=False)
     UpdatedAt = Column("UpdatedAt", DateTime, server_default=func.now(), onupdate=func.now(), nullable=False)

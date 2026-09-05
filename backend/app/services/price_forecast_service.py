@@ -34,7 +34,7 @@ class PriceForecastService:
         Dự báo giá:
         1. Thử AI model (Quang's price_forecast model)
         2. Fallback về moving average từ DB history
-        3. Fallback cuối: mock dựa trên giá hiện tại
+        3. Hết dữ liệu thật: trả lỗi cache miss, không bịa số
         """
         crop_name = request.crop_name
         region = request.region
@@ -96,7 +96,7 @@ class PriceForecastService:
                 "data_age_minutes": 0,
             }
 
-        # 3. Fallback cuối: mock từ giá hiện tại
+        # 3. Hết đường: báo miss. Anti-mock (TOD0 §1) — không sinh giá synthetic.
         payload = realtime_error(
             code="PRICE_FORECAST_CACHE_MISS",
             message="Price forecast cache/history miss. Background refresh has not fetched enough real data yet.",

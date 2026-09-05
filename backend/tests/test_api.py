@@ -112,7 +112,8 @@ def test_harvest_forecast():
     assert data["confidence"] > 0
 
 
-def test_quality_upload_mock():
+def test_quality_upload_rejects_non_image():
+    """File không phải ảnh => báo lỗi rõ, không bịa ra hạng chất lượng."""
     response = client.post(
         "/api/quality/check",
         data={"crop_name": "ca chua", "region": "Ha Noi"},
@@ -120,8 +121,8 @@ def test_quality_upload_mock():
     )
     assert response.status_code == 200
     data = response.json()
-    assert data["quality_grade"] in {"grade_1", "grade_2", "grade_3"}
-    assert "suggested_price" in data
+    assert "quality_grade" not in data, "Không được chấm loại cho file hỏng"
+    assert data.get("error", {}).get("code") == "QUALITY_ANALYSIS_FAILED"
 
 
 def test_pricing_suggest():
@@ -141,6 +142,7 @@ def test_pricing_suggest():
 
 
 def test_price_forecast_predict():
+    """Envelope {success, data, error}: có lịch sử => 7 ngày, không có => miss."""
     response = client.post(
         "/api/price-forecast/predict",
         json={
@@ -150,9 +152,20 @@ def test_price_forecast_predict():
         },
     )
     assert response.status_code == 200
-    data = response.json()
-    assert len(data["predicted_prices"]) == 7
-    assert data["trend"] in {"increasing", "decreasing", "stable"}
+    body = response.json()
+
+    # Bất biến theo spec anti-mock: không bao giờ trả dữ liệu giả.
+    assert body["is_mock"] is False
+
+    if body["success"]:
+        data = body["data"]
+        assert len(data["predicted_prices"]) == 7
+        assert data["trend"] in {"increasing", "decreasing", "stable"}
+    else:
+        # Chưa đủ lịch sử giá thật => nói thẳng, không bịa số
+        assert body["data"] is None
+        assert body["cache_status"] == "miss"
+        assert body["error"]["code"]
 
 
 def test_market_suggest():
@@ -196,11 +209,19 @@ def test_alert_create_list_delete():
 
 
 def test_weather_current():
+    """Cache ấm => có region; cache lạnh => miss rõ ràng (fail-fast, chờ crawler)."""
     response = client.get("/api/weather/current/Ha%20Noi")
     assert response.status_code == 200
-    # region có thể là "Ha Noi", "Hà Nội", hoặc dạng encode khác từ DB
-    region = response.json()["region"]
-    assert region and region.lower().replace(" ", "").startswith("ha") or "n" in region.lower()
+    body = response.json()
+    assert body["is_mock"] is False
+
+    if "region" in body:
+        # region có thể là "Ha Noi", "Hà Nội", hoặc dạng encode khác từ DB
+        region = body["region"]
+        assert region and region.lower().replace(" ", "").startswith("ha") or "n" in region.lower()
+    else:
+        assert body["cache_status"] == "miss"
+        assert body["error"]["code"] == "WEATHER_CACHE_MISS"
 
 
 def test_weather_agriculture_module():
