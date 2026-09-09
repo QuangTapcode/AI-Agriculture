@@ -1469,3 +1469,126 @@ async def auto_crawl_loop():
             break
         except Exception as e:
             logger.error(f"[Crawler] Lỗi vòng lặp: {e}")
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Cào thời tiết thời gian thực
+# ═══════════════════════════════════════════════════════════════════════════
+#
+# Trước đây thời tiết chỉ được làm mới như tác dụng phụ của run_price_crawler:
+# cào giá hỏng là hàm return sớm, thời tiết đứng theo. Cộng với việc Beat chưa
+# từng chạy, bảng WeatherData chỉ được cập nhật khi có người mở trang và cache
+# đã quá hạn — nghĩa là chính request của người dùng phải chờ Open-Meteo trả
+# lời. Đó là nguồn gốc của thông báo "Dữ liệu realtime đang chậm (timeout)".
+#
+# Task dưới đây chạy độc lập theo lịch, đẩy việc chờ mạng ra khỏi request.
+
+from app.integrations.weather_client import WeatherClient  # noqa: E402
+from app.tasks.celery_app import celery_app  # noqa: E402
+from app.repositories.weather_repository import upsert_weather_cache  # noqa: E402
+
+_weather_client_realtime = WeatherClient()
+
+
+def _vung_can_cao() -> List[str]:
+    """Danh sách vùng, đã gộp bí danh trùng toạ độ.
+
+    REGION_COORDINATES_JSON khai báo cả "Ha Noi" lẫn "Hà Nội" trỏ cùng một
+    điểm. Cào cả hai là gọi Open-Meteo gấp đôi cho cùng một số liệu; giữ tên
+    có dấu vì _normalize_region quy mọi biến thể về đó trước khi tra DB.
+    """
+    import json
+
+    from app.core.config import settings
+
+    try:
+        cau_hinh = json.loads(settings.REGION_COORDINATES_JSON or "{}")
+    except json.JSONDecodeError:
+        logger.error("[Weather] REGION_COORDINATES_JSON hỏng — không cào được vùng nào")
+        return []
+
+    theo_toa_do: Dict[Tuple[float, float], str] = {}
+    for ten, toa_do in cau_hinh.items():
+        try:
+            khoa = (round(float(toa_do["latitude"]), 4), round(float(toa_do["longitude"]), 4))
+        except (KeyError, TypeError, ValueError):
+            continue
+        cu = theo_toa_do.get(khoa)
+        # Ưu tiên tên có dấu: đó là dạng chuẩn mà _normalize_region trả về.
+        if cu is None or (not _co_dau(cu) and _co_dau(ten)):
+            theo_toa_do[khoa] = ten
+    return list(theo_toa_do.values())
+
+
+def _co_dau(text: str) -> bool:
+    return any(ord(ky_tu) > 127 for ky_tu in text)
+
+
+def crawl_weather_realtime() -> Dict:
+    """Cào quan trắc hiện tại cho mọi vùng, ghi thẳng vào cache.
+
+    Một vùng lỗi mạng không được kéo theo các vùng còn lại — nông dân ở Lâm
+    Đồng không nên mất dữ liệu chỉ vì Cần Thơ timeout.
+    """
+    from app.core.database import SessionLocal
+
+    t0 = datetime.now()
+    vung = _vung_can_cao()
+    db = SessionLocal()
+    saved = 0
+    failed = 0
+    try:
+        for ten_vung in vung:
+            try:
+                live = _weather_client_realtime.get_current(ten_vung)
+            except Exception as exc:
+                failed += 1
+                logger.warning(f"[Weather] {ten_vung}: {type(exc).__name__} — {exc}")
+                continue
+
+            if not live or live.get("temperature") is None:
+                failed += 1
+                logger.warning(f"[Weather] {ten_vung}: nguồn trả rỗng, bỏ qua (không bịa số)")
+                continue
+
+            upsert_weather_cache(
+                db,
+                region=ten_vung,
+                record_date=date.today(),
+                temperature=live.get("temperature"),
+                temp_min=live.get("temp_min"),
+                temp_max=live.get("temp_max"),
+                rainfall=live.get("rainfall"),
+                humidity=live.get("humidity"),
+                condition=live.get("condition"),
+                latitude=live.get("latitude"),
+                longitude=live.get("longitude"),
+                wind_speed=live.get("wind_speed"),
+                uv_index=live.get("uv_index"),
+                pressure=live.get("pressure"),
+                weather_code=live.get("weather_code"),
+                source_name=live.get("source_name") or "Open-Meteo",
+                source_url=live.get("source_url"),
+                source_updated_at=live.get("source_updated_at"),
+                fetched_at=datetime.now(),
+                is_realtime=True,
+                is_mock=False,
+            )
+            saved += 1
+    finally:
+        db.close()
+
+    elapsed = round((datetime.now() - t0).total_seconds(), 2)
+    logger.info(f"[Weather] ✓ saved={saved} failed={failed} vùng={len(vung)} | {elapsed}s")
+    return {"saved": saved, "failed": failed, "regions": len(vung), "elapsed_s": elapsed}
+
+
+@celery_app.task(name="app.tasks.crawler_tasks.crawl_weather_realtime")
+def crawl_weather_realtime_task() -> Dict:
+    return crawl_weather_realtime()
+
+
+@celery_app.task(name="app.tasks.crawler_tasks.run_price_crawler")
+def run_price_crawler_task() -> Dict:
+    """Cầu nối cho Beat: run_price_crawler là coroutine, Celery không await được."""
+    return asyncio.run(run_price_crawler())

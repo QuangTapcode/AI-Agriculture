@@ -77,7 +77,11 @@ services:
       AI_MODEL_NAME: "qwen2.5:3b-instruct-q4_K_M"
     extra_hosts:
       - "host.docker.internal:host-gateway"
-    command: ["celery", "-A", "app.tasks.celery_app.celery_app", "worker", "--loglevel=INFO"]
+    # --beat: chay lich ngay trong worker. Du an chi co mot worker nen khong
+    # can container beat rieng; thieu co nay thi moi beat_schedule nam im.
+    # Lich ghi vao /tmp de khong dinh vao image read-only.
+    command: ["celery", "-A", "app.tasks.celery_app.celery_app", "worker",
+              "--beat", "--schedule=/tmp/celerybeat-schedule", "--loglevel=INFO"]
     depends_on:
       backend:
         condition: service_healthy
