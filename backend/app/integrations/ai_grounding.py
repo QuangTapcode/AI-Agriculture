@@ -19,11 +19,13 @@ import unicodedata
 SYSTEM_RULES = (
     "Bạn là trợ lý nông nghiệp Việt Nam, tư vấn cho nông dân.\n"
     "QUY TẮC BẮT BUỘC:\n"
-    "1. CHỈ dùng con số có sẵn trong phần DỮ LIỆU. Không tự tính toán lại, "
-    "không bịa thêm số liệu, sản lượng, thời tiết hay dự đoán thị trường nào "
-    "không được cung cấp.\n"
-    "2. Nếu thiếu dữ liệu để trả lời, nói thẳng: "
-    "\"Tôi chưa có dữ liệu về việc này\". Không đoán.\n"
+    "1. GIÁ nông sản, THỜI TIẾT và số liệu thị trường: CHỈ được dùng con số "
+    "có trong phần DỮ LIỆU. Không tự tính lại, không suy từ vùng khác, không "
+    "bịa. Thiếu thì nói thẳng: \"Tôi chưa có dữ liệu về việc này\".\n"
+    "2. KIẾN THỨC CANH TÁC chung (thời gian sinh trưởng, kỹ thuật tưới, bón "
+    "phân, phòng sâu bệnh): được phép dùng kiến thức nông nghiệp phổ thông "
+    "để trả lời, nhưng nói rõ đó là kinh nghiệm chung chứ không phải số liệu "
+    "đo được của hệ thống.\n"
     "3. Nhận định xu hướng chỉ dựa trên các con số đã cho.\n"
     "4. Tối đa 5 câu, đi thẳng vào lời khuyên thực tế.\n"
     "5. CHỈ viết bằng tiếng Việt. Tuyệt đối không dùng ký tự Hán hay chữ "
@@ -129,3 +131,33 @@ def bo_sung_vung_thieu_du_lieu(cau_hoi: str, du_lieu: str) -> str:
 
     dong = "\n".join(f"- {v}: chưa có dữ liệu trong hệ thống" for v in thieu)
     return f"{du_lieu}\n{dong}" if du_lieu else dong
+
+# Câu hỏi về thời gian trồng/thu hoạch — chỉ bổ sung khi thực sự được hỏi.
+_TU_KHOA_SINH_TRUONG = (
+    "bao lau", "bao nhieu ngay", "may ngay", "thu hoach", "sinh truong",
+    "trong bao", "thoi gian trong",
+)
+
+
+def tra_cuu_kien_thuc_cay_trong(cau_hoi: str) -> str:
+    """Thời gian sinh trưởng từ bảng CROP_GROWTH_DAYS có sẵn trong dự án.
+
+    Dự án đã có bảng này trong harvest_forecast/predictor.py (Cà chua 75 ngày,
+    Lúa 105 ngày...). Không dùng thì model phải tự đoán — hoặc tệ hơn, từ chối
+    trả lời vì luật cấm bịa số. Đưa số thật của hệ thống vào còn hơn để model
+    phỏng đoán.
+
+    Trả về chuỗi rỗng khi câu hỏi không về sinh trưởng, hoặc cây không có
+    trong bảng — không bịa.
+    """
+    from ai_models.harvest_forecast.predictor import CROP_GROWTH_DAYS
+
+    hoi = _bo_dau_vn(cau_hoi)
+    if not any(tu in hoi for tu in _TU_KHOA_SINH_TRUONG):
+        return ""
+
+    for ten_cay, so_ngay in CROP_GROWTH_DAYS.items():
+        if _bo_dau_vn(ten_cay) in hoi:
+            return (f"- {ten_cay}: thời gian sinh trưởng khoảng {so_ngay} ngày "
+                    f"(số liệu tham chiếu của hệ thống)")
+    return ""

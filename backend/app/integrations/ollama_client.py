@@ -17,7 +17,8 @@ import httpx
 from app.core.config import settings
 from app.integrations.ai_grounding import (SYSTEM_RULES,
                                            bo_sung_vung_thieu_du_lieu,
-                                           so_lieu_khong_co_trong_nguon)
+                                           so_lieu_khong_co_trong_nguon,
+                                           tra_cuu_kien_thuc_cay_trong)
 
 logger = logging.getLogger(__name__)
 
@@ -61,6 +62,11 @@ class OllamaClient:
         # Neu ro vung duoc hoi ma khong co so lieu — su that phu dinh
         # tuong minh hieu qua hon lenh cam voi model nho.
         context_data = bo_sung_vung_thieu_du_lieu(question, context_data)
+        # Cau hoi ve thoi gian sinh truong: lay so that tu bang tham chieu
+        # cua he thong, khong de model phong doan.
+        kien_thuc = tra_cuu_kien_thuc_cay_trong(question)
+        if kien_thuc:
+            context_data = f"{context_data}\n{kien_thuc}" if context_data else kien_thuc
         prompt = (
             f"Dữ liệu hệ thống:\n{context_data}\n\n" if context_data else ""
         ) + f"Câu hỏi của nông dân: {question}"
