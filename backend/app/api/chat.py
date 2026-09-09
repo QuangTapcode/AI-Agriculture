@@ -1,5 +1,7 @@
+import logging
 from fastapi import APIRouter, HTTPException, Depends, Query
 from pydantic import BaseModel, model_validator
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 from app.integrations.gemini_client import GeminiClient
 from app.integrations.ai_provider import get_ai_client
@@ -52,6 +54,42 @@ def _build_local_fallback_answer(question: str, topic: str = "general", region: 
     return "Hiện AI bên ngoài đang tạm không khả dụng. Vui lòng thử lại sau ít phút."
 
 
+def _lay_lich_su(db: Session, user_id: int | None, limit: int = 6) -> list[dict]:
+    """Vài lượt hội thoại gần nhất của CHÍNH người dùng này.
+
+    Không có cái này thì mỗi câu hỏi là một lượt độc lập: hỏi "Giá cà phê
+    Đắk Lắk?" rồi "Còn Gia Lai thì sao?" -> model không biết đang nói về
+    cà phê. Khách chưa đăng nhập thì không có lịch sử để tra.
+    """
+    if not user_id:
+        return []
+
+    from app.models.conversation import AIConversation
+
+    try:
+        rows = (
+            db.query(AIConversation)
+            .filter(
+                AIConversation.UserID == user_id,
+                AIConversation.deleted_at.is_(None),
+            )
+            .order_by(AIConversation.ConversationID.desc())
+            .limit(limit)
+            .all()
+        )
+    except SQLAlchemyError as exc:
+        logger.warning("[chat] khong doc duoc lich su: %s", exc)
+        return []
+
+    lich_su: list[dict] = []
+    for row in reversed(rows):          # cu -> moi
+        if row.Question:
+            lich_su.append({"role": "user", "content": row.Question})
+        if row.Answer:
+            lich_su.append({"role": "assistant", "content": row.Answer})
+    return lich_su
+
+
 def _save_conversation(db: Session, user_id: int | None, question: str, answer: str, topic: str = "general") -> None:
     from app.models.conversation import AIConversation
 
@@ -67,6 +105,9 @@ def _save_conversation(db: Session, user_id: int | None, question: str, answer: 
         db.commit()
     except Exception:
         db.rollback()
+
+
+logger = logging.getLogger(__name__)
 
 
 class ChatRequest(BaseModel):
@@ -387,6 +428,7 @@ async def ask_farming_advice(
         ai_answer = await get_ai_client().get_farming_advice(
             question=q,
             context_data=combined_context,
+            lich_su=_lay_lich_su(db, current_user.UserID if current_user else None),
         )
         if ai_answer:
             answer = ai_answer

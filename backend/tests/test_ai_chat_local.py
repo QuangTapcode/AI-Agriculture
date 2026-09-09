@@ -100,7 +100,7 @@ def test_api_chat_dung_provider_local(monkeypatch):
 
     class FakeLocal:
         model = "qwen2.5:3b-instruct-q4_K_M"
-        async def get_farming_advice(self, question, context_data=""):
+        async def get_farming_advice(self, question, context_data="", lich_su=None):
             return "Cà chua cần đất tơi xốp, thoát nước tốt."
         def complete(self, messages, system_prompt="", max_tokens=1024):
             return {"answer": "Cà chua cần đất tơi xốp, thoát nước tốt.",

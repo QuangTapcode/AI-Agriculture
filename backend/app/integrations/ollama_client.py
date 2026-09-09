@@ -15,7 +15,9 @@ import logging
 import httpx
 
 from app.core.config import settings
-from app.integrations.ai_grounding import SYSTEM_RULES
+from app.integrations.ai_grounding import (SYSTEM_RULES,
+                                           bo_sung_vung_thieu_du_lieu,
+                                           so_lieu_khong_co_trong_nguon)
 
 logger = logging.getLogger(__name__)
 
@@ -40,7 +42,25 @@ class OllamaClient:
             transport=self._transport,
         )
 
-    async def get_farming_advice(self, question: str, context_data: str = "") -> str:
+    # Số lượt hội thoại gần nhất gửi kèm. Model 3B có context 4096 token —
+    # nhồi cả trăm lượt sẽ tràn và đẩy mất chính câu hỏi hiện tại. Vài lượt
+    # gần nhất đủ để hiểu đại từ ("còn ... thì sao", "loại đó").
+    SO_LUOT_NHO = 6
+
+    def _cat_lich_su(self, lich_su: list[dict] | None) -> list[dict]:
+        """Giữ SO_LUOT_NHO tin nhắn gần nhất, bỏ phần quá cũ."""
+        if not lich_su:
+            return []
+        return [
+            {"role": m["role"], "content": m["content"]}
+            for m in lich_su[-self.SO_LUOT_NHO:]
+        ]
+
+    async def get_farming_advice(self, question: str, context_data: str = "",
+                                 lich_su: list[dict] | None = None) -> str:
+        # Neu ro vung duoc hoi ma khong co so lieu — su that phu dinh
+        # tuong minh hieu qua hon lenh cam voi model nho.
+        context_data = bo_sung_vung_thieu_du_lieu(question, context_data)
         prompt = (
             f"Dữ liệu hệ thống:\n{context_data}\n\n" if context_data else ""
         ) + f"Câu hỏi của nông dân: {question}"
@@ -51,15 +71,30 @@ class OllamaClient:
                     "model": self.model,
                     "messages": [
                         {"role": "system", "content": SYSTEM_RULES},
+                        *self._cat_lich_su(lich_su),
                         {"role": "user", "content": prompt},
                     ],
                     "stream": False,
                 })
                 r.raise_for_status()
-                return (r.json().get("message") or {}).get("content", "")
+                tra_loi = (r.json().get("message") or {}).get("content", "")
         except Exception as exc:
             logger.error("[Ollama] loi khi hoi: %s", exc)
             raise RuntimeError(LOI_KHONG_KET_NOI) from exc
+
+        # Chot chan cuoi: model nho khong tuan thu lenh cam mot cach dang tin.
+        # Do thuc te — cho biet "Ca phe Dak Lak 96.433 d/kg" roi hoi "Con Gia
+        # Lai thi sao?" thi no ap luon so do sang Gia Lai, du SYSTEM_RULES da
+        # cam ro. Voi nong dan, mot con so bia nguy hiem hon han cau "chua co
+        # du lieu", nen tha khong tra loi con hon tra loi sai.
+        bia = so_lieu_khong_co_trong_nguon(tra_loi, context_data)
+        if bia:
+            logger.warning("[Ollama] chan cau tra loi chua so khong co nguon: %s", bia)
+            return (
+                "Tôi chưa có dữ liệu cho câu hỏi này nên không thể đưa ra con "
+                "số cụ thể. Bạn thử hỏi về vùng hoặc nông sản khác xem sao."
+            )
+        return tra_loi
 
     def complete(self, messages: list[dict], system_prompt: str = "",
                  max_tokens: int = 1024) -> dict:

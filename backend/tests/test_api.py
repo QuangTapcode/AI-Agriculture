@@ -89,7 +89,12 @@ def test_added_contract_endpoints_smoke():
 
     current_response = client.get("/api/pricing/current?crop_name=ca%20chua&region=Ha%20Noi")
     assert current_response.status_code == 200
-    assert current_response.json()["current_price"] > 0
+    gia = current_response.json()
+    # Co du lieu that => co gia; chua co => bao miss, khong bia so
+    if gia.get("success"):
+        assert gia["data"]["current_price"] > 0
+    else:
+        assert gia["cache_status"] == "miss"
 
     assert client.get("/api/harvest/history/1").status_code == 200
     assert client.get("/api/harvest/schedules/1").status_code == 200
@@ -136,9 +141,17 @@ def test_pricing_suggest():
         },
     )
     assert response.status_code == 200
-    data = response.json()
-    assert data["suggested_price"] > 0
-    assert data["min_price"] <= data["suggested_price"] <= data["max_price"]
+    body = response.json()
+    assert body["is_mock"] is False
+
+    if body["success"]:
+        data = body["data"]
+        assert data["suggested_price"] > 0
+        assert data["min_price"] <= data["suggested_price"] <= data["max_price"]
+    else:
+        # Chua co gia that trong DB => bao miss, khong bia so (TOD0 muc 1)
+        assert body["data"] is None
+        assert body["cache_status"] == "miss"
 
 
 def test_price_forecast_predict():
@@ -179,9 +192,16 @@ def test_market_suggest():
         },
     )
     assert response.status_code == 200
-    data = response.json()
-    assert data["recommended_channel"]
-    assert data["profit_comparison"]
+    body = response.json()
+    assert body["is_mock"] is False
+
+    if body["success"]:
+        data = body["data"]
+        assert data["recommended_channel"]
+        assert data["profit_comparison"]
+    else:
+        assert body["data"] is None
+        assert body["error"]["code"]
 
 
 def test_alert_create_list_delete():
