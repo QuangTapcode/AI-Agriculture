@@ -15,6 +15,7 @@ def upsert_weather_cache(
     temp_min: float | None = None,
     temp_max: float | None = None,
     rainfall: float | None = None,
+    temperature: float | None = None,
     humidity: float | None = None,
     condition: str | None = None,
     latitude: float | None = None,
@@ -39,6 +40,11 @@ def upsert_weather_cache(
         if row is None:
             row = WeatherData(Region=region, RecordDate=record_date)
             db.add(row)
+        # Chỉ ba luồng gọi hàm này, và hai trong số đó (dự báo ngày, dự báo
+        # giờ) không có nhiệt độ đo được. Gán thẳng sẽ xoá trắng số đo mà
+        # luồng realtime vừa ghi, và trang thời tiết rơi lại về trung bình ngày.
+        if temperature is not None:
+            row.Temperature = temperature
         row.TempMin = temp_min
         row.TempMax = temp_max
         row.Rainfall = rainfall

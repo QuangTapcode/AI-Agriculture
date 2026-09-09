@@ -1393,7 +1393,11 @@ def _save_weather_data_force(rows: List[Dict]) -> int:
                 existing.Longitude      = row.get("longitude")
                 existing.SourceName     = "Open-Meteo"
                 existing.SourceURL      = "https://api.open-meteo.com/v1/forecast"
-                existing.SourceUpdatedAt = fetched_at
+                # Hàng của hôm nay có thể đang giữ số đo realtime cùng mốc quan
+                # trắc thật. Crawler dự báo chạy mỗi vài phút; ghi đè mốc đó sẽ
+                # khiến số đo cũ được báo là "vừa cập nhật".
+                if existing.Temperature is None:
+                    existing.SourceUpdatedAt = fetched_at
                 existing.FetchedAt      = fetched_at
                 existing.IsRealtime     = True
                 existing.IsMock         = False

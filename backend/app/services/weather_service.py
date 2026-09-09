@@ -132,6 +132,7 @@ class WeatherService:
                 db,
                 region=region,
                 record_date=date.today(),
+                temperature=temp,
                 temp_min=temp_min,
                 temp_max=temp_max,
                 rainfall=rain,
@@ -178,7 +179,11 @@ class WeatherService:
                 "is_mock": False,
                 "fetched_at": now,
                 "last_updated": now,
-                "data_age_minutes": 0,
+                # Open-Meteo phát theo lưới 15 phút: vừa gọi xong không có nghĩa
+                # là số đo mới 0 phút. Báo tuổi thật của quan trắc.
+                "data_age_minutes": max(
+                    0, int((now - (live.get("source_updated_at") or now)).total_seconds() / 60)
+                ),
                 "cache_status": "live",
                 "fallback_used": False,
                 "timeout": False,
@@ -219,18 +224,34 @@ class WeatherService:
     def _weather_row_to_current(self, weather, *, fallback_used: bool) -> dict:
         temp_min = float(weather.TempMin) if weather.TempMin is not None else None
         temp_max = float(weather.TempMax) if weather.TempMax is not None else None
-        temp_avg = None
-        if temp_min is not None and temp_max is not None:
+
+        # Nhiệt độ hiện tại là số ĐO ĐƯỢC. Trung bình (min+max)/2 là nhiệt độ
+        # trung bình cả ngày — đêm mưa 24 độ hiện thành 28.5. Chỉ lùi về trung
+        # bình cho các hàng lưu trước khi có cột Temperature.
+        do_duoc = getattr(weather, "Temperature", None)
+        if do_duoc is not None:
+            temp_avg = float(do_duoc)
+        elif temp_min is not None and temp_max is not None:
             temp_avg = round((temp_min + temp_max) / 2, 1)
         elif temp_max is not None:
             temp_avg = temp_max
         elif temp_min is not None:
             temp_avg = temp_min
+        else:
+            temp_avg = None
 
-        recorded = weather.FetchedAt or weather.SourceUpdatedAt or weather.CreatedAt or (
+        # Tuổi dữ liệu tính từ LÚC ĐO (SourceUpdatedAt), không phải lúc ta đi
+        # hỏi (FetchedAt). Crawler chạy đều mỗi vài phút; khi Open-Meteo timeout,
+        # FetchedAt vẫn được chạm vào trong khi nhiệt độ vẫn là số đo cũ. Ưu tiên
+        # FetchedAt sẽ báo "mới 2 phút" cho số liệu đã 7 tiếng — nông dân nhìn
+        # vào đó để quyết định có phun thuốc hay không.
+        recorded = weather.SourceUpdatedAt or weather.FetchedAt or weather.CreatedAt or (
             datetime.combine(weather.RecordDate, datetime.min.time()) if weather.RecordDate else datetime.now()
         )
-        age_min = int((datetime.now() - recorded).total_seconds() / 60)
+        fetched = weather.FetchedAt or recorded
+        # Kẹp về 0: mốc nguồn nằm ở tương lai nghĩa là lệch múi giờ hoặc lệch
+        # đồng hồ, hiện số âm chỉ làm người dùng bối rối.
+        age_min = max(0, int((datetime.now() - recorded).total_seconds() / 60))
         rainfall = float(weather.Rainfall or 0)
         humidity = float(weather.Humidity or 70)
         return {
@@ -253,7 +274,7 @@ class WeatherService:
             "source_url": weather.SourceURL or OPEN_METEO_FORECAST_URL,
             "is_realtime": False,
             "is_mock": False,
-            "fetched_at": recorded,
+            "fetched_at": fetched,
             "last_updated": recorded,
             "data_age_minutes": age_min,
             "cache_status": cache_status_for(recorded, "weather_current"),
@@ -417,6 +438,7 @@ class WeatherService:
                 db,
                 region=norm,
                 record_date=date.today(),
+                temperature=rep.get("temperature"),
                 temp_min=rep.get("temp_min") or rep.get("temperature") or None,
                 temp_max=rep.get("temp_max") or rep.get("temperature") or None,
                 rainfall=rep.get("rainfall"),

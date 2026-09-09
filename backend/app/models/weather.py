@@ -11,6 +11,7 @@ class WeatherData(Base):
     WeatherID = Column("WeatherID", Integer, primary_key=True, index=True)
     Region = Column("Region", Unicode(100), nullable=False, index=True)
     RecordDate = Column("RecordDate", Date, nullable=False, index=True)
+    Temperature = Column("Temperature", Float, nullable=True)
     TempMin = Column("TempMin", Float, nullable=True)
     TempMax = Column("TempMax", Float, nullable=True)
     Humidity = Column("Humidity", Float, nullable=True)

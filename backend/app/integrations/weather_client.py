@@ -1,5 +1,5 @@
 import json
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from app.core.real_data import external_circuit_breaker
@@ -86,7 +86,9 @@ class WeatherClient:
         current = payload.get("current") or {}
         daily = payload.get("daily") or {}
         weather_code = current.get("weather_code")
-        source_updated_at = self._parse_datetime(current.get("time"))
+        source_updated_at = self._parse_datetime(
+            current.get("time"), payload.get("utc_offset_seconds")
+        )
 
         return {
             "region": region,
@@ -176,7 +178,7 @@ class WeatherClient:
         for index, forecast_time in enumerate(times):
             if len(result) >= forecast_hours:
                 break
-            forecast_at = self._parse_datetime(forecast_time)
+            forecast_at = self._parse_datetime(forecast_time, payload.get("utc_offset_seconds"))
             if forecast_at and forecast_at < start_at:
                 continue
             weather_code = self._at(hourly.get("weather_code"), index)
@@ -252,13 +254,27 @@ class WeatherClient:
         return round((float(first) + float(second)) / 2, 1)
 
     @staticmethod
-    def _parse_datetime(value: str | None) -> datetime | None:
+    def _parse_datetime(value: str | None, utc_offset_seconds: int | None = None) -> datetime | None:
+        """Mốc thời gian của nguồn, quy về đồng hồ mà datetime.now() đang dùng.
+
+        Gọi Open-Meteo với timezone=auto nên "time" là giờ ĐỊA PHƯƠNG của toạ
+        độ (Hà Nội => 23:30), trong khi container chạy UTC (16:30). Lưu thẳng
+        chuỗi đó vào SourceUpdatedAt rồi trừ cho datetime.now() sẽ ra tuổi dữ
+        liệu âm 7 tiếng. Payload có sẵn utc_offset_seconds — dùng nó để đưa cả
+        hai về cùng một đồng hồ.
+        """
         if not value:
             return None
         try:
-            return datetime.fromisoformat(value.replace("Z", "+00:00")).replace(tzinfo=None)
+            moc = datetime.fromisoformat(value.replace("Z", "+00:00"))
         except ValueError:
             return None
+
+        if moc.tzinfo is None and utc_offset_seconds is not None:
+            moc = moc.replace(tzinfo=timezone(timedelta(seconds=int(utc_offset_seconds))))
+        if moc.tzinfo is None:
+            return moc
+        return moc.astimezone().replace(tzinfo=None)
 
     @staticmethod
     def _coordinates_for_region(region: str) -> dict[str, float]:

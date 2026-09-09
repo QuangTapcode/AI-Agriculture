@@ -140,6 +140,7 @@ def _apply_lightweight_schema_upgrades() -> None:
     """Add columns introduced after the classroom SQL script for local demos."""
     column_upgrades = {
         "WeatherData": {
+            "Temperature": "FLOAT NULL",
             "Latitude": "FLOAT NULL",
             "Longitude": "FLOAT NULL",
             "WindSpeed": "FLOAT NULL",
