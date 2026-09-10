@@ -258,3 +258,45 @@ def test_crawler_du_bao_khong_ghi_de_moc_quan_trac(tmp_path):
     )
     assert row.Temperature == 23.5
     db.close()
+
+
+def test_ham_nong_du_bao_khong_ghi_de_moc_quan_trac(tmp_path):
+    """Crawler ghi quan trắc trước, hâm nóng dự báo sau — thứ tự này làm mất mốc.
+
+    crawl_weather_realtime ghi quan trắc hiện tại (có Temperature và
+    SourceUpdatedAt thật của lưới 15 phút), rồi gọi get_forecast(force_refresh)
+    để hâm nóng cache dự báo. Dự báo cũng upsert vào hàng CỦA HÔM NAY nhưng
+    không mang theo nhiệt độ, và ghi SourceUpdatedAt = mốc dự báo — xoá mất
+    mốc quan trắc vừa lưu.
+
+    Đo thật sau khi bật TZ: SourceUpdatedAt = FetchedAt = 12:20:06.090 (có
+    phần lẻ giây, tức datetime.now()), thay vì 12:15:00 của lưới Open-Meteo.
+    """
+    from datetime import date
+
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import sessionmaker
+
+    from app.models.weather import Base, WeatherData
+    from app.repositories.weather_repository import upsert_weather_cache
+
+    engine = create_engine(f"sqlite:///{tmp_path}/f.db")
+    Base.metadata.create_all(engine, tables=[WeatherData.__table__])
+    db = sessionmaker(bind=engine)()
+
+    quan_trac = datetime.now().replace(minute=15, second=0, microsecond=0)
+    upsert_weather_cache(db, region="Hà Nội", record_date=date.today(),
+                         temperature=30.5, temp_min=24.0, temp_max=33.0,
+                         source_updated_at=quan_trac, fetched_at=datetime.now())
+
+    # Hâm nóng dự báo: không có nhiệt độ đo được, mốc là giờ chạy.
+    upsert_weather_cache(db, region="Hà Nội", record_date=date.today(),
+                         temp_min=24.2, temp_max=33.5,
+                         source_updated_at=datetime.now(), fetched_at=datetime.now())
+
+    row = db.query(WeatherData).filter(WeatherData.Region == "Hà Nội").one()
+    assert row.SourceUpdatedAt == quan_trac, (
+        "Dự báo đã xoá mốc quan trắc — tuổi dữ liệu sẽ luôn báo 0 phút"
+    )
+    assert row.Temperature == 30.5
+    db.close()

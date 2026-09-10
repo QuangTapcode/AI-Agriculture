@@ -32,6 +32,35 @@ def _create_configured_engine():
 
 
 engine, active_database_url = _create_configured_engine()
+
+def che_thong_tin_dang_nhap(url: str | None) -> str:
+    """Bỏ user:password khỏi chuỗi kết nối, giữ lại host và tên database.
+
+    /db-test không yêu cầu đăng nhập mà trả về nguyên chuỗi kết nối, tức là
+    mật khẩu tài khoản sa — quyền quản trị toàn bộ SQL Server — cho bất kỳ ai
+    gọi được API.
+
+    Vẫn phải đọc được host và tên DB: dự án từng chạy hai database song song
+    (SQLEXPRESS trên máy và db:1433 trong container) với số liệu khác nhau,
+    và đây là cách nhanh nhất để biết mình đang nối vào đâu.
+    """
+    chuoi = str(url or "")
+    if "://" not in chuoi:
+        return chuoi
+    luoc_do, con_lai = chuoi.split("://", 1)
+    if "@" not in con_lai:
+        return chuoi
+    _, sau_at = con_lai.rsplit("@", 1)
+    return f"{luoc_do}://{sau_at}"
+
+def thong_tin_ket_noi() -> dict:
+    """Host và tên database đang dùng, không kèm thông tin đăng nhập."""
+    che = che_thong_tin_dang_nhap(active_database_url)
+    sau = che.split("://", 1)[1] if "://" in che else che
+    host, _, duoi = sau.partition("/")
+    ten_db = duoi.split("?", 1)[0] or None
+    return {"database_url": che, "host": host or None, "database": ten_db}
+
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 

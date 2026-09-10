@@ -207,7 +207,11 @@ class PricingService:
                 "region": selected_region,
                 "quality_grade": selected_grade,
                 "quality_multiplier": multiplier,
-                "data_age_minutes": self._age_minutes(result.get("fetched_at") or result.get("last_updated")),
+                # Aggregator đã tính tuổi từ NGÀY GIÁ. Tính lại theo fetched_at
+                # là đo lúc ta gọi API — giá của tháng trước sẽ thành "2 phút".
+                "data_age_minutes": result.get("data_age_minutes")
+                if result.get("data_age_minutes") is not None
+                else self._age_minutes(result.get("fetched_at") or result.get("last_updated")),
             }
         )
 
@@ -395,6 +399,9 @@ class PricingService:
             "last_updated": current.get("last_updated"),
             "is_mock": current.get("is_mock", False),
             "cache_status": _to_public_cache_status(current.get("cache_status", "from_db")),
+            # Mang theo tuổi thật, nếu không lớp bọc api_response sẽ tự tính
+            # theo lúc gọi API và mâu thuẫn với cache_status.
+            "data_age_minutes": current.get("data_age_minutes"),
             "confidence": current.get("confidence", 0.7),
             "message": "Giá đề xuất đã được điều chỉnh theo dữ liệu giá hiện tại và thời tiết.",
         }

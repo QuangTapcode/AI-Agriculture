@@ -58,7 +58,12 @@ def upsert_weather_cache(
         row.WeatherCode = weather_code
         row.SourceName = source_name
         row.SourceURL = source_url
-        row.SourceUpdatedAt = source_updated_at
+        # Hàng của hôm nay có thể đang giữ quan trắc thật. Luồng dự báo gọi lại
+        # cùng hàng này để hâm nóng cache nhưng không mang theo nhiệt độ, và mốc
+        # của nó là giờ chạy chứ không phải giờ đo — ghi đè sẽ khiến tuổi dữ
+        # liệu luôn báo 0 phút dù số đo đã cũ.
+        if temperature is not None or row.Temperature is None:
+            row.SourceUpdatedAt = source_updated_at
         row.FetchedAt = fetched_at
         row.IsRealtime = is_realtime
         row.IsMock = is_mock

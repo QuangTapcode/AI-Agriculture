@@ -193,7 +193,9 @@ async def db_test():
         return {
             "status": "success",
             "message": "Database connection successful",
-            "database_url": database.active_database_url,
+            # Không trả nguyên chuỗi kết nối: endpoint này không cần đăng nhập
+            # và active_database_url chứa mật khẩu tài khoản sa.
+            **database.thong_tin_ket_noi(),
             "result": result,
         }
     except SQLAlchemyError as exc:

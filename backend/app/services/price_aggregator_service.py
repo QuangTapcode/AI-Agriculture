@@ -137,7 +137,7 @@ class PriceAggregatorService:
         cached_row = self._latest_db_price(db, selected_crop, selected_region)
 
         if cached_row and not force_refresh:
-            status = cache_status_for(cached_row.FetchedAt, "official_price")
+            status = cache_status_for(self._moc_quan_sat(cached_row), "official_price")
             if status in {"fresh_cache", "stale_cache"}:
                 warning = (
                     "Dữ liệu realtime chậm, đang hiển thị cache thật gần nhất."
@@ -163,7 +163,7 @@ class PriceAggregatorService:
         # và mất 8.3 giây. TOD0 §4: cache không được chặn request.
         if not force_refresh:
             if cached_row:
-                status = cache_status_for(cached_row.FetchedAt, "official_price")
+                status = cache_status_for(self._moc_quan_sat(cached_row), "official_price")
                 return self._row_to_current_response(
                     db,
                     cached_row,
@@ -194,7 +194,7 @@ class PriceAggregatorService:
             )
 
         if cached_row:
-            status = cache_status_for(cached_row.FetchedAt, "official_price")
+            status = cache_status_for(self._moc_quan_sat(cached_row), "official_price")
             return self._row_to_current_response(
                 db,
                 cached_row,
@@ -212,6 +212,29 @@ class PriceAggregatorService:
             region=selected_region,
             refresh_result=refresh_result,
         )
+
+    @staticmethod
+    def _moc_quan_sat(row: MarketPrice):
+        """Thời điểm giá được GHI NHẬN, không phải lúc ta gọi API.
+
+        Nguồn chính thống cập nhật không đều — có lúc trễ hàng tuần. Ta gọi lại
+        mỗi 3 tiếng và lần nào cũng nhận đúng con số cũ đó; lấy FetchedAt làm
+        tuổi thì giá của tháng trước vẫn được đóng dấu "vừa cập nhật".
+
+        Đây là lỗi đã sửa cho thời tiết, lặp lại ở giá — và ở giá thì hệ quả
+        nặng hơn: nông dân quyết định bán theo mặt bằng đã cũ.
+        """
+        bay_gio = datetime.now()
+        moc = row.ObservedAt
+        # Nguồn chỉ cho NGÀY, không cho giờ — ObservedAt thực tế luôn là
+        # 00:00 của ngày đó. Ghép với nửa đêm khiến giá của CHÍNH hôm nay đã
+        # "cũ 12 tiếng" lúc trưa. Giữ đúng độ phân giải ngày: hôm nay = 0,
+        # 37 ngày trước = 37 ngày.
+        if moc is not None and (moc.hour, moc.minute, moc.second) == (0, 0, 0):
+            moc = datetime.combine(moc.date(), bay_gio.time())
+        if moc is None and row.PriceDate is not None:
+            moc = datetime.combine(row.PriceDate, bay_gio.time())
+        return moc or row.FetchedAt or row.UpdatedAt
 
     @staticmethod
     def _canh_bao_cache(status: str) -> str | None:
@@ -466,7 +489,8 @@ class PriceAggregatorService:
             "is_mock": False,
             "is_realtime": is_live,
             "cache_status": cache_status,
-            "data_age_minutes": age_minutes(fetched_at),
+            # Tuổi tính từ lúc giá được ghi nhận, không phải lúc ta gọi API.
+            "data_age_minutes": age_minutes(self._moc_quan_sat(row)),
             "refresh_result": refresh_result,
         }
         if warning:

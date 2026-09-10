@@ -122,10 +122,22 @@ class ThiTruongNongSanPriceClient:
 
         return all_records
 
+    # Nguồn cập nhật không đều — có lúc trễ hàng tuần. Hỏi cửa sổ hẹp rồi kết
+    # luận "không có giá" là sai: giá vẫn có, chỉ nằm ngoài cửa sổ. Đo ngày
+    # 10/09/2026 (dữ liệu mới nhất 04/08): 30 ngày ra 0 bản ghi, 60 ngày ra 20.
+    # Nới dần thay vì luôn kéo 90 ngày, để lần thường (nguồn cập nhật đều) vẫn
+    # nhẹ.
+    CUA_SO_NGAY = (30, 60, 90)
+
     def _fetch_page(self) -> str:
-        """Fetch latest 30 days (default window for regular refresh)."""
+        """Lấy trang giá, nới dần cửa sổ ngày cho tới khi có dữ liệu."""
         today = date.today()
-        return self._fetch_page_range(today - timedelta(days=30), today)
+        trang = ""
+        for so_ngay in self.CUA_SO_NGAY:
+            trang = self._fetch_page_range(today - timedelta(days=so_ngay), today)
+            if trang and "Không có dữ liệu" not in trang:
+                return trang
+        return trang
 
     def _fetch_page_range(self, date_from: date, date_to: date) -> str:
         """POST ASP.NET UpdatePanel for all commodities within a date range.
@@ -183,6 +195,12 @@ class ThiTruongNongSanPriceClient:
                     "ctl00$maincontent$Theo_thời_gian": "ngay",
                     "ctl00$maincontent$Xem":            "Xem",
                 }
+                # Bốn checkbox chọn cột hiển thị. Thiếu chúng, trang không hiểu
+                # là phải hiện cột nào và trả về đúng một dòng "Không có dữ
+                # liệu." — _parse_prices không thấy bảng, rơi xuống regex quét
+                # text, và đó là nơi sinh ra các bản ghi 3.839 đ/kg.
+                for chi_so in range(4):
+                    form_data[f"ctl00$maincontent$hiện_các_trường${chi_so}"] = "on"
                 post_resp = resilient_request(
                     "POST",
                     self.source_url,

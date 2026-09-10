@@ -207,12 +207,20 @@ def api_response(
     cache_status = normalize_cache_status(cache_status, default="fresh_cache")
     fetched_at = fetched_at or last_updated or datetime.now()
     updated_at = last_updated or fetched_at
+
     data_age_minutes = None
     try:
         fetched_dt = fetched_at if isinstance(fetched_at, datetime) else datetime.fromisoformat(str(fetched_at).replace("Z", "+00:00")).replace(tzinfo=None)
         data_age_minutes = max(int((datetime.now() - fetched_dt).total_seconds() // 60), 0)
     except Exception:
         data_age_minutes = None
+
+    # Service nào tự tính tuổi thì giữ nguyên. Tính ở đây là đo LÚC TA GỌI API,
+    # không phải lúc dữ liệu được ghi nhận — sinh ra phản hồi tự cãi nhau:
+    # cache_status="miss" (giá đã 37 ngày) đi kèm data_age_minutes=2.
+    if isinstance(data, dict) and isinstance(data.get("data_age_minutes"), (int, float)):
+        data_age_minutes = int(data["data_age_minutes"])
+
     fallback_used = bool(fallback_used)
     timeout = bool(timeout)
     if is_mock and _is_realtime_only():
