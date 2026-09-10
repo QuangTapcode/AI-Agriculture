@@ -819,7 +819,7 @@ def get_chat_history(
 ):
     from app.models.conversation import AIConversation
 
-    base_query = db.query(AIConversation).filter(AIConversation.UserID == current_user.UserID)
+    base_query = db.query(AIConversation).filter(AIConversation.UserID == current_user.UserID, AIConversation.deleted_at.is_(None))
     total = base_query.count()
     rows = (
         base_query

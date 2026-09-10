@@ -2,19 +2,29 @@ import json
 from datetime import date, timedelta
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import desc
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.database import get_db
+from app.api.auth import get_current_user
 from app.models.ingestion import DataIngestionLog
+from app.models.knowledge import KnowledgeDocument
+from app.models.user import User
+from app.services.knowledge_ingestion_service import configured_sources, knowledge_ingestion_service
 from app.services.market_news_service import market_news_service
 from app.tasks.alert_tasks import check_price_alerts_task
 from app.tasks.crawler_tasks import run_price_crawler as crawl_sources_task
 from app.tasks.forecast_tasks import refresh_harvest_forecasts_task
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
+
+
+def require_admin(user: User = Depends(get_current_user)) -> User:
+    if user.Role != "admin":
+        raise HTTPException(403, "Chỉ quản trị viên được quản lý kho tri thức tự động.")
+    return user
 
 
 @router.post("/ingestion/run")
@@ -154,3 +164,31 @@ async def get_crawler_status(db: Session = Depends(get_db)):
             "error": r.ErrorMessage,
         })
     return {"jobs": latest}
+
+
+@router.get("/knowledge/sources")
+def knowledge_sources(_user: User = Depends(require_admin)):
+    return {"enabled": settings.KNOWLEDGE_AGENT_ENABLED,
+            "schedule_hour": settings.KNOWLEDGE_AGENT_HOUR, "sources": configured_sources()}
+
+
+@router.get("/knowledge/documents")
+def knowledge_documents(status: str | None = None, limit: int = Query(100, ge=1, le=500),
+                        db: Session = Depends(get_db), _user: User = Depends(require_admin)):
+    query = db.query(KnowledgeDocument)
+    if status:
+        query = query.filter(KnowledgeDocument.Status == status)
+    rows = query.order_by(desc(KnowledgeDocument.FetchedAt)).limit(limit).all()
+    return {"documents": [{
+        "id": row.DocumentKey, "title": row.Title, "source_name": row.SourceName,
+        "source_url": row.CanonicalURL, "published_at": row.PublishedAt.isoformat() if row.PublishedAt else None,
+        "region": row.Region, "crop": row.Crop, "version": row.Version, "status": row.Status,
+        "quality_score": row.QualityScore,
+        "quality_report": json.loads(row.QualityReport) if row.QualityReport else None,
+        "fetched_at": row.FetchedAt.isoformat() if row.FetchedAt else None,
+    } for row in rows]}
+
+
+@router.post("/knowledge/run")
+def run_knowledge_agent(db: Session = Depends(get_db), _user: User = Depends(require_admin)):
+    return knowledge_ingestion_service.run(db, force=True)

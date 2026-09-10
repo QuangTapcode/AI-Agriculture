@@ -110,3 +110,17 @@ def test_complete_that_bai_khong_bao_la_mock():
 
     assert kq["error"], "Không đánh dấu lỗi"
     assert kq["is_mock"] is False
+
+
+def test_qwen_hides_reasoning_and_requests_direct_answer():
+    captured = {}
+    def handler(request):
+        captured.update(json.loads(request.content))
+        return httpx.Response(200, json={"message": {"content": "Internal draft</think>\nCâu trả lời [TL1]."}})
+    client = OllamaClient(model="qwen3:4b", transport=httpx.MockTransport(handler))
+    original = [{"role": "user", "content": "Câu hỏi"}]
+    result = client.complete(original)
+    assert result["answer"] == "Câu trả lời [TL1]."
+    assert captured["think"] is False
+    assert captured["messages"][-1]["content"].endswith("/no_think")
+    assert original[0]["content"] == "Câu hỏi"

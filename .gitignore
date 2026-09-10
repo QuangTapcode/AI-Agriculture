@@ -37,6 +37,7 @@ backend/.env
 frontend/.env
 .env.local
 .env.*.local
+.env.home
 
 # IDE
 .vscode/
@@ -64,6 +65,7 @@ backend/ai_models/*/saved_models/*.joblib
 *.db
 *.sqlite
 *.sqlite3
+backups/
 
 # Logs
 *.log
@@ -72,6 +74,9 @@ logs/
 # Docker
 docker-compose.override.yml
 
+# Cloudflare Wrangler local cache
+.wrangler/
+
 # Testing
 .pytest_cache/
 .coverage
@@ -79,3 +84,4 @@ htmlcov/
 
 # Crawler runtime artifacts (anh debug, raw dump, quarantine)
 backend/storage/raw_crawl/
+backend/storage/rag/

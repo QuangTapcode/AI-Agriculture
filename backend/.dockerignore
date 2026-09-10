@@ -12,3 +12,4 @@ build/
 tests/
 .env
 .env.local
+storage/rag/

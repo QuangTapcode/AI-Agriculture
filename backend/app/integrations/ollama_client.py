@@ -32,7 +32,7 @@ class OllamaClient:
                  transport: httpx.BaseTransport | None = None):
         self.base_url = (base_url or getattr(settings, "AI_BASE_URL", "")
                          or "http://localhost:11434").rstrip("/")
-        self.model = model or settings.AI_MODEL_NAME or "qwen2.5:3b-instruct-q4_K_M"
+        self.model = model or settings.AI_MODEL_NAME or "qwen3:4b-instruct"
         # transport tiêm vào để test không cần Ollama chạy thật
         self._transport = transport
 
@@ -42,6 +42,15 @@ class OllamaClient:
             timeout=settings.AI_TIMEOUT_SECONDS,
             transport=self._transport,
         )
+
+    def _visible_answer(self, content: str) -> str:
+        """Some Qwen templates still put reasoning tags in message.content."""
+        if self.model.startswith("qwen3"):
+            if "</think>" in content:
+                content = content.rsplit("</think>", 1)[-1]
+            elif "<think>" in content:
+                return ""
+        return content.strip()
 
     # Số lượt hội thoại gần nhất gửi kèm. Model 3B có context 4096 token —
     # nhồi cả trăm lượt sẽ tràn và đẩy mất chính câu hỏi hiện tại. Vài lượt
@@ -70,6 +79,8 @@ class OllamaClient:
         prompt = (
             f"Dữ liệu hệ thống:\n{context_data}\n\n" if context_data else ""
         ) + f"Câu hỏi của nông dân: {question}"
+        if self.model.startswith("qwen3"):
+            prompt += "\n/no_think"
 
         try:
             async with self._client() as c:
@@ -81,9 +92,13 @@ class OllamaClient:
                         {"role": "user", "content": prompt},
                     ],
                     "stream": False,
+                    **({"think": False} if self.model.startswith("qwen3") else {}),
+                    "options": {"num_ctx": settings.AI_CONTEXT_TOKENS, "temperature": 0.2},
                 })
                 r.raise_for_status()
-                tra_loi = (r.json().get("message") or {}).get("content", "")
+                tra_loi = self._visible_answer((r.json().get("message") or {}).get("content", ""))
+                if not tra_loi:
+                    raise ValueError("empty_ollama_answer")
         except Exception as exc:
             logger.error("[Ollama] loi khi hoi: %s", exc)
             raise RuntimeError(LOI_KHONG_KET_NOI) from exc
@@ -110,8 +125,15 @@ class OllamaClient:
             "messages": ([{"role": "system", "content": system_prompt}] if system_prompt else [])
                         + list(messages),
             "stream": False,
-            "options": {"num_predict": max_tokens},
+            **({"think": False} if self.model.startswith("qwen3") else {}),
+            "options": {"num_predict": max_tokens, "num_ctx": settings.AI_CONTEXT_TOKENS, "temperature": 0.2},
         }
+        if self.model.startswith("qwen3"):
+            payload["messages"] = [dict(message) for message in payload["messages"]]
+            for message in reversed(payload["messages"]):
+                if message["role"] == "user":
+                    message["content"] += "\n/no_think"
+                    break
         try:
             with httpx.Client(base_url=self.base_url,
                               timeout=settings.AI_TIMEOUT_SECONDS,
@@ -119,8 +141,11 @@ class OllamaClient:
                 r = c.post("/api/chat", json=payload)
                 r.raise_for_status()
                 data = r.json()
+            answer = self._visible_answer((data.get("message") or {}).get("content", ""))
+            if not answer:
+                return self._error_completion("Trợ lý chưa tạo được câu trả lời. Hãy thử lại.")
             return {
-                "answer": (data.get("message") or {}).get("content", ""),
+                "answer": answer,
                 "provider": "ollama",
                 "model": data.get("model") or self.model,
                 "token_usage": {

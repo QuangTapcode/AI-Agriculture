@@ -17,6 +17,7 @@ celery_app = Celery(
         "app.tasks.crawler_tasks",
         "app.tasks.alert_tasks",
         "app.tasks.cleanup_tasks",
+        "app.tasks.knowledge_tasks",
     ],
 )
 
@@ -69,5 +70,9 @@ celery_app.conf.beat_schedule = {
     "cleanup-uploads-weekly": {
         "task": "app.tasks.cleanup_tasks.cleanup_old_uploads",
         "schedule": crontab(day_of_week='sunday', hour=3, minute=0), # Chạy 3h sáng Chủ Nhật
-    }
+    },
+    "ingest-knowledge-nightly": {
+        "task": "app.tasks.knowledge_tasks.ingest_knowledge_sources",
+        "schedule": crontab(hour=int(os.getenv("KNOWLEDGE_AGENT_HOUR", "2")), minute=0),
+    },
 }

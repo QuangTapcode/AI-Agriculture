@@ -489,3 +489,7 @@ python -m pytest tests/test_api.py -v
 - **Gemini fallback:** Nếu Gemini trả về `None` (nội dung bị block), chat trả về chuỗi rỗng thay vì lỗi 500.
 - **Alert memory fallback:** Nếu DB không cho phép INSERT vào `AlertSubscriptions`, alert được lưu trong bộ nhớ process — sẽ mất khi restart server.
 - **YOLOv8 model:** Nếu file `ai_models/weights/best.pt` không tồn tại, quality check tự dùng mock result với `confidence=0.8`.
+
+## Trợ lý RAG
+
+Hướng dẫn nạp tài liệu, cấu hình Ollama/Chroma và sử dụng lịch sử nhiều lượt: [assistant-rag.md](docs/assistant-rag.md).

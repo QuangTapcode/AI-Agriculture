@@ -20,6 +20,7 @@ class AIConversation(Base):
     ModelName = Column("ModelName", Unicode(100), nullable=True)
     TokenUsage = Column("TokenUsage", UnicodeText, nullable=True)
     CreatedAt = Column("CreatedAt", DateTime, server_default=func.now(), nullable=False)
+    deleted_at = Column(DateTime, nullable=True, index=True)
 
     id = synonym("ConvID")
     user_id = synonym("UserID")

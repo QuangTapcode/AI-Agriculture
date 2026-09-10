@@ -20,7 +20,7 @@ from sqlalchemy import text
 from sqlalchemy.exc import OperationalError, SQLAlchemyError
 
 from app.api import (
-    ai, ai_chat, alert, auth, chat, crawler, crops, dashboard,
+    ai, ai_chat, alert, assistant_library, auth, chat, crawler, crops, dashboard,
     harvest, locations, market, market_news, news, notifications, prices,
     price_forecast, pricing, quality, reports, season, weather,
 )
@@ -104,6 +104,7 @@ app.include_router(auth.router)
 app.include_router(chat.router)
 app.include_router(ai.router)
 app.include_router(ai_chat.router)
+app.include_router(assistant_library.router)
 app.include_router(crops.router)
 app.include_router(harvest.router)
 app.include_router(quality.router)

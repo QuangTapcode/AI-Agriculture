@@ -1,0 +1,109 @@
+[
+  {
+    "name": "Khuyến nông Quốc gia - Sách",
+    "url": "https://khuyennongvn.gov.vn/thu-vien-khuyen-nong/thu-vien-sach-kn",
+    "allowed_domain": "khuyennongvn.gov.vn",
+    "region": "Việt Nam",
+    "crop": "Tổng hợp",
+    "include_patterns": ["/thu-vien-khuyen-nong/thu-vien-sach-kn/"],
+    "exclude_patterns": ["/so-tay-huong-dan-dang-ky-cap-ma-so-vung-trong-ma-so-co-so-dong-goi-thong-qua-cong-dich-vu-cong-quoc-gia-32356.html"],
+    "max_documents": 2
+  },
+  {
+    "name": "Khuyến nông Quốc gia - Trồng trọt",
+    "url": "https://khuyennongvn.gov.vn/ky-thuat-trong-trot",
+    "allowed_domain": "khuyennongvn.gov.vn",
+    "region": "Việt Nam",
+    "crop": "Trồng trọt",
+    "include_patterns": ["/ky-thuat-trong-trot/", "/khoa-hoc-cong-nghe/khcn-trong-nuoc/"],
+    "link_text_patterns": ["cây", "lúa", "rau", "trồng", "vườn", "giống"],
+    "max_documents": 2
+  },
+  {
+    "name": "Khuyến nông Quốc gia - Chăn nuôi",
+    "url": "https://khuyennongvn.gov.vn/ky-thuat-chan-nuoi",
+    "allowed_domain": "khuyennongvn.gov.vn",
+    "region": "Việt Nam",
+    "crop": "Chăn nuôi",
+    "include_patterns": ["/ky-thuat-chan-nuoi/", "/khoa-hoc-cong-nghe/khcn-trong-nuoc/"],
+    "link_text_patterns": ["chăn nuôi", "vật nuôi", "gia súc", "gia cầm", "gà", "lợn", "vịt", "bò", "trâu", "dê", "vắc-xin"],
+    "max_documents": 2
+  },
+  {
+    "name": "Khuyến nông Quốc gia - Thủy sản",
+    "url": "https://khuyennongvn.gov.vn/ky-thuat-thuy-san",
+    "allowed_domain": "khuyennongvn.gov.vn",
+    "region": "Việt Nam",
+    "crop": "Thủy sản",
+    "include_patterns": ["/ky-thuat-thuy-san/", "/khoa-hoc-cong-nghe/khcn-trong-nuoc/"],
+    "link_text_patterns": ["thủy sản", "thuỷ sản", "cá", "tôm", "nuôi trồng", "rươi"],
+    "max_documents": 2
+  },
+  {
+    "name": "VAAS - Sách kỹ thuật",
+    "url": "https://vaas.vn/vi/library/sach",
+    "allowed_domain": "vaas.vn",
+    "region": "Việt Nam",
+    "crop": "Trồng trọt",
+    "include_patterns": ["/vi/library/sach/"],
+    "exclude_regexes": ["-0$"],
+    "max_documents": 2
+  },
+  {
+    "name": "VAAS - Ấn phẩm nông nghiệp",
+    "url": "https://vaas.vn/vi/library/an-pham",
+    "allowed_domain": "vaas.vn",
+    "region": "Việt Nam",
+    "crop": "Nông nghiệp",
+    "include_patterns": ["/vi/library/an-pham/"],
+    "max_documents": 2
+  },
+  {
+    "name": "Viện KHKT Nông nghiệp miền Nam - Quy trình",
+    "url": "https://iasvn.org/quy-trinh-ky-thuat/",
+    "allowed_domain": "iasvn.org",
+    "region": "Miền Nam",
+    "crop": "Trồng trọt",
+    "include_patterns": ["/quy-trinh-", "/chuyen-muc/quy-trinh"],
+    "max_documents": 2
+  },
+  {
+    "name": "Viện Khoa học Lâm nghiệp - Tiến bộ kỹ thuật",
+    "url": "https://vafs.gov.vn/vn/tien-bo-ky-thuat-linh-vuc-lam-sinh/",
+    "allowed_domain": "vafs.gov.vn",
+    "region": "Việt Nam",
+    "crop": "Lâm nghiệp",
+    "include_start_page": true,
+    "max_documents": 1
+  },
+  {
+    "name": "Cục Thủy sản - Nuôi trồng",
+    "url": "https://tongcucthuysan.gov.vn/nu%C3%B4i-tr%E1%BB%93ng-th%E1%BB%A7y-s%E1%BA%A3n",
+    "allowed_domain": "tongcucthuysan.gov.vn",
+    "region": "Việt Nam",
+    "crop": "Thủy sản",
+    "include_patterns": ["/doc-tin/"],
+    "max_documents": 2
+  },
+  {
+    "name": "Cục Trồng trọt và BVTV - Quy trình kỹ thuật",
+    "url": "https://sansangxuatkhau.ppd.gov.vn/quy-trinh-ky-thuat",
+    "allowed_domain": "sansangxuatkhau.ppd.gov.vn",
+    "region": "Việt Nam",
+    "crop": "Bảo vệ thực vật",
+    "exclude_patterns": [
+      "quy_trinh_ipm_na_712025pdf.pdf",
+      "210120_qd2796_cong_nhan_tbkt_qt_sx_pb_huu_co__lcapspdf.pdf"
+    ],
+    "max_documents": 2
+  },
+  {
+    "name": "Tạp chí Khoa học Lâm nghiệp",
+    "url": "https://vjfs.vafs.gov.vn/js/index",
+    "allowed_domain": "vafs.gov.vn",
+    "region": "Việt Nam",
+    "crop": "Lâm nghiệp",
+    "include_regexes": ["/js/article/view/[0-9]+$"],
+    "max_documents": 2
+  }
+]

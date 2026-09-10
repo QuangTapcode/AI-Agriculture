@@ -1,9 +1,11 @@
 import api, { getApiErrorMessage, withApiTimeout } from './api';
-import { normalizeApiError, unwrapApiResponse } from '../utils/apiResponse';
+import { normalizeApiError } from '../utils/apiResponse';
 
 const request = async (factory, fallback) => {
   try {
-    return unwrapApiResponse(await factory());
+    const response = await factory();
+    const body = response.data;
+    return body?.success === true ? body.data : body;
   } catch (error) {
     throw normalizeApiError({ ...error, message: getApiErrorMessage(error, fallback) });
   }
@@ -32,6 +34,24 @@ export const aiApi = {
   deleteMessage: async (convId) => {
     return request(() => api.delete(`/api/ai-chat/history/${convId}`), 'Không xóa được tin chat');
   },
+
+  getConversations: (q = '', offset = 0) => request(
+    () => api.get('/api/ai-chat/conversations', { params: { q, offset, limit: 20 } }), 'Không tải được lịch sử chat'),
+  getConversation: (id, offset = 0) => request(
+    () => api.get(`/api/ai-chat/conversations/${encodeURIComponent(id)}`, { params: { offset, limit: 100 } }), 'Không mở được hội thoại'),
+  deleteConversation: (id) => request(
+    () => api.delete(`/api/ai-chat/conversations/${encodeURIComponent(id)}`), 'Không xóa được hội thoại'),
+  getDocuments: () => request(() => api.get('/api/ai-chat/documents'), 'Không tải được kho tài liệu'),
+  getKnowledgeStatus: () => request(
+    () => api.get('/api/ai-chat/knowledge-status'), 'Không tải được trạng thái kho tri thức'),
+  uploadDocument: (file) => {
+    const form = new FormData();
+    form.append('file', file);
+    return request(() => api.post('/api/ai-chat/documents', form, {
+      timeout: 600000, headers: { 'Content-Type': 'multipart/form-data' },
+    }), 'Không nạp được tài liệu');
+  },
+  deleteDocument: (id) => request(() => api.delete(`/api/ai-chat/documents/${id}`), 'Không xóa được tài liệu'),
 
   clearHistory: async () => {
     return request(() => api.delete('/api/ai-chat/history'), 'Không xóa được lịch sử chat');

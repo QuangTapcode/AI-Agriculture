@@ -18,7 +18,7 @@ def test_health_check():
 
 
 def test_person_1_api_contract_is_registered():
-    paths = {route.path for route in app.routes}
+    paths = set(app.openapi()["paths"])
     expected_paths = {
         "/db-test",
         "/api/crops",

@@ -1,12 +1,15 @@
 services:
   db:
     image: mcr.microsoft.com/mssql/server:2022-latest
+    restart: unless-stopped
     environment:
       ACCEPT_EULA: "Y"
       MSSQL_SA_PASSWORD: "YourStrongPassword123!"
       MSSQL_PID: "Express"
     ports:
-      - "1433:1433"
+      - "127.0.0.1:1433:1433"
+    volumes:
+      - mssql_data:/var/opt/mssql
     healthcheck:
       test: ["CMD-SHELL", "timeout 1 bash -c '</dev/tcp/localhost/1433'"]
       interval: 10s
@@ -15,8 +18,9 @@ services:
 
   redis:
     image: redis:7-alpine
+    restart: unless-stopped
     ports:
-      - "6379:6379"
+      - "127.0.0.1:6379:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
@@ -25,8 +29,11 @@ services:
 
   backend:
     build: ./backend
+    restart: unless-stopped
     env_file:
       - .env.example
+      - path: .env.local
+        required: false
     environment:
       # Container mac dinh chay UTC, nguoi dung o UTC+7. So lieu van dung nhung
       # moi moc thoi gian hien thi lech 7 tieng — de bi doc nham thanh du lieu cu.
@@ -37,12 +44,15 @@ services:
       # chinh container nen phai dung host.docker.internal de goi nguoc ra.
       AI_PROVIDER: "ollama"
       AI_BASE_URL: "http://host.docker.internal:11434"
-      AI_MODEL_NAME: "qwen2.5:3b-instruct-q4_K_M"
+      AI_MODEL_NAME: "${AI_MODEL_NAME:-qwen3:4b-instruct}"
+      RAG_STORAGE_PATH: "/app/storage/rag"
+    volumes:
+      - rag_data:/app/storage/rag
     extra_hosts:
       # Docker Desktop (Windows/Mac) co san; dong nay de Linux cung chay duoc
       - "host.docker.internal:host-gateway"
     ports:
-      - "8000:8000"
+      - "127.0.0.1:8000:8000"
     depends_on:
       db:
         condition: service_healthy
@@ -56,20 +66,24 @@ services:
 
   frontend:
     build: ./frontend
+    restart: unless-stopped
     env_file:
       - .env.example
     environment:
       VITE_API_URL: "http://localhost:8000"
     ports:
-      - "5173:5173"
+      - "127.0.0.1:5173:5173"
     depends_on:
       backend:
         condition: service_healthy
 
   worker:
     build: ./backend
+    restart: unless-stopped
     env_file:
       - .env.example
+      - path: .env.local
+        required: false
     environment:
       # Container mac dinh chay UTC, nguoi dung o UTC+7. So lieu van dung nhung
       # moi moc thoi gian hien thi lech 7 tieng — de bi doc nham thanh du lieu cu.
@@ -80,7 +94,10 @@ services:
       # chinh container nen phai dung host.docker.internal de goi nguoc ra.
       AI_PROVIDER: "ollama"
       AI_BASE_URL: "http://host.docker.internal:11434"
-      AI_MODEL_NAME: "qwen2.5:3b-instruct-q4_K_M"
+      AI_MODEL_NAME: "${AI_MODEL_NAME:-qwen3:4b-instruct}"
+      RAG_STORAGE_PATH: "/app/storage/rag"
+    volumes:
+      - rag_data:/app/storage/rag
     extra_hosts:
       - "host.docker.internal:host-gateway"
     # --beat: chay lich ngay trong worker. Du an chi co mot worker nen khong
@@ -93,3 +110,7 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+
+volumes:
+  mssql_data:
+  rag_data:

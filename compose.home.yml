@@ -1,0 +1,128 @@
+services:
+  db:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    restart: unless-stopped
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: "${MSSQL_SA_PASSWORD:?Đặt MSSQL_SA_PASSWORD trong .env.home}"
+      MSSQL_PID: "Express"
+    volumes:
+      - mssql_data:/var/opt/mssql
+    healthcheck:
+      test: ["CMD-SHELL", "timeout 1 bash -c '</dev/tcp/localhost/1433'"]
+      interval: 10s
+      timeout: 3s
+      retries: 12
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    env_file:
+      - path: .env.example
+      - path: .env.home
+        required: false
+    environment:
+      TZ: "Asia/Ho_Chi_Minh"
+      DATABASE_URL: "${DATABASE_URL:?Đặt DATABASE_URL trong .env.home}"
+      REDIS_URL: "redis://redis:6379/0"
+      ENVIRONMENT: "production"
+      SECRET_KEY: "${SECRET_KEY:?Đặt SECRET_KEY trong .env.home}"
+      AI_PROVIDER: "ollama"
+      AI_BASE_URL: "http://host.docker.internal:11434"
+      AI_MODEL_NAME: "${AI_MODEL_NAME:-qwen3:4b-instruct}"
+      RAG_STORAGE_PATH: "/app/storage/rag"
+      BACKEND_CORS_ORIGINS: '["https://agriai.vn","https://app.agriai.vn"]'
+      ALLOW_MOCK_DATA: "false"
+      ALLOW_SAMPLE_DATA: "false"
+      USE_REALTIME_ONLY: "true"
+    volumes:
+      - rag_data:/app/storage/rag
+      - upload_data:/app/storage/uploads
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=2)"]
+      interval: 15s
+      timeout: 5s
+      retries: 8
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.production
+      args:
+        VITE_API_URL: "/"
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8080:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1/"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  worker:
+    build: ./backend
+    restart: unless-stopped
+    env_file:
+      - path: .env.example
+      - path: .env.home
+        required: false
+    environment:
+      TZ: "Asia/Ho_Chi_Minh"
+      DATABASE_URL: "${DATABASE_URL:?Đặt DATABASE_URL trong .env.home}"
+      REDIS_URL: "redis://redis:6379/0"
+      ENVIRONMENT: "production"
+      SECRET_KEY: "${SECRET_KEY:?Đặt SECRET_KEY trong .env.home}"
+      AI_PROVIDER: "ollama"
+      AI_BASE_URL: "http://host.docker.internal:11434"
+      AI_MODEL_NAME: "${AI_MODEL_NAME:-qwen3:4b-instruct}"
+      RAG_STORAGE_PATH: "/app/storage/rag"
+      ALLOW_MOCK_DATA: "false"
+      ALLOW_SAMPLE_DATA: "false"
+      USE_REALTIME_ONLY: "true"
+    volumes:
+      - rag_data:/app/storage/rag
+      - upload_data:/app/storage/uploads
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    command: ["celery", "-A", "app.tasks.celery_app.celery_app", "worker",
+              "--beat", "--schedule=/tmp/celerybeat-schedule", "--loglevel=INFO"]
+    depends_on:
+      backend:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  tunnel:
+    image: cloudflare/cloudflared:latest
+    restart: unless-stopped
+    command: ["tunnel", "--no-autoupdate", "run", "--token", "${CLOUDFLARE_TUNNEL_TOKEN:?Đặt CLOUDFLARE_TUNNEL_TOKEN trong .env.home}"]
+    depends_on:
+      frontend:
+        condition: service_healthy
+
+volumes:
+  mssql_data:
+  redis_data:
+  rag_data:
+  upload_data:

@@ -33,6 +33,7 @@ def _create_configured_engine():
 
 engine, active_database_url = _create_configured_engine()
 
+
 def che_thong_tin_dang_nhap(url: str | None) -> str:
     """Bỏ user:password khỏi chuỗi kết nối, giữ lại host và tên database.
 
@@ -53,6 +54,7 @@ def che_thong_tin_dang_nhap(url: str | None) -> str:
     _, sau_at = con_lai.rsplit("@", 1)
     return f"{luoc_do}://{sau_at}"
 
+
 def thong_tin_ket_noi() -> dict:
     """Host và tên database đang dùng, không kèm thông tin đăng nhập."""
     che = che_thong_tin_dang_nhap(active_database_url)
@@ -60,7 +62,6 @@ def thong_tin_ket_noi() -> dict:
     host, _, duoi = sau.partition("/")
     ten_db = duoi.split("?", 1)[0] or None
     return {"database_url": che, "host": host or None, "database": ten_db}
-
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
@@ -192,6 +193,7 @@ def _apply_lightweight_schema_upgrades() -> None:
             "IsMock": "BOOLEAN NULL DEFAULT 0" if _is_sqlite() else "BIT NULL DEFAULT 0",
         },
         "AIConversations": {
+            "deleted_at": "DATETIME NULL",
             "ContextSnapshot": "TEXT NULL" if _is_sqlite() else "NVARCHAR(MAX) NULL",
             "Provider": "VARCHAR(50) NULL",
             "ModelName": "VARCHAR(100) NULL",
@@ -490,8 +492,9 @@ def init_db():
         _apply_lightweight_schema_upgrades()
         _apply_price_indexes()
         _copy_legacy_sqlite_users(legacy_users_table)
-        seed_demo_users(SessionLocal)
-        seed_demo_seasons(SessionLocal)
+        if settings.ALLOW_SAMPLE_DATA:
+            seed_demo_users(SessionLocal)
+            seed_demo_seasons(SessionLocal)
         seed_market_channels(SessionLocal)
     except SQLAlchemyError:
         if settings.ENVIRONMENT.lower() == "production" or active_database_url.startswith("sqlite"):
@@ -502,6 +505,7 @@ def init_db():
         _apply_lightweight_schema_upgrades()
         _apply_price_indexes()
         _copy_legacy_sqlite_users(legacy_users_table)
-        seed_demo_users(SessionLocal)
-        seed_demo_seasons(SessionLocal)
+        if settings.ALLOW_SAMPLE_DATA:
+            seed_demo_users(SessionLocal)
+            seed_demo_seasons(SessionLocal)
         seed_market_channels(SessionLocal)
