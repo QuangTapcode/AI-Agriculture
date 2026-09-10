@@ -294,9 +294,19 @@ class ThiTruongNongSanPriceClient:
         text = self._clean_html(soup.get_text(" ", strip=True))
         candidates: list[dict] = []
 
+        # Tên mặt hàng phải bắt đầu bằng CHỮ và không chứa chữ số.
+        #
+        # Bản cũ cho phép [A-Za-zÀ-ỹ0-9...] nên hai hỏng cùng lúc trên trang thật:
+        #   * Bộ đếm lượt truy cập "75373839" khớp thành product="7537",
+        #     price=3839 — một con số trần thành giá nông sản.
+        #   * "Cà phê nhân xô 96.400" bị nhóm product ăn mất chữ số 9, còn
+        #     "6.400" — sai một bậc độ lớn.
+        TEN = r"(?P<product>[A-Za-zÀ-ỹ][A-Za-zÀ-ỹ\s\-]{2,79})"
+        GIA = r"(?P<price>\d{1,3}(?:[.,]\d{3})+|\d{4,7})"
+        DON_VI = r"\s*(?:vnđ|vnd|đ|d)?(?:/kg|kg|k?g)?"
         patterns = [
-            r"(?P<product>[A-Za-zÀ-ỹ0-9\s\-]{3,80})(?P<region>\s+[A-Za-zÀ-ỹ0-9\s\-]{2,50})?(?:\:|\-|\–|\—)?\s*(?P<price>\d{1,3}(?:[.,]\d{3})+|\d{4,7})\s*(?:vnđ|vnd|đ|d)?(?:/kg|kg|k?g)?",
-            r"(?P<price>\d{1,3}(?:[.,]\d{3})+|\d{4,7})\s*(?:vnđ|vnd|đ|d)?(?:/kg|kg|k?g)?\s*(?P<product>[A-Za-zÀ-ỹ0-9\s\-]{3,80})",
+            TEN + r"(?P<region>\s+[A-Za-zÀ-ỹ][A-Za-zÀ-ỹ\s\-]{1,49})?(?:\:|\-|\–|\—)?\s*" + GIA + DON_VI,
+            GIA + DON_VI + r"\s*" + TEN,
         ]
         for pattern in patterns:
             for match in re.finditer(pattern, text, flags=re.IGNORECASE):
@@ -314,7 +324,12 @@ class ThiTruongNongSanPriceClient:
                     fetched_at=fetched_at,
                     metadata={"matched_text": match.group(0)[:240]},
                 )
-                if normalized_crop and not self._crop_matches(normalized_crop, record["crop_name"], record.get("metadata", {})):
+                # _infer_crop_name trả về CHÍNH cây đang được hỏi, bất kể trang
+                # viết gì — nên đối chiếu với nó luôn khớp và không lọc được gì.
+                # Phải soi vào tên mặt hàng thật lấy từ trang.
+                if normalized_crop and not self._crop_matches(
+                    normalized_crop, product, {"official_product_name": product}
+                ):
                     continue
                 if normalized_region and not self._region_matches(normalized_region, record["region"]):
                     continue

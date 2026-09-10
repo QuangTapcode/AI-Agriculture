@@ -113,6 +113,37 @@ class HarvestService:
         except ImportError:
             return None
 
+    def _thoi_tiet_cho_du_bao(self, db: Session, region: str) -> dict | None:
+        """Thời tiết trung bình 7 ngày tới, để predictor điều chỉnh ngày thu hoạch.
+
+        Một ngày nắng 39°C không nói lên điều gì; lấy trung bình cả tuần mới
+        phản ánh được xu hướng. Không có dữ liệu thì trả None để predictor hạ
+        độ tin cậy thay vì đoán bừa.
+        """
+        if db is None:
+            return None
+        try:
+            from app.services.weather_service import weather_service
+
+            du_bao = weather_service.get_weather_forecast(db, region, 7, chi_doc_cache=True)
+        except Exception:
+            return None
+
+        ngay = [d for d in (du_bao or []) if isinstance(d, dict)]
+        if not ngay:
+            return None
+
+        def tb(khoa, mac_dinh=None):
+            gia_tri = [float(d[khoa]) for d in ngay if d.get(khoa) is not None]
+            return round(sum(gia_tri) / len(gia_tri), 1) if gia_tri else mac_dinh
+
+        return {
+            "temperature": tb("temp_max"),
+            "rainfall": tb("rainfall"),
+            "humidity": tb("humidity"),
+            "so_ngay": len(ngay),
+        }
+
     def forecast_harvest(
         self,
         db: Session,
@@ -124,7 +155,11 @@ class HarvestService:
         planting_date = request.planting_date
 
         growth_duration = self._resolve_growth_days(db, crop_name)
-        weather_for_predictor = None
+        # Trước đây dòng này gán cứng None và không bao giờ được gán lại, nên
+        # toàn bộ phần điều chỉnh theo thời tiết trong HarvestPredictor là code
+        # chết và kết quả chỉ còn là ngày trồng + số ngày tra bảng.
+        weather_for_predictor = self._thoi_tiet_cho_du_bao(db, region)
+        so_ngay_thoi_tiet = (weather_for_predictor or {}).get("so_ngay", 0)
 
         predictor = self._get_predictor()
         if predictor:
@@ -194,6 +229,9 @@ class HarvestService:
             "crop_name": crop_name,
             "crop": crop_name,
             "region": region,
+            # Nói rõ dự báo dựa trên bao nhiêu ngày thời tiết thật; 0 nghĩa là
+            # chỉ tra bảng sinh trưởng, không có điều chỉnh nào.
+            "weather_days_used": so_ngay_thoi_tiet,
             "planting_date": planting_date,
             "expected_harvest_date": expected_date,
             "earliest_harvest_date": earliest_date,

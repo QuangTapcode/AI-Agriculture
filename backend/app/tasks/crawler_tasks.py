@@ -1486,6 +1486,7 @@ async def auto_crawl_loop():
 from app.integrations.weather_client import WeatherClient  # noqa: E402
 from app.tasks.celery_app import celery_app  # noqa: E402
 from app.repositories.weather_repository import upsert_weather_cache  # noqa: E402
+from app.services.weather_service import weather_service  # noqa: E402
 
 _weather_client_realtime = WeatherClient()
 
@@ -1575,6 +1576,18 @@ def crawl_weather_realtime() -> Dict:
                 is_mock=False,
             )
             saved += 1
+
+            # Hâm nóng luôn dự báo 7 ngày và dự báo giờ. Đường đọc của Bảng điều
+            # khiển chỉ đọc cache, nên nếu crawler không ghi thì các thẻ dự báo
+            # sẽ trống mãi.
+            for ten_cache, ham in (
+                ("forecast", lambda: weather_service.get_forecast(db, ten_vung, 7, force_refresh=True)),
+                ("hourly", lambda: weather_service.get_hourly_forecast(db, ten_vung, 168, force_refresh=True)),
+            ):
+                try:
+                    ham()
+                except Exception as exc:
+                    logger.warning(f"[Weather] {ten_vung} {ten_cache}: {type(exc).__name__}")
     finally:
         db.close()
 
@@ -1592,3 +1605,78 @@ def crawl_weather_realtime_task() -> Dict:
 def run_price_crawler_task() -> Dict:
     """Cầu nối cho Beat: run_price_crawler là coroutine, Celery không await được."""
     return asyncio.run(run_price_crawler())
+
+
+@celery_app.task(name="app.tasks.crawler_tasks.refresh_market_news")
+def refresh_market_news_task() -> Dict:
+    """Hâm nóng cache tin tức + giá hàng hoá thế giới.
+
+    Đường đọc của Bảng điều khiển không còn tự cào, nên hai cache này phải có
+    người ghi vào, nếu không thẻ tin tức sẽ trống vĩnh viễn.
+    """
+    from app.core.database import SessionLocal
+    from app.services.market_news_service import market_news_service
+    from app.services.price_aggregator_service import price_aggregator_service
+
+    ket_qua = {"news": None, "global_prices": 0}
+    try:
+        ket_qua["news"] = market_news_service.refresh_news()
+    except Exception as exc:
+        logger.warning(f"[News] refresh_news: {type(exc).__name__} — {exc}")
+
+    db = SessionLocal()
+    try:
+        gia = price_aggregator_service.latest_global_references(db, limit=8, cho_phep_cao=True)
+        ket_qua["global_prices"] = len(gia)
+    except Exception as exc:
+        logger.warning(f"[News] global refs: {type(exc).__name__} — {exc}")
+    finally:
+        db.close()
+
+    logger.info(f"[News] ✓ {ket_qua}")
+    return ket_qua
+
+
+# Cây được làm mới giá chính thống theo lịch. Mỗi lượt gọi lấy TẤT CẢ vùng của
+# một cây, nên số lượt = số cây; 8 cây x 8 lượt/ngày là không đáng kể với nguồn.
+CAY_THEO_DOI_GIA = ("lua", "ca phe", "ho tieu", "ca chua", "sau rieng", "xoai", "thanh long", "chuoi")
+
+
+def refresh_official_prices() -> Dict:
+    """Làm mới giá từ thitruongnongsan.gov.vn cho các cây đang theo dõi.
+
+    run_price_crawler cào các trang bán lẻ và ghi qua _save_market_prices;
+    giá chính thống đi đường riêng là price_aggregator_service.refresh_prices().
+    Trước đây đường đó chỉ chạy khi chính request của người dùng gặp cache hết
+    hạn — bỏ nhánh cào-trong-request mà không lên lịch thì giá sẽ đứng im.
+    """
+    from app.core.database import SessionLocal
+    from app.services.price_aggregator_service import price_aggregator_service
+
+    t0 = datetime.now()
+    db = SessionLocal()
+    saved = 0
+    failed = 0
+    try:
+        for cay in CAY_THEO_DOI_GIA:
+            try:
+                kq = price_aggregator_service.refresh_prices(db, crop_name=cay)
+            except Exception as exc:
+                failed += 1
+                logger.warning(f"[Price] {cay}: {type(exc).__name__} — {exc}")
+                continue
+            n = int(kq.get("records_saved") or 0) + int(kq.get("records_updated") or 0)
+            saved += n
+            if kq.get("status") not in {"success", "empty"}:
+                failed += 1
+    finally:
+        db.close()
+
+    elapsed = round((datetime.now() - t0).total_seconds(), 2)
+    logger.info(f"[Price] ✓ saved={saved} failed={failed} cây={len(CAY_THEO_DOI_GIA)} | {elapsed}s")
+    return {"saved": saved, "failed": failed, "crops": len(CAY_THEO_DOI_GIA), "elapsed_s": elapsed}
+
+
+@celery_app.task(name="app.tasks.crawler_tasks.refresh_official_prices")
+def refresh_official_prices_task() -> Dict:
+    return refresh_official_prices()

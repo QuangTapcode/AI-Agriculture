@@ -1,5 +1,5 @@
 import logging
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 
 from sqlalchemy import desc, func
 from sqlalchemy.exc import SQLAlchemyError
@@ -11,6 +11,7 @@ from app.models.notification import Notification, NotificationDelivery
 from app.models.price import MarketPrice, PriceHistory
 from app.models.user import User
 from app.models.weather import WeatherAlert
+from app.core.real_data import cache_status_for
 from app.repositories.common import normalize_text
 from app.repositories.alert_repository import (
     create_alert,
@@ -604,6 +605,24 @@ class AlertService:
                 None,
             )
         if latest:
+            # Giá quá hạn không phải căn cứ để báo "vừa vượt ngưỡng". Nguồn
+            # chính thống cập nhật hàng ngày; STALE_TTL_MINUTES["official_price"]
+            # là 24 giờ. Bắn cảnh báo bán hàng dựa trên số đo hai tuần trước là
+            # sai lệch tốn tiền thật của nông dân.
+            # FetchedAt/ObservedAt có thể NULL với hàng cũ, nhưng PriceDate và
+            # UpdatedAt là NOT NULL — luôn có mốc để lùi về, nên chốt chặn này
+            # không bao giờ tắt câm cảnh báo chỉ vì thiếu một cột.
+            moc = (latest.FetchedAt or latest.ObservedAt or latest.UpdatedAt
+                   or latest.PriceDate)
+            if isinstance(moc, date) and not isinstance(moc, datetime):
+                moc = datetime.combine(moc, datetime.min.time())
+            tuoi = cache_status_for(moc, "official_price")
+            if tuoi == "miss":
+                logger.info(
+                    "[Alert] Bỏ qua cảnh báo %s/%s: giá gần nhất đã quá hạn (%s)",
+                    crop_name, alert.Region, latest.FetchedAt or latest.UpdatedAt,
+                )
+                return None
             return {
                 "current_price": float(latest.PricePerKg),
                 "unit": "VND/kg",

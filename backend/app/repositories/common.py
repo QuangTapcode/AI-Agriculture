@@ -104,13 +104,21 @@ def normalize_text(value: str | None) -> str:
 def ensure_crop(db: Session, crop_name: str) -> Crop:
     try:
         normalized = normalize_text(crop_name)
-        crop = db.query(Crop).filter(Crop.CropName == crop_name).first()
-        if crop:
-            return crop
         crops = db.query(Crop).order_by(Crop.CropID).all()
-        crop = next((item for item in crops if normalize_text(item.CropName) == normalized), None)
-        if crop:
-            return crop
+        ung_vien = [c for c in crops if normalize_text(c.CropName) == normalized]
+        if ung_vien:
+            # Khớp chính xác TRƯỚC là sai khi DB có hàng trùng không dấu. Thời
+            # CropTypes còn lưu VARCHAR, 'Cà phê' bị hỏng thành mojibake nên
+            # ensure_crop("ca phe") không nhận ra và tạo hàng mới (CropID 107).
+            # Sau khi sửa mã hoá, hàng rác vẫn thắng ở nhánh khớp chính xác và
+            # mọi truy vấn giá cà phê không dấu tra vào hàng rỗng.
+            #
+            # CropID nhỏ nhất là hàng gốc từ script khởi tạo — cũng là hàng
+            # đang giữ dữ liệu giá và được các bảng khác tham chiếu.
+            trung_khop = next((c for c in ung_vien if c.CropName == crop_name), None)
+            return min(ung_vien, key=lambda c: c.CropID) if len(ung_vien) > 1 else (
+                trung_khop or ung_vien[0]
+            )
         crop = Crop(
             CropName=crop_name,
             Category="Khác",

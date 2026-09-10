@@ -33,6 +33,11 @@ celery_app.conf.update(
 # xa hạn mức 10.000 lượt/ngày của gói miễn phí.
 WEATHER_CRAWL_MINUTES = int(os.getenv("WEATHER_CRAWL_MINUTES", "10"))
 
+# Bảng điều khiển chỉ đọc cache, nên nhịp cào quyết định độ tươi người dùng
+# thấy. Đặt bằng CACHE_TTL_MINUTES tương ứng: giá 180 phút, tin tức 120 phút.
+PRICE_CRAWL_MINUTES = int(os.getenv("PRICE_CRAWL_MINUTES", "180"))
+NEWS_CRAWL_MINUTES = int(os.getenv("NEWS_CRAWL_MINUTES", "120"))
+
 # Cấu hình Celery Beat (Lập lịch tự động)
 celery_app.conf.beat_schedule = {
     # Thời tiết đứng riêng, không đi ké crawler giá: cào giá hỏng thì thời
@@ -41,9 +46,21 @@ celery_app.conf.beat_schedule = {
         "task": "app.tasks.crawler_tasks.crawl_weather_realtime",
         "schedule": timedelta(minutes=WEATHER_CRAWL_MINUTES),
     },
-    "crawl-prices-daily": {
+    # Trước đây chỉ chạy 2h sáng. Cache giá hết hạn sau 3 giờ nên suốt phần
+    # còn lại của ngày mọi request đều gặp cache miss và tự đi cào.
+    "crawl-prices": {
         "task": "app.tasks.crawler_tasks.run_price_crawler",
-        "schedule": crontab(hour=2, minute=0), # Chạy 2h sáng mỗi ngày
+        "schedule": timedelta(minutes=PRICE_CRAWL_MINUTES),
+    },
+    # Giá chính thống (thitruongnongsan.gov.vn) đi đường riêng, không nằm
+    # trong run_price_crawler vốn chỉ cào các trang bán lẻ.
+    "refresh-official-prices": {
+        "task": "app.tasks.crawler_tasks.refresh_official_prices",
+        "schedule": timedelta(minutes=PRICE_CRAWL_MINUTES),
+    },
+    "crawl-market-news": {
+        "task": "app.tasks.crawler_tasks.refresh_market_news",
+        "schedule": timedelta(minutes=NEWS_CRAWL_MINUTES),
     },
     "check-price-alerts-hourly": {
         "task": "app.tasks.alert_tasks.check_active_alerts",

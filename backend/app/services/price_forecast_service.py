@@ -164,25 +164,42 @@ class PriceForecastService:
 
     @staticmethod
     def _fallback_forecast(history: List[Dict], days: int) -> Dict:
-        """Moving average đơn giản khi không có AI model."""
-        try:
-            import numpy as np
-            prices = [h["price"] for h in history]
-            base = float(np.mean(prices[-7:])) if len(prices) >= 7 else float(np.mean(prices))
-        except ImportError:
-            base = sum(h["price"] for h in history[-7:]) / min(7, len(history))
+        """Ngoại suy tuyến tính từ lịch sử thật, không thêm dao động bịa.
+
+        Bản cũ lấy trung bình 7 điểm rồi nhân với một "nhiễu"
+
+            noise = 0.01 * ((i * 7) % 5 - 2) / 5
+
+        vốn chỉ là hàm của chỉ số vòng lặp, không mang tin tức gì. Lịch sử
+        phẳng 96.000 vẫn ra [96000, 96384, 96191, 96384, ...] rồi _calc_trend
+        đọc chính đường đó và tuyên bố có xu hướng. TOD0 §1 cấm sinh dữ liệu.
+
+        Cần tối thiểu 3 điểm mới nói được xu hướng; ít hơn thì trả rỗng để
+        tầng trên báo cache miss.
+        """
+        gia = [float(h["price"]) for h in history if h.get("price") is not None]
+        SO_DIEM_TOI_THIEU = 3
+        if len(gia) < SO_DIEM_TOI_THIEU:
+            return {"forecast_data": [], "trend": "stable",
+                    "recommendation": PriceForecastService._get_recommendation("stable")}
+
+        # Độ dốc trung bình mỗi ngày trên cửa sổ gần nhất.
+        cua_so = gia[-7:] if len(gia) >= 7 else gia
+        doc = (cua_so[-1] - cua_so[0]) / max(len(cua_so) - 1, 1)
+        neo = cua_so[-1]
+
+        # Biên độ lấy từ biến động thật của lịch sử, tối thiểu 3%.
+        bien_dong = (max(cua_so) - min(cua_so)) / neo if neo else 0.0
+        bien = max(0.03, round(bien_dong, 4))
 
         forecast_data = []
-        current = base
         for i in range(1, days + 1):
-            # Simple random walk (deterministic seed cho reproducibility)
-            noise = 0.01 * ((i * 7) % 5 - 2) / 5
-            current = current * (1 + noise)
+            du_bao = max(0.0, neo + doc * i)
             forecast_data.append({
                 "date": (datetime.now() + timedelta(days=i)).strftime("%Y-%m-%d"),
-                "predicted_price": round(current),
-                "min_price": round(current * 0.92),
-                "max_price": round(current * 1.08),
+                "predicted_price": round(du_bao),
+                "min_price": round(du_bao * (1 - bien)),
+                "max_price": round(du_bao * (1 + bien)),
             })
 
         trend = PriceForecastService._calc_trend([f["predicted_price"] for f in forecast_data])

@@ -174,20 +174,65 @@ def calculate_weather_factor(
     }
     summary = _condition_vi.get(dominant, "Thời tiết bình thường")
 
-    # Giải thích tác động
+    # Giải thích tác động.
+    #
+    # Bản cũ chỉ nhìn DẤU của factor rồi dán nhãn cứng "Thời tiết bất lợi",
+    # sau đó nhét `summary` vào giữa ngoặc — mà `summary` mô tả ngày phổ biến
+    # nhất. Kết quả là những câu tự cãi nhau:
+    #
+    #   "Thời tiết bất lợi (thời tiết thuận lợi (30°c, mưa 19mm)) dự kiến
+    #    làm giảm nguồn cung, giá có thể tăng ~3.7%"
+    #
+    # Vừa "bất lợi" vừa "thuận lợi", lại còn "30°c" viết thường vì `.lower()`
+    # quét cả đơn vị. Nay mô tả đúng cái đang đo: bao nhiêu ngày trên tổng số
+    # là bất lợi, và điều đó đẩy giá về hướng nào.
     pct = round((factor - 1.0) * 100, 1)
-    if pct > 0:
+
+    _DIEU_KIEN_XAU = ("extreme_rain", "heavy_rain", "extreme_heat", "drought")
+    _TEN_NGAN = {
+        "extreme_rain": "mưa cực lớn",
+        "heavy_rain": "mưa lớn",
+        "rainy": "mưa vừa",
+        "extreme_heat": "nắng nóng gay gắt",
+        "drought": "khô hạn",
+    }
+    ngay_xau = bad_days
+    xau_nhat = max(
+        (c for c in _DIEU_KIEN_XAU if condition_counts.get(c)),
+        key=lambda c: condition_counts[c],
+        default=None,
+    )
+
+    # Dưới 1% là nhiễu làm tròn, không đáng dựng thành câu cảnh báo — trước
+    # đây +0.3% cũng bị gọi là "thời tiết bất lợi" dù 6/7 ngày đẹp trời.
+    if abs(pct) < 1.0:
         explanation = (
-            f"Thời tiết bất lợi ({summary.lower()}) dự kiến làm giảm nguồn cung, "
+            f"Thời tiết {n_days} ngày tới về cơ bản thuận lợi ({summary}), "
+            f"giá **ổn định**."
+        )
+    elif pct > 0:
+        # Mô tả chính điều kiện xấu, không lồng `summary` của ngày đẹp vào —
+        # đó là nguồn gốc của những câu "bất lợi (thuận lợi)".
+        ly_do = (
+            f"{ngay_xau}/{n_days} ngày tới có {_TEN_NGAN.get(xau_nhat, 'thời tiết cực đoan')}"
+            if xau_nhat
+            else f"Thời tiết {n_days} ngày tới kém thuận lợi cho thu hoạch"
+        )
+        explanation = (
+            f"{ly_do}, dự kiến làm giảm nguồn cung, "
             f"giá có thể **tăng ~{pct}%** so với mức cơ sở."
         )
-    elif pct < 0:
+    else:
+        so_ngay_kho = condition_counts.get("drought", 0)
+        ly_do = (
+            f"{so_ngay_kho}/{n_days} ngày khô hạn"
+            if so_ngay_kho
+            else f"Điều kiện {n_days} ngày tới"
+        )
         explanation = (
-            f"Điều kiện {summary.lower()} có thể làm giảm chất lượng sản phẩm, "
+            f"{ly_do} có thể làm giảm chất lượng sản phẩm, "
             f"giá dự kiến **giảm ~{abs(pct)}%** so với mức cơ sở."
         )
-    else:
-        explanation = f"Thời tiết thuận lợi, giá **ổn định** trong 7 ngày tới."
 
     return factor, summary, explanation
 

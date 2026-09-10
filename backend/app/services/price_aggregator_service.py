@@ -156,7 +156,29 @@ class PriceAggregatorService:
 
 
 
-        # Cache miss hoặc cache expired: tự động thử crawl một lần dù force_refresh=False
+        # Cào lại là việc của crawler nền, không phải của người đang xem trang.
+        # Trước đây nhánh này chạy cả khi force_refresh=False: giá trong DB cũ
+        # hơn STALE_TTL (24h) nên MỌI request đều rơi vào đây và tự đi cào —
+        # một lần mở Bảng điều khiển sinh 13 lượt HTTP ra thitruongnongsan.gov.vn
+        # và mất 8.3 giây. TOD0 §4: cache không được chặn request.
+        if not force_refresh:
+            if cached_row:
+                status = cache_status_for(cached_row.FetchedAt, "official_price")
+                return self._row_to_current_response(
+                    db,
+                    cached_row,
+                    crop_name=selected_crop,
+                    region=selected_region,
+                    cache_status=status,
+                    refresh_result=None,
+                    warning=self._canh_bao_cache(status),
+                )
+            return self._no_realtime_price_response(
+                crop_name=selected_crop,
+                region=selected_region,
+                refresh_result=None,
+            )
+
         refresh_result = self.refresh_price_for_crop_region(db, selected_crop, selected_region)
 
         db.expire_all()
@@ -173,19 +195,16 @@ class PriceAggregatorService:
 
         if cached_row:
             status = cache_status_for(cached_row.FetchedAt, "official_price")
-            warning = None
-            if status == "stale_cache":
-                warning = "Dữ liệu realtime chậm, đang hiển thị cache thật gần nhất."
-            elif status == "miss":
-                warning = "Không lấy được giá mới nhất. Đang hiển thị dữ liệu từ cơ sở dữ liệu."
             return self._row_to_current_response(
                 db,
                 cached_row,
                 crop_name=selected_crop,
                 region=selected_region,
-                cache_status=status if status != "miss" else "stale_cache",
+                # Trước đây "miss" bị hạ cấp thành "stale_cache" ngay tại đây,
+                # nên giá cũ 13 ngày vẫn được trình bày như giá dùng được.
+                cache_status=status,
                 refresh_result=refresh_result,
-                warning=warning,
+                warning=self._canh_bao_cache(status),
             )
 
         return self._no_realtime_price_response(
@@ -193,6 +212,14 @@ class PriceAggregatorService:
             region=selected_region,
             refresh_result=refresh_result,
         )
+
+    @staticmethod
+    def _canh_bao_cache(status: str) -> str | None:
+        if status == "stale_cache":
+            return "Dữ liệu realtime chậm, đang hiển thị cache thật gần nhất."
+        if status == "miss":
+            return "Giá đã quá hạn theo dõi, chưa có số liệu mới từ nguồn."
+        return None
 
     def get_global_reference_price(self, db: Session, crop_name: str) -> dict | None:
         refs = self.latest_global_references(db, limit=10)
@@ -202,11 +229,21 @@ class PriceAggregatorService:
                 return item
         return None
 
-    def latest_global_references(self, db: Session, limit: int = 8) -> list[dict]:
+    def latest_global_references(
+        self, db: Session, limit: int = 8, cho_phep_cao: bool = False
+    ) -> list[dict]:
+        """Giá hàng hoá thế giới. Mặc định chỉ đọc Redis.
+
+        Ba lượt gọi Yahoo Finance chạy ngay trong request mỗi khi Redis hết hạn
+        (TTL 1 giờ) — người mở Bảng điều khiển đúng lúc đó phải trả tiền mạng
+        thay cho crawler.
+        """
         cache_key = "global_commodity_prices:v2"
         cached = redis_client.get(cache_key)
         if cached and isinstance(cached, list):
             return cached[:limit]
+        if not cho_phep_cao:
+            return []
 
         prices = self._fetch_yahoo_commodity_prices()
         if prices:

@@ -175,7 +175,8 @@ class MarketNewsService:
         finally:
             db.close()
 
-    def get_latest(self, db, limit: int = 20, crop_name: str | None = None, region: str | None = None) -> dict:
+    def get_latest(self, db, limit: int = 20, crop_name: str | None = None,
+                   region: str | None = None, cho_phep_cao: bool = False) -> dict:
         since = self._recent_since()
         cache_key = (
             f"{self.LATEST_CACHE_PREFIX}:{limit}:{self.LATEST_WINDOW_DAYS}d"
@@ -193,7 +194,9 @@ class MarketNewsService:
         )
 
         # If realtime miss: try a live refresh once, then fall back to general news.
-        if not rows:
+        # Chỉ khi người dùng chủ động làm mới — cào RSS mất 7 giây và trước đây
+        # chạy ngay trong request mở Bảng điều khiển.
+        if not rows and cho_phep_cao:
             try:
                 self.refresh_news()
                 db.expire_all()
@@ -226,9 +229,9 @@ class MarketNewsService:
 
         newest_fetched = rows[0].FetchedAt or rows[0].CreatedAt or datetime.utcnow()
         cache_status = cache_status_for(newest_fetched, "market_news")
-        if cache_status == "miss":
-            # FetchedAt is old but news items are still within publication window — show them with a warning,
-            # and trigger a background refresh so future requests get fresh data.
+        if cache_status == "miss" and cho_phep_cao:
+            # Chú thích cũ ghi "trigger a background refresh" nhưng gọi đồng bộ,
+            # nên người dùng phải ngồi chờ hết lượt cào RSS.
             try:
                 self.refresh_news()
                 db.expire_all()
@@ -492,8 +495,10 @@ class MarketNewsService:
             return [part.strip() for part in value.strip("[]").replace('"', "").split(",") if part.strip()]
         return []
 
-    def get_market_news(self, db, crop: str | None = None, region: str | None = None, limit: int = 10) -> dict:
-        return self.get_latest(db, limit=limit, crop_name=crop, region=region)
+    def get_market_news(self, db, crop: str | None = None, region: str | None = None,
+                        limit: int = 10, cho_phep_cao: bool = False) -> dict:
+        return self.get_latest(db, limit=limit, crop_name=crop, region=region,
+                               cho_phep_cao=cho_phep_cao)
 
     def analyze_news_impact(self, news_item: dict) -> dict:
         text = f"{news_item.get('title', '')} {news_item.get('summary', '')}".lower()

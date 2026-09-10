@@ -7,7 +7,7 @@ import json
 import time
 import tempfile
 import pandas as pd
-from datetime import datetime, date
+from datetime import date, datetime, timedelta
 from unittest.mock import MagicMock, patch
 import pytest
 from fastapi.testclient import TestClient
@@ -711,9 +711,17 @@ class TestAlertEvaluate:
         alert.IsActive = True
         return alert
 
-    def _make_market_price(self, price: float):
+    def _make_market_price(self, price: float, tuoi_gio: float = 1.0):
+        # Hàng thật luôn có mốc thời gian; MagicMock trần khiến _evaluate_alert
+        # coi giá là quá hạn và không bắn. Đặt mốc thật để test đúng thứ nó
+        # định kiểm tra là ngưỡng above/below.
+        luc = datetime.now() - timedelta(hours=tuoi_gio)
         mp = MagicMock()
         mp.PricePerKg = price
+        mp.FetchedAt = luc
+        mp.ObservedAt = luc
+        mp.UpdatedAt = luc
+        mp.PriceDate = luc.date()
         return mp
 
     def test_above_condition_triggered(self):

@@ -34,6 +34,12 @@ def _schema():
     import app.models  # noqa: F401 — nạp model vào Base.metadata
 
     if not _USE_REAL_DB:
-        Base.metadata.create_all(engine, checkfirst=True)
+        # Dựng lại từ đầu mỗi phiên. File nằm cố định trong thư mục temp, mà
+        # create_all(checkfirst=True) bỏ qua nguyên bảng đã tồn tại — nên cột
+        # mới thêm vào model không bao giờ được tạo, và test đổ với lỗi kiểu
+        # "no such column: AIConversations.deleted_at" cho tới khi ai đó xoá
+        # file bằng tay.
+        Base.metadata.drop_all(engine)
+        Base.metadata.create_all(engine)
 
     yield

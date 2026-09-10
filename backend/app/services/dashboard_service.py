@@ -564,9 +564,11 @@ class DashboardService:
         growth_stage: str | None = None,
         force_refresh: bool = False,
     ) -> dict:
+        # Bảng điều khiển gộp 5 nguồn; mỗi nguồn tự đi cào là người dùng chờ 7
+        # giây. Crawler nền hâm nóng ba cache này mỗi 10 phút.
         current = weather_service.get_current_weather(db, region, force_refresh=force_refresh)
-        forecast = weather_service.get_weather_forecast(db, region, 7)
-        hourly_bundle = weather_service.get_hourly_forecast(db, region, 168)
+        forecast = weather_service.get_weather_forecast(db, region, 7, chi_doc_cache=True)
+        hourly_bundle = weather_service.get_hourly_forecast(db, region, 168, chi_doc_cache=True)
         hourly = hourly_bundle.get("forecast", []) if isinstance(hourly_bundle, dict) else hourly_bundle
         if current.get("_api_error") or not forecast:
             return {

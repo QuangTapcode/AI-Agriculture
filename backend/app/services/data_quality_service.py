@@ -229,6 +229,10 @@ def _parse_date(value) -> date | None:
     return None
 
 
+def _co_chu_so(text: str | None) -> bool:
+    return any(ky_tu.isdigit() for ky_tu in (text or ""))
+
+
 def _reject(record: dict, reason: str) -> dict:
     return {**record, "_reject_reason": reason}
 
@@ -257,6 +261,15 @@ def clean_price_records(records: list[dict]) -> tuple[list[dict], list[dict]]:
         region_raw = str(record.get("region") or "")
         if _is_text_corrupt(crop_name) or _is_text_corrupt(region_raw):
             rejected.append(_reject(record, "text_corruption"))
+            continue
+
+        # Địa danh không bao giờ chứa chữ số. Có chữ số nghĩa là regex bóc text
+        # đã nuốt nhầm — trong DB thật có 'Lắk 04-08-2026 9' với giá 6.433 vì
+        # nhóm region ăn cả ngày tháng lẫn chữ số đầu của "96.433". Giá 6.433
+        # vẫn nằm trong khoảng hợp lệ nên các chốt khác không bắt được; tên
+        # vùng mới là chỗ lộ ra cả dòng đã hỏng.
+        if _co_chu_so(region_raw):
+            rejected.append(_reject(record, f"region chứa chữ số: {region_raw!r}"))
             continue
 
         # --- crop name normalization -----------------------------------

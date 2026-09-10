@@ -357,7 +357,8 @@ class WeatherService:
 
     # NOTE: duplicate get_forecast removed: mock fallback no longer allowed
 
-    def get_hourly_forecast(self, db: Session, region: str, hours: int = 24, force_refresh: bool = False) -> dict:
+    def get_hourly_forecast(self, db: Session, region: str, hours: int = 24,
+                            force_refresh: bool = False, chi_doc_cache: bool = False) -> dict:
         """Hourly: Open-Meteo realtime → DB cache thật.
 
         Vì DB hiện tại chỉ có `WeatherData` (không có bảng hourly riêng), phần DB cache hourly
@@ -426,7 +427,24 @@ class WeatherService:
                         "data_age_minutes": age_minutes(fetched),
                     }
 
-        # 2) Cache miss hoặc force_refresh — gọi Open-Meteo trực tiếp
+        # 2) Cache miss hoặc force_refresh — gọi Open-Meteo trực tiếp.
+        # TTL hourly chỉ 30 phút nên nhánh này chạy rất thường xuyên; để nó nằm
+        # trong request nghĩa là người mở Bảng điều khiển phải chờ Open-Meteo.
+        # Crawler nền (crawl_weather_realtime) lo việc hâm nóng cache này.
+        if chi_doc_cache:
+            return {
+                "region": norm,
+                "forecast": [],
+                "source_name": OPEN_METEO_SOURCE_NAME,
+                "source_url": OPEN_METEO_FORECAST_URL,
+                "is_realtime": False,
+                "is_mock": False,
+                "cache_status": "miss",
+                "fetched_at": None,
+                "last_updated": None,
+                "data_age_minutes": None,
+            }
+
         try:
             live_items = _weather_client.get_hourly_forecast(norm, hours)
             if not live_items:
@@ -880,7 +898,8 @@ class WeatherService:
         }
 
 
-    def get_forecast(self, db: Session, region: str, days: int = 7, force_refresh: bool = False) -> list[dict]:
+    def get_forecast(self, db: Session, region: str, days: int = 7,
+                     force_refresh: bool = False, chi_doc_cache: bool = False) -> list[dict]:
         """7-day forecast: Open-Meteo realtime → DB cache → miss(no mock).
         Không dùng mock data.
         """
@@ -906,8 +925,12 @@ class WeatherService:
                 return cached
 
         # Cache đủ ngày nhưng đã hết hạn => miss thật, không gọi lại API.
-        # Cache thiếu ngày (hoặc rỗng) thì rơi xuống live fetch bên dưới.
         if not force_refresh and has_full_cache:
+            return []
+
+        # Bảng điều khiển gộp 5 nguồn nên không được phép chờ mạng; trang thời
+        # tiết riêng thì người dùng chủ động mở và chờ được.
+        if chi_doc_cache:
             return []
 
         # Live fetch
@@ -1109,8 +1132,9 @@ class WeatherService:
         return self._build_alerts(forecast, crop_name=crop_name, growth_stage=growth_stage)
 
 
-    def get_weather_forecast(self, db: Session, region: str, days: int = 7) -> list[dict]:
-        return self.get_forecast(db, region, days)
+    def get_weather_forecast(self, db: Session, region: str, days: int = 7,
+                             chi_doc_cache: bool = False) -> list[dict]:
+        return self.get_forecast(db, region, days, chi_doc_cache=chi_doc_cache)
 
     def get_weather_risk(self, db: Session, region: str, crop: str | None = None) -> dict:
         return self.analyze_agriculture_risk(db, region, crop or "crop")
