@@ -85,7 +85,7 @@ def success_response(
         "message": message,
         "fetched_at": fetched_at or updated_at or datetime.now(),
         "updated_at": updated_at or fetched_at or datetime.now(),
-        "confidence": confidence if confidence is not None else 0.0,
+        "confidence": confidence,
     }
     payload["meta"] = {
         "source": payload["source"],
@@ -269,7 +269,7 @@ def api_response(
         "last_updated": updated_at,
         "updated_at": updated_at,
         "data_age_minutes": data_age_minutes,
-        "confidence": confidence if confidence is not None else 0.0,
+        "confidence": confidence,
         "message": message,
         "meta": {
             "source": normalized_source,
@@ -287,7 +287,7 @@ def api_response(
             "fetched_at": fetched_at,
             "updated_at": updated_at,
             "data_age_minutes": data_age_minutes,
-            "confidence": confidence if confidence is not None else 0.0,
+            "confidence": confidence,
         },
     })
     return response
