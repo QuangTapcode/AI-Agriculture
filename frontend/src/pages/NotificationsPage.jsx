@@ -13,6 +13,7 @@ import {
   WifiOff,
 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { formatNumber } from '../utils/format';
 import DataSourceBadge from '../components/DataSourceBadge';
 import { EmptyState, InlineLoading, PageError } from '../components/StatusState';
 import { getApiErrorMessage } from '../services/api';
@@ -108,7 +109,14 @@ const entityTypeLabel = (type) => ({
 
 const NotificationsPage = () => {
   const [notifications, setNotifications] = useState([]);
-  const [summary, setSummary] = useState({ total: 0, unread: 0, by_type: {}, delivery_failed: 0, high_priority: 0 });
+  // Khởi tạo rỗng: trước khi gọi xong thì chưa biết con số nào, không phải là 0.
+  const [summary, setSummary] = useState({
+    total: null,
+    unread: null,
+    by_type: {},
+    delivery_failed: null,
+    high_priority: null,
+  });
   const [activeFilter, setActiveFilter] = useState('all');
   const [selectedId, setSelectedId] = useState(null);
   const [detail, setDetail] = useState(null);
@@ -125,12 +133,10 @@ const NotificationsPage = () => {
     ]);
     const data = results[0].status === 'fulfilled' ? results[0].value : summary;
     const unread = results[1].status === 'fulfilled' ? results[1].value : {};
+    // Không tự gán source/confidence: metadata phải đến từ chính phản hồi.
     setSummary({
       ...data,
       unread: unread.unread_count ?? data.unread,
-      source: 'database',
-      source_name: 'Thông báo hệ thống',
-      confidence: 0.7,
     });
   };
 
@@ -225,12 +231,13 @@ const NotificationsPage = () => {
     [notifications, selectedId]
   );
 
+  /** Số trên chip lọc: thiếu thì trả null để hiển thị em dash thay vì 0. */
   const filterCount = (filter) => {
-    if (filter.value === 'all') return summary.total || 0;
-    if (filter.value === 'unread') return summary.unread || 0;
-    if (filter.value === 'important') return summary.high_priority || 0;
-    if (filter.value === 'delivery_failed') return summary.delivery_failed || 0;
-    return summary.by_type?.[filter.value] || 0;
+    if (filter.value === 'all') return summary.total;
+    if (filter.value === 'unread') return summary.unread;
+    if (filter.value === 'important') return summary.high_priority;
+    if (filter.value === 'delivery_failed') return summary.delivery_failed;
+    return summary.by_type?.[filter.value];
   };
 
   const markAsRead = async (id) => {
@@ -309,24 +316,32 @@ const NotificationsPage = () => {
       {!loading && !error && (
         <>
           <div className="grid gap-4 md:grid-cols-4">
-            <div className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
-              <Bell className="mb-3 h-6 w-6 text-green-700" />
-              <div className="text-2xl font-bold text-gray-900">{summary.total || 0}</div>
+            <div data-testid="summary-total" className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
+              <Bell className="mb-3 h-6 w-6 text-green-700" aria-hidden="true" />
+              <div data-testid="summary-value" className="text-2xl font-bold text-gray-900">
+                {formatNumber(summary.total)}
+              </div>
               <div className="text-sm text-gray-600">tổng thông báo</div>
             </div>
-            <div className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
-              <Filter className="mb-3 h-6 w-6 text-amber-600" />
-              <div className="text-2xl font-bold text-gray-900">{summary.unread || 0}</div>
+            <div data-testid="summary-unread" className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
+              <Filter className="mb-3 h-6 w-6 text-amber-600" aria-hidden="true" />
+              <div data-testid="summary-value" className="text-2xl font-bold text-gray-900">
+                {formatNumber(summary.unread)}
+              </div>
               <div className="text-sm text-gray-600">chưa đọc</div>
             </div>
-            <div className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
-              <LineChart className="mb-3 h-6 w-6 text-blue-600" />
-              <div className="text-2xl font-bold text-gray-900">{summary.by_type?.price || 0}</div>
+            <div data-testid="summary-price" className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
+              <LineChart className="mb-3 h-6 w-6 text-blue-600" aria-hidden="true" />
+              <div data-testid="summary-value" className="text-2xl font-bold text-gray-900">
+                {formatNumber(summary.by_type?.price)}
+              </div>
               <div className="text-sm text-gray-600">cảnh báo giá</div>
             </div>
-            <div className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
-              <ShieldAlert className="mb-3 h-6 w-6 text-red-600" />
-              <div className="text-2xl font-bold text-gray-900">{summary.delivery_failed || 0}</div>
+            <div data-testid="summary-failed" className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
+              <ShieldAlert className="mb-3 h-6 w-6 text-red-600" aria-hidden="true" />
+              <div data-testid="summary-value" className="text-2xl font-bold text-gray-900">
+                {formatNumber(summary.delivery_failed)}
+              </div>
               <div className="text-sm text-gray-600">gửi lỗi</div>
             </div>
           </div>
@@ -343,7 +358,7 @@ const NotificationsPage = () => {
                     : 'border border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
                 }`}
               >
-                {filter.label} ({filterCount(filter)})
+                {filter.label} ({formatNumber(filterCount(filter))})
               </button>
             ))}
             <button

@@ -5,6 +5,7 @@ import AlertSubscribe from '../components/Alert/AlertSubscribe';
 import DataSourceBadge from '../components/DataSourceBadge';
 import { alertApi } from '../services/alertApi';
 import { getApiErrorMessage } from '../services/api';
+import { formatNumber, hasValue } from '../utils/format';
 import { translateUiText } from '../utils/vietnameseText';
 
 const tabs = [
@@ -24,7 +25,10 @@ const AlertPage = () => {
       const result = await alertApi.checkNow();
       setCheckState({
         loading: false,
-        message: `Đã quét ${result.triggered_count || 0} cảnh báo, ${result.triggered?.length || 0} lượt được kích hoạt.`,
+        // Chỉ nêu con số khi backend thực sự báo về; không mặc định "đã quét 0".
+        message: hasValue(result?.triggered_count)
+          ? `Đã quét ${formatNumber(result.triggered_count)} cảnh báo, ${formatNumber(result.triggered?.length ?? 0)} lượt được kích hoạt.`
+          : 'Đã chạy kiểm tra cảnh báo. Hệ thống chưa trả về số lượng đã quét.',
         error: '',
       });
       setRefreshKey((value) => value + 1);
@@ -58,7 +62,8 @@ const AlertPage = () => {
         <div>
           <div className="flex flex-wrap items-center gap-2">
             <p className="text-sm font-semibold uppercase tracking-wide text-green-700">Bộ cảnh báo</p>
-            <DataSourceBadge data={autoAlert || { source: 'database', source_name: 'Quy tắc cảnh báo', confidence: 0.7 }} />
+            {/* Chỉ gắn badge nguồn khi đã có phản hồi thật; không dựng metadata thay backend. */}
+            {autoAlert && <DataSourceBadge data={autoAlert} />}
           </div>
           <h1 className="mt-2 text-3xl font-bold text-gray-900">Trung tâm cảnh báo</h1>
           <p className="mt-2 max-w-3xl text-gray-600">

@@ -22,6 +22,7 @@ import {
 import { useCallback, useEffect, useRef, useState } from 'react';
 import DataSourceBadge from '../components/DataSourceBadge';
 import { getApiErrorMessage } from '../services/api';
+import { MISSING, formatConfidence, hasValue } from '../utils/format';
 import { qualityApi } from '../services/qualityApi';
 
 const REGIONS = ['Hà Nội', 'TP.HCM', 'Đà Nẵng', 'Cần Thơ', 'Hải Phòng', 'Đắk Lắk', 'Tiền Giang'];
@@ -268,7 +269,7 @@ function drawTrackDetected(ctx, w, h, info) {
 
   // Label directly above the box top edge
   const crop = name ? name.charAt(0).toUpperCase() + name.slice(1) : 'Nông sản';
-  const txt  = `${crop}   ${c.label}   ${(confidence * 100).toFixed(0)}%`;
+  const txt  = `${crop}   ${c.label}   ${formatConfidence(confidence)}`;
   ctx.font = 'bold 13px system-ui, -apple-system, sans-serif';
   const lpad = 12, lh = 28;
   const lw2  = ctx.measureText(txt).width + lpad * 2;
@@ -394,14 +395,15 @@ const VideoQualityPanel = ({ region, onResult, onError, onLoadingChange }) => {
       onResult(result, 'video');
       setLiveCount((c) => c + 1);
       if (result.quality_grade) {
-        const ti = { grade: result.quality_grade, name: result.detected_crop || '', confidence: result.confidence || 0 };
+        // Giữ nguyên null khi model không trả độ tin cậy, không hạ về 0.
+        const ti = { grade: result.quality_grade, name: result.detected_crop || '', confidence: result.confidence ?? null };
         trackRef.current = ti;
         const entry = {
           id: Date.now(),
           time: new Date().toLocaleTimeString('vi', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
           grade: result.quality_grade,
           name: result.detected_crop || 'Không xác định',
-          confidence: result.confidence || 0,
+          confidence: result.confidence ?? null,
           isProduce: result.is_produce !== false,
           result, // lưu toàn bộ kết quả để xem chi tiết
         };
@@ -526,7 +528,7 @@ const VideoQualityPanel = ({ region, onResult, onError, onLoadingChange }) => {
                 <span className="opacity-80">·</span>
                 <span>{tc.label}</span>
                 <span className="opacity-80">·</span>
-                <span>{(capturedFrame.track.confidence * 100).toFixed(0)}%</span>
+                <span>{formatConfidence(capturedFrame.track.confidence)}</span>
               </div>
             );
           })()}
@@ -649,8 +651,8 @@ const VideoQualityPanel = ({ region, onResult, onError, onLoadingChange }) => {
                   >
                     {gradeShort}
                   </span>
-                  <span className="text-xs text-gray-400 w-8 text-right shrink-0">
-                    {(a.confidence * 100).toFixed(0)}%
+                  <span className="w-8 shrink-0 text-right text-xs text-gray-400">
+                    {formatConfidence(a.confidence)}
                   </span>
                   <span className="text-xs text-gray-300 shrink-0 hidden sm:block">{a.time}</span>
                   {isSelected && (
@@ -1002,9 +1004,9 @@ const QualityPage = () => {
                         ) : (
                           <DataSourceBadge data={result} className="bg-white/90" />
                         )}
-                        {Number.isFinite(result.confidence) && (
+                        {hasValue(result.confidence) && (
                           <span className="rounded-full bg-white/20 px-3 py-1 text-xs font-semibold">
-                            Độ tin cậy {(result.confidence * 100).toFixed(0)}%
+                            Độ tin cậy {formatConfidence(result.confidence)}
                           </span>
                         )}
                       </div>
@@ -1029,11 +1031,20 @@ const QualityPage = () => {
                   <div className="mt-4 bg-white/15 rounded-xl p-3">
                     <div className="flex justify-between text-xs text-white/80 mb-1.5">
                       <span>Độ tin cậy AI</span>
-                      <span className="font-bold">{(result.confidence * 100).toFixed(1)}%</span>
+                      <span data-testid="quality-confidence" className="font-bold">
+                        {formatConfidence(result.confidence)}
+                      </span>
                     </div>
-                    <div className="w-full h-2 bg-white/20 rounded-full overflow-hidden">
-                      <div className="h-full bg-white rounded-full transition-all duration-700" style={{ width: `${(result.confidence * 100).toFixed(0)}%` }} />
-                    </div>
+                    {/* Không vẽ thanh tiến trình khi chưa có độ tin cậy: width NaN% khiến
+                        thanh hoặc biến mất hoặc đầy tràn, cả hai đều là tín hiệu sai. */}
+                    {hasValue(result.confidence) && (
+                      <div className="h-2 w-full overflow-hidden rounded-full bg-white/20">
+                        <div
+                          className="h-full rounded-full bg-white transition-all duration-700 motion-reduce:transition-none"
+                          style={{ width: `${Math.round(Number(result.confidence) * 100)}%` }}
+                        />
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
@@ -1128,7 +1139,7 @@ const QualityPage = () => {
                                   fontSize={imgNaturalDims.w > 800 ? 13 : 11}
                                   fontWeight="600"
                                 >
-                                  {det.fruit_type_vi} · {det.grade_label_vi} {(det.confidence * 100).toFixed(0)}%
+                                  {det.fruit_type_vi} · {det.grade_label_vi} {formatConfidence(det.confidence)}
                                 </text>
                               </g>
                             )}
@@ -1168,13 +1179,15 @@ const QualityPage = () => {
                               {det.fruit_type_vi} — {det.grade_label_vi}
                             </p>
                             <p className="text-xs text-gray-400">
-                              YOLO {(det.yolo_confidence * 100).toFixed(0)}%
-                              {det.efficientnet_confidence > 0 && ` · CNN ${(det.efficientnet_confidence * 100).toFixed(0)}%`}
+                              YOLO {formatConfidence(det.yolo_confidence)}
+                              {hasValue(det.efficientnet_confidence) &&
+                                Number(det.efficientnet_confidence) > 0 &&
+                                ` · CNN ${formatConfidence(det.efficientnet_confidence)}`}
                             </p>
                           </div>
                           <div className="text-right shrink-0">
                             <span className="text-sm font-bold" style={{ color }}>
-                              {(det.confidence * 100).toFixed(0)}%
+                              {formatConfidence(det.confidence)}
                             </span>
                           </div>
                         </div>

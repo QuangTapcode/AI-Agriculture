@@ -18,6 +18,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { EmptyState, InlineLoading, PageError } from '../components/StatusState';
 import { getApiErrorMessage, settledValue } from '../services/api';
 import { seasonApi } from '../services/seasonApi';
+import { formatConfidence } from '../utils/format';
 
 const statusMeta = {
   planned: { label: 'Đã lên kế hoạch', className: 'border-sky-200 bg-sky-50 text-sky-700' },
@@ -606,7 +607,7 @@ const SeasonManagementPage = () => {
                 {!forecasting && forecastInfo && (
                   <div className="mt-2 rounded-md border border-emerald-100 bg-emerald-50 px-3 py-2 text-xs leading-5 text-emerald-800">
                     <div className="font-semibold">
-                      Độ tin cậy {Math.round(Number(forecastInfo.confidence || 0) * 100)}%
+                      Độ tin cậy {formatConfidence(forecastInfo.confidence)}
                       {forecastInfo.weather_risk ? ` · Rủi ro thời tiết ${forecastInfo.weather_risk}` : ''}
                     </div>
                     {forecastInfo.warning && <div className="mt-1">{forecastInfo.warning}</div>}
