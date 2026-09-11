@@ -16,6 +16,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { InlineLoading, PageError } from '../components/StatusState';
 import { cropsApi } from '../services/cropsApi';
 import { pricingApi } from '../services/pricingApi';
+import { MISSING, formatNumber, hasValue } from '../utils/format';
 
 const DEFAULT_REGION = 'Ha Noi';
 const REGION_LABELS = {
@@ -83,7 +84,8 @@ const CropDetailPage = () => {
     datasets: [
       {
         label: 'Giá trung bình',
-        data: historyDays.map((h) => h.avg_price || 0),
+        // null tạo khoảng trống trên biểu đồ; 0 vẽ thành cú sập giá không có thật.
+        data: historyDays.map((h) => (hasValue(h.avg_price) ? Number(h.avg_price) : null)),
         borderColor: '#15803d',
         backgroundColor: 'rgba(21, 128, 61, 0.1)',
         borderWidth: 2,
@@ -108,7 +110,9 @@ const CropDetailPage = () => {
     labels: historyDays.filter((_, i) => i % 10 === 0).map((h) => h.date?.slice(5) || ''),
     datasets: [
       {
-        data: historyDays.filter((_, i) => i % 10 === 0).map((h) => h.avg_price || 0),
+        data: historyDays
+          .filter((_, i) => i % 10 === 0)
+          .map((h) => (hasValue(h.avg_price) ? Number(h.avg_price) : null)),
         backgroundColor: (ctx) => {
           const v = ctx.parsed?.y || 0;
           if (v < 15000) return 'rgba(34,197,94,0.3)';
@@ -127,26 +131,48 @@ const CropDetailPage = () => {
     scales: { x: { grid: { display: false } }, y: { display: false } },
   };
 
-  const forecastRows = forecast.slice(0, 3).map((f) => ({
-    date: new Date(f.date).getDate(),
-    price: f.predicted_price,
-    change: f.predicted_price > (forecast[0]?.predicted_price || 0) ? `+${(f.predicted_price - (forecast[0]?.predicted_price || 0)).toLocaleString()}` : `${(f.predicted_price - (forecast[0]?.predicted_price || 0)).toLocaleString()}`,
-    status: f.predicted_price >= (forecast[0]?.predicted_price || 0) ? 'up' : 'down',
-  }));
+  /*
+   * Mức thay đổi chỉ có nghĩa khi có cả giá của dòng này lẫn giá mốc đầu kỳ.
+   * Bản cũ lấy mốc `|| 0`, nên thiếu mốc thì chênh lệch bằng đúng giá dự báo.
+   */
+  const forecastBase = hasValue(forecast[0]?.predicted_price) ? Number(forecast[0].predicted_price) : null;
+  const forecastRows = forecast.slice(0, 3).map((f) => {
+    const price = hasValue(f.predicted_price) ? Number(f.predicted_price) : null;
+    const comparable = price !== null && forecastBase !== null;
+    const delta = comparable ? price - forecastBase : null;
 
-  const displayedRegions = regionComparison.length > 0
-    ? regionComparison.slice(0, 3).map((r) => ({ region: r.region, subRegion: '', price: r.price, unit: 'VNĐ/kg' }))
-    : [
-        { region: 'Hà Nội', subRegion: 'Bắc Bộ', price: crop?.typical_price_max || 0, unit: 'VNĐ/kg' },
-        { region: 'Cần Thơ', subRegion: 'Mekong', price: crop?.typical_price_min || 0, unit: 'VNĐ/kg' },
-      ];
+    return {
+      date: new Date(f.date).getDate(),
+      price,
+      change: comparable ? `${delta > 0 ? '+' : ''}${delta.toLocaleString('vi-VN')}` : MISSING,
+      status: comparable ? (delta >= 0 ? 'up' : 'down') : 'unknown',
+    };
+  });
+
+  /*
+   * Chỉ hiển thị vùng nào backend thực sự trả về. Bản cũ khi thiếu dữ liệu thì
+   * dựng sẵn hai dòng "Hà Nội" và "Cần Thơ", lấy typical_price_max/min của cây
+   * trồng gán vào — tức là khoảng giá tham khảo chung bị trình bày thành giá
+   * từng vùng, đủ để người bán ra quyết định sai.
+   */
+  const displayedRegions = regionComparison
+    .filter((item) => hasValue(item?.price))
+    .slice(0, 3)
+    .map((item) => ({ region: item.region, subRegion: '', price: item.price, unit: 'VNĐ/kg' }));
 
   if (loading) return <InlineLoading text="Đang tải dữ liệu cây trồng..." />;
   if (error) return <PageError message={error} onRetry={() => window.location.reload()} />;
   if (!crop) return <PageError message="Không tìm thấy cây trồng" onRetry={() => navigate(-1)} />;
 
-  const currentPrice = priceData?.current_price || crop.typical_price_min || 0;
-  const priceChange = priceData?.price_change_pct ? `${priceData.price_change_pct > 0 ? '+' : ''}${priceData.price_change_pct.toFixed(1)}%` : '+0.0%';
+  // Giá hiện tại phải là giá đo được, không phải cận dưới của khoảng tham khảo.
+  const currentPrice = hasValue(priceData?.current_price) ? Number(priceData.current_price) : null;
+  const currentPriceText = formatNumber(currentPrice);
+
+  const priceChangePct = priceData?.price_change_pct;
+  const hasPriceChange = hasValue(priceChangePct);
+  const priceChange = hasPriceChange
+    ? `${Number(priceChangePct) > 0 ? '+' : ''}${Number(priceChangePct).toFixed(1)}%`
+    : MISSING;
 
   return (
     <div className="space-y-6">
@@ -159,7 +185,7 @@ const CropDetailPage = () => {
         <div className="flex justify-between items-start mb-6">
           <div>
             <div className="inline-block bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs font-medium mb-3">
-              {crop.harvest_season || 'CẬP NHẬT HÔM NAY'}
+              {crop.harvest_season || 'CHƯA RÕ MÙA VỤ'}
             </div>
             <h1 className="text-3xl font-bold text-gray-900 mb-2">{crop.crop_name}</h1>
             <p className="text-gray-600 flex items-center space-x-2">
@@ -176,13 +202,23 @@ const CropDetailPage = () => {
 
         <div className="flex items-end justify-between">
           <div>
-            <div className="text-5xl font-bold text-gray-900 mb-2">
-              {currentPrice.toLocaleString()}
+            <div data-testid="crop-current-price" className="text-5xl font-bold text-gray-900 mb-2">
+              {currentPriceText}
               <span className="text-2xl text-gray-500 ml-2">VNĐ/kg</span>
             </div>
             <div className="flex items-center space-x-3">
-              <div className="flex items-center space-x-1 text-green-600">
-                <TrendingUp className="w-5 h-5" />
+              <div
+                data-testid="crop-price-change"
+                className={`flex items-center space-x-1 ${
+                  !hasPriceChange ? 'text-gray-500' : Number(priceChangePct) < 0 ? 'text-red-600' : 'text-green-600'
+                }`}
+              >
+                {hasPriceChange &&
+                  (Number(priceChangePct) < 0 ? (
+                    <TrendingDown className="w-5 h-5" />
+                  ) : (
+                    <TrendingUp className="w-5 h-5" />
+                  ))}
                 <span className="font-semibold">{priceChange}</span>
               </div>
               <span className="text-gray-500">so sánh hôm qua</span>
@@ -216,13 +252,24 @@ const CropDetailPage = () => {
                         <div className="text-xs text-gray-500">tháng tới</div>
                       </div>
                       <div>
-                        <div className="text-xl font-bold text-gray-900">{day.price.toLocaleString()}</div>
+                        <div className="text-xl font-bold text-gray-900">{formatNumber(day.price)}</div>
                         <div className="text-sm text-gray-500">VNĐ/kg dự báo</div>
                       </div>
                     </div>
-                    <div className={`flex items-center space-x-2 ${day.status === 'up' ? 'text-green-600' : 'text-red-600'}`}>
-                      {day.status === 'up' ? <TrendingUp className="w-5 h-5" /> : <TrendingDown className="w-5 h-5" />}
-                      <span className="font-semibold">{day.change} VNĐ</span>
+                    <div
+                      className={`flex items-center space-x-2 ${
+                        day.status === 'unknown'
+                          ? 'text-gray-500'
+                          : day.status === 'up'
+                            ? 'text-green-600'
+                            : 'text-red-600'
+                      }`}
+                    >
+                      {day.status === 'up' && <TrendingUp className="w-5 h-5" />}
+                      {day.status === 'down' && <TrendingDown className="w-5 h-5" />}
+                      <span className="font-semibold">
+                        {day.status === 'unknown' ? day.change : `${day.change} VNĐ`}
+                      </span>
                     </div>
                   </div>
                 ))}
@@ -261,7 +308,12 @@ const CropDetailPage = () => {
           {/* Regional Comparison */}
           <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
             <h2 className="text-xl font-bold text-gray-900 mb-6">So Sánh Vùng Miền</h2>
-            <div className="space-y-3">
+            <div data-testid="region-comparison" className="space-y-3">
+              {!displayedRegions.length && (
+                <p className="rounded-xl border border-dashed border-gray-200 px-4 py-6 text-center text-sm text-gray-500">
+                  Chưa có dữ liệu so sánh theo vùng cho cây trồng này.
+                </p>
+              )}
               {displayedRegions.map((region, index) => (
                 <div key={index} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
                   <div className="flex items-center space-x-3">
@@ -272,7 +324,7 @@ const CropDetailPage = () => {
                     </div>
                   </div>
                   <div className="text-right">
-                    <div className="font-bold text-gray-900">{region.price.toLocaleString()}</div>
+                    <div className="font-bold text-gray-900">{formatNumber(region.price)}</div>
                     <div className="text-sm text-gray-500">{region.unit}</div>
                   </div>
                 </div>
@@ -333,9 +385,7 @@ const CropDetailPage = () => {
           <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
             <h3 className="font-bold text-gray-900 mb-4">Giá Hiện Tại</h3>
             <div className="text-center py-4">
-              <div className="text-4xl font-bold text-green-700 mb-2">
-                {currentPrice.toLocaleString()}
-              </div>
+              <div className="text-4xl font-bold text-green-700 mb-2">{currentPriceText}</div>
               <div className="text-gray-600">VNĐ/kg (loại 1)</div>
               {priceData?.weather_adjusted_price && (
                 <div className="mt-3 p-3 bg-blue-50 rounded-lg text-sm text-blue-700">
