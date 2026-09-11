@@ -108,3 +108,63 @@ describe('dashboard AI confidence', () => {
     expect(row).toHaveTextContent(/Chưa có độ tin cậy/i);
   });
 });
+
+describe('dashboard risk badge', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    getDashboardFullData.mockResolvedValue(emptyButHealthyResponse);
+    getCurrentWeather.mockResolvedValue(null);
+    getSeasonSummary.mockResolvedValue(null);
+    getFeaturedCrop.mockResolvedValue(null);
+    getPriceTrend.mockResolvedValue(null);
+  });
+
+  it('never claims low risk when no risk level was returned', async () => {
+    renderDashboard();
+
+    await screen.findByTestId('metric-active-seasons');
+    expect(screen.queryByText(/Rủi ro Thấp/i)).not.toBeInTheDocument();
+    expect(screen.getAllByText(/Chưa rõ rủi ro/i).length).toBeGreaterThan(0);
+  });
+
+  it('shows the risk level the backend reported', async () => {
+    getDashboardFullData.mockResolvedValue({
+      ...emptyButHealthyResponse,
+      riskSummary: { risk_level: 'high', risk_score: 72 },
+    });
+
+    renderDashboard();
+
+    expect(await screen.findAllByText(/Rủi ro Cao/i)).not.toHaveLength(0);
+  });
+});
+
+describe('dashboard alert count', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    getCurrentWeather.mockResolvedValue(null);
+    getSeasonSummary.mockResolvedValue(null);
+    getFeaturedCrop.mockResolvedValue(null);
+    getPriceTrend.mockResolvedValue(null);
+  });
+
+  it('does not claim zero alerts when the alert centre was not returned', async () => {
+    getDashboardFullData.mockResolvedValue(emptyButHealthyResponse);
+
+    renderDashboard();
+
+    await screen.findByTestId('metric-active-seasons');
+    expect(screen.queryByText(/0 cảnh báo/i)).not.toBeInTheDocument();
+  });
+
+  it('reports a genuine empty alert list as zero', async () => {
+    getDashboardFullData.mockResolvedValue({
+      ...emptyButHealthyResponse,
+      overview: { ...emptyButHealthyResponse.overview, alert_center: [] },
+    });
+
+    renderDashboard();
+
+    expect(await screen.findByText(/0 cảnh báo/i)).toBeInTheDocument();
+  });
+});

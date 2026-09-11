@@ -107,12 +107,13 @@ test('the sidebar drawer opens and closes for touch and keyboard users', async (
   if (isDrawerLayout) {
     await expect(reportsLink).not.toBeInViewport();
     await page.getByRole('button', { name: 'Mở menu' }).click();
-    await expect(reportsLink).toBeInViewport();
+    // ratio 1: drawer phải vào hẳn khung nhìn, không chỉ ló ra giữa chừng.
+    await expect(reportsLink).toBeInViewport({ ratio: 1 });
 
     await page.keyboard.press('Escape');
     await expect(reportsLink).not.toBeInViewport();
   } else {
-    await expect(reportsLink).toBeInViewport();
+    await expect(reportsLink).toBeInViewport({ ratio: 1 });
   }
 
   await reportsLink.focus();

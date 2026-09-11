@@ -170,15 +170,16 @@ const Sidebar = ({ open, setOpen }) => {
           <div className="flex h-16 shrink-0 items-center justify-between border-b border-white/10 px-5">
             <Link
               to="/"
-              className="flex items-center gap-3 rounded-xl focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-field-lime"
+              className="flex min-w-0 items-center gap-2.5 rounded-xl focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-field-lime"
               onClick={() => setOpen(false)}
             >
-              <img src={logo} alt="" aria-hidden="true" className="h-9 w-auto" />
-              <span>
-                <span className="block font-display text-lg font-extrabold tracking-tight text-white">
+              <img src={logo} alt="" aria-hidden="true" className="h-9 w-auto shrink-0" />
+              <span className="min-w-0">
+                <span className="block font-display text-lg font-extrabold leading-tight tracking-tight text-white">
                   AgriAI
                 </span>
-                <span className="block text-[0.6875rem] uppercase tracking-[0.16em] text-[#8FA79A]">
+                {/* Tagline phải gọn trong 64px chiều cao của header, không xuống dòng. */}
+                <span className="block truncate text-[0.6875rem] leading-tight text-[#8FA79A]">
                   {t('smartAgriculture')}
                 </span>
               </span>

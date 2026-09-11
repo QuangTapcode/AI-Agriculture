@@ -144,10 +144,11 @@ const Panel = ({ children, className = '' }) => (
 );
 
 const PanelHeader = ({ icon: Icon, title, children }) => (
-  <div className="mb-4 flex items-start justify-between gap-3">
+  // Tiêu đề và nhóm điều khiển tự xuống dòng khi hẹp thay vì cắt cụt chữ.
+  <div className="mb-4 flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
     <div className="flex min-w-0 items-center gap-2">
-      {Icon && <Icon className="h-5 w-5 shrink-0 text-emerald-700" />}
-      <h2 className="truncate text-base font-semibold text-slate-950">{title}</h2>
+      {Icon && <Icon className="h-5 w-5 shrink-0 text-emerald-700" aria-hidden="true" />}
+      <h2 className="min-w-0 text-base font-semibold text-slate-950">{title}</h2>
     </div>
     {children}
   </div>
@@ -159,6 +160,10 @@ const EmptyState = ({ text = 'Chưa có dữ liệu.' }) => (
   </div>
 );
 
+/**
+ * Không có risk_level thì nói thẳng là chưa rõ. Mặc định về "Thấp" sẽ biến
+ * một lần gọi API hỏng thành lời trấn an rằng ruộng đang an toàn.
+ */
 const RiskBadge = ({ level }) => {
   const styles = {
     high: 'border-rose-200 bg-rose-50 text-rose-700',
@@ -166,9 +171,15 @@ const RiskBadge = ({ level }) => {
     low: 'border-emerald-200 bg-emerald-50 text-emerald-700',
   };
   const labels = { high: 'Cao', medium: 'Trung bình', low: 'Thấp' };
+  const known = labels[level];
+
   return (
-    <span className={`rounded-full border px-2.5 py-1 text-xs font-semibold ${styles[level] || styles.low}`}>
-      Rủi ro {labels[level] || labels.low}
+    <span
+      className={`shrink-0 whitespace-nowrap rounded-full border px-2.5 py-1 text-xs font-semibold ${
+        known ? styles[level] : 'border-slate-200 bg-slate-50 text-slate-600'
+      }`}
+    >
+      {known ? `Rủi ro ${known}` : 'Chưa rõ rủi ro'}
     </span>
   );
 };
@@ -344,7 +355,9 @@ const Dashboard = () => {
   const regionalPrices = summary?.regional_prices || [];
   const news = summary?.news || [];
   const realtimeMarket = summary?.realtime_market || {};
-  const alerts = summary?.alert_center || [];
+  // Phân biệt "backend trả danh sách rỗng" với "backend không trả trường này".
+  const alertCenter = Array.isArray(summary?.alert_center) ? summary.alert_center : null;
+  const alerts = alertCenter || [];
   const apiStatus = summary?.realtime_status?.api_status || [];
   const actionToday = summary?.action_today || {};
   const activeSeasonCount = summary?.season_summary?.active_seasons ?? summary?.active_seasons ?? null;
@@ -555,7 +568,7 @@ const Dashboard = () => {
 
         <Panel>
           <PanelHeader icon={CloudRain} title="Thời tiết hiện tại">
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               {weatherLoading && <span className="text-xs text-slate-400">đang tải...</span>}
               <select
                 value={weatherRegion}
@@ -611,8 +624,8 @@ const Dashboard = () => {
 
         <Panel>
           <PanelHeader icon={AlertTriangle} title="Trung tâm cảnh báo">
-            <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700">
-              {alerts.length} cảnh báo
+            <span className="shrink-0 whitespace-nowrap rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700">
+              {alertCenter ? `${alertCenter.length} cảnh báo` : 'Chưa có số liệu'}
             </span>
           </PanelHeader>
           <div className="space-y-3">
