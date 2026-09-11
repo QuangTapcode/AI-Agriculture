@@ -26,7 +26,17 @@ import { seasonApi } from '../services/seasonApi';
 import { weatherApi } from '../services/weatherApi';
 import { dedupeMessages } from '../utils/apiResponse';
 import { statusLabel, translateUiText } from '../utils/vietnameseText';
-import { formatNumber, formatPct, hasValue } from '../utils/format';
+import { MISSING, formatNumber, formatPct, hasValue } from '../utils/format';
+
+/** Nhãn độ tin cậy dự báo: chỉ nói "cao"/"trung bình" khi backend thực sự trả về. */
+const FORECAST_CONFIDENCE_LABELS = {
+  high: 'Tin cậy cao',
+  medium: 'Tin cậy trung bình',
+  low: 'Tin cậy thấp',
+};
+
+const forecastConfidenceLabel = (value) =>
+  FORECAST_CONFIDENCE_LABELS[String(value || '').toLowerCase()] || 'Chưa có độ tin cậy';
 
 const formatDate = (value) => {
   if (!value) return '';
@@ -337,7 +347,9 @@ const Dashboard = () => {
   const alerts = summary?.alert_center || [];
   const apiStatus = summary?.realtime_status?.api_status || [];
   const actionToday = summary?.action_today || {};
-  const activeSeasonCount = Number(summary?.season_summary?.active_seasons ?? summary?.active_seasons ?? 0);
+  const activeSeasonCount = summary?.season_summary?.active_seasons ?? summary?.active_seasons ?? null;
+  const hasSeasonCount = hasValue(activeSeasonCount);
+  const trackedSeasons = hasSeasonCount ? Number(activeSeasonCount) : null;
 
   const forecastHigh = useMemo(() => {
     if (!forecast.length) return null;
@@ -413,18 +425,26 @@ const Dashboard = () => {
       </Panel>
 
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-3">
-        <Link to="/season-management" className="block focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2">
+        <Link
+          to="/season-management"
+          data-testid="metric-active-seasons"
+          className="block rounded-[1.25rem] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600"
+        >
           <Panel className="h-full transition hover:border-emerald-300 hover:shadow-md">
             <PanelHeader icon={Sprout} title="Tình trạng mùa vụ" />
-            <div className="text-3xl font-bold text-slate-950">{formatNumber(activeSeasonCount)}</div>
+            <div data-testid="metric-value" className="text-3xl font-bold text-slate-950">
+              {formatNumber(trackedSeasons)}
+            </div>
             <p className="mt-2 text-sm text-slate-600">Mùa vụ đang theo dõi</p>
             <p className="mt-3 rounded-md bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
-              {activeSeasonCount > 0
-                ? 'Khuyến nghị: kiểm tra lịch thu hoạch và rủi ro thời tiết trước khi chốt ngày cắt.'
-                : 'Chưa có mùa vụ nào đang theo dõi'}
+              {!hasSeasonCount
+                ? 'Chưa lấy được số mùa vụ từ hệ thống.'
+                : trackedSeasons > 0
+                  ? 'Khuyến nghị: kiểm tra lịch thu hoạch và rủi ro thời tiết trước khi chốt ngày cắt.'
+                  : 'Chưa có mùa vụ nào đang theo dõi'}
             </p>
             <span className="mt-4 inline-flex items-center gap-2 rounded-md border border-emerald-700 px-4 py-2 text-sm font-semibold text-emerald-800">
-              {activeSeasonCount > 0 ? 'Quản lý' : 'Thêm mùa vụ đầu tiên'}
+              {trackedSeasons > 0 ? 'Quản lý' : 'Thêm mùa vụ đầu tiên'}
               <ArrowRight className="h-4 w-4" />
             </span>
           </Panel>
@@ -617,8 +637,10 @@ const Dashboard = () => {
             <div className="grid grid-cols-2 gap-3">
               <div className="rounded-md bg-emerald-50 p-3">
                 <div className="text-xs text-emerald-700">Độ tin cậy</div>
-                <div className="mt-1 text-xl font-bold text-emerald-800">
-                  {formatNumber(Number(summary?.ai_recommendation?.confidence || 0) * 100)}%
+                <div data-testid="ai-confidence" className="mt-1 text-xl font-bold text-emerald-800">
+                  {hasValue(summary?.ai_recommendation?.confidence)
+                    ? `${formatNumber(Number(summary.ai_recommendation.confidence) * 100)}%`
+                    : MISSING}
                 </div>
               </div>
               <div className="rounded-md bg-slate-50 p-3">
@@ -636,10 +658,14 @@ const Dashboard = () => {
           <div className="space-y-2">
             {forecast.length ? (
               forecast.slice(0, 7).map((item) => (
-                <div key={item.date} className="flex items-center justify-between rounded-md bg-slate-50 px-3 py-2">
+                <div
+                  key={item.date}
+                  data-testid={`forecast-row-${item.date}`}
+                  className="flex items-center justify-between rounded-md bg-slate-50 px-3 py-2"
+                >
                   <div>
                     <div className="text-sm font-semibold text-slate-900">{formatDate(item.date)}</div>
-                    <div className="text-xs text-slate-500">{item.confidence === 'high' ? 'Tin cậy cao' : 'Tin cậy trung bình'}</div>
+                    <div className="text-xs text-slate-500">{forecastConfidenceLabel(item.confidence)}</div>
                   </div>
                   <div className="flex items-center gap-2 text-right">
                     {trendIcon(item.trend)}

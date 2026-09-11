@@ -206,7 +206,7 @@ dashboardApi.getDashboardFullData = async (region, { cropName = 'lua' } = {}) =>
         ...actRecs.slice(0, 3).map((r) => r.reason).filter(Boolean),
       ].filter(Boolean),
       priority: summary.weather_risk?.risk_level || 'medium',
-      confidence: Math.min(parseFloat(aiRec.confidence || 0.7), 0.78),
+      confidence: aiRec.confidence ?? null,
       is_mock: !!(aiRec.is_mock || summary.weather_risk?.is_mock),
       last_updated: aiRec.last_updated,
     };
@@ -224,7 +224,7 @@ dashboardApi.getDashboardFullData = async (region, { cropName = 'lua' } = {}) =>
     riskSummary: summary?.weather_risk
       ? {
           ...summary.weather_risk,
-          confidence: 0.72,
+          confidence: summary.weather_risk.confidence ?? null,
           recommendations: summary.weather_risk.activity_recommendations || [],
         }
       : null,
