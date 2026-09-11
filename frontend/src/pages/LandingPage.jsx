@@ -1,243 +1,83 @@
-import { Link } from "react-router-dom";
-import logo from "../assets/agri-ai-logo.png";
-import AgriNavbar from "../components/AgriNavbar";
+import { ArrowDownRight, Bot, CloudSun, Database, Sprout, TrendingUp } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import AgriNavbar from '../components/AgriNavbar';
+import PublicFooter from '../components/PublicFooter';
+import Reveal from '../components/ui/Reveal';
+import TiltCard from '../components/ui/TiltCard';
 
-const coreModules = [
-  {
-    title: "Thời tiết nông nghiệp",
-    route: "/weather",
-    icon: "🌦️",
-    description: "Theo dõi thời tiết thời gian thực, lượng mưa, độ ẩm, gió và cảnh báo rủi ro theo vùng trồng.",
-    tag: "Dữ liệu thời gian thực",
-  },
-  {
-    title: "Định giá nông sản",
-    route: "/pricing",
-    icon: "📈",
-    description: "Cập nhật giá hiện tại, so sánh vùng miền, xem xu hướng và nhận gợi ý thời điểm bán.",
-    tag: "Định giá AI",
-  },
-  {
-    title: "Dự báo thu hoạch",
-    route: "/harvest",
-    icon: "🌾",
-    description: "Dự báo ngày thu hoạch, hiển thị tiến độ mùa vụ và danh sách việc cần chuẩn bị trước thu hoạch.",
-    tag: "Dự báo",
-  },
-  {
-    title: "Thị trường tiêu thụ",
-    route: "/market",
-    icon: "🛒",
-    description: "Theo dõi nhu cầu thị trường, tin tức nông sản và gợi ý kênh bán phù hợp.",
-    tag: "Dữ liệu thị trường",
-  },
-];
-
-const stats = [
-  ["5+", "phân hệ chính"],
-  ["24/7", "AI hỗ trợ"],
-  ["Dữ liệu", "thời gian thực"],
-  ["Lịch sử", "lưu trong hệ thống"],
-];
-
-const workflow = [
-  {
-    step: "01",
-    title: "Nhập dữ liệu canh tác",
-    description: "Người dùng chọn cây trồng, khu vực, ngày xuống giống, sản lượng hoặc chất lượng nông sản.",
-  },
-  {
-    step: "02",
-    title: "Kết hợp dữ liệu và AI",
-    description: "Hệ thống lấy thời tiết, giá thị trường, lịch sử mùa vụ và dùng AI để phân tích dữ liệu.",
-  },
-  {
-    step: "03",
-    title: "Đưa ra khuyến nghị rõ ràng",
-    description: "Nông dân nhận cảnh báo, dự báo, gợi ý bán hàng và hành động tiếp theo dễ hiểu.",
-  },
+const signals = [
+  { icon: CloudSun, title: 'Theo dõi điều kiện canh tác', description: 'Xem thời tiết theo khu vực, thời điểm cập nhật và cảnh báo liên quan đến cây trồng.', action: 'Mở thời tiết', to: '/weather' },
+  { icon: TrendingUp, title: 'Đối chiếu giá và thị trường', description: 'Giá, xu hướng và nguồn dữ liệu được đặt cạnh nhau để bạn biết mình đang xem gì.', action: 'Mở định giá', to: '/pricing' },
+  { icon: Bot, title: 'Hỏi trợ lý có nguồn', description: 'Trợ lý tìm bằng chứng trong kho tài liệu trước khi soạn câu trả lời.', action: 'Hỏi AgriAI', to: '/ai-chat' },
 ];
 
 export default function LandingPage() {
   return (
-    <main className="min-h-screen bg-slate-50 text-slate-900">
+    <main className="min-h-screen overflow-x-hidden bg-field-ink text-white">
       <AgriNavbar />
-
-      <section className="relative overflow-hidden bg-gradient-to-br from-slate-950 via-emerald-950 to-green-800 text-white">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.18),transparent_30%),radial-gradient(circle_at_bottom_left,rgba(132,204,22,0.24),transparent_34%)]" />
-        <div className="relative mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8 lg:py-20">
-          <div className="grid gap-12 lg:grid-cols-[1.05fr_0.95fr] lg:items-center">
-            <div>
-              <span className="inline-flex rounded-full border border-white/20 bg-white/10 px-4 py-2 text-sm font-bold text-emerald-50 backdrop-blur">
-                🌱 AgriAI - Nông nghiệp thông minh
-              </span>
-              <h1 className="mt-6 max-w-4xl text-4xl font-black tracking-tight sm:text-5xl lg:text-6xl">
-                Nền tảng AI hỗ trợ nông dân dự báo, định giá và ra quyết định tốt hơn
-              </h1>
-              <p className="mt-6 max-w-2xl text-base leading-8 text-emerald-50 sm:text-lg">
-                Trang chủ được thiết kế theo hướng hiện đại: có thanh menu, logo AgriAI, nút hành động rõ ràng, thẻ dữ liệu nhanh và điều hướng trực tiếp tới các tính năng chính.
-              </p>
-              <div className="mt-8 flex flex-wrap gap-3">
-                <Link to="/features" className="rounded-2xl bg-white px-5 py-3 font-bold text-emerald-800 shadow-lg shadow-black/10 transition hover:-translate-y-0.5 hover:bg-emerald-50">
-                  Khám phá tính năng
-                </Link>
-                <Link to="/ai-chat" className="rounded-2xl border border-white/30 px-5 py-3 font-bold text-white transition hover:bg-white/10">
-                  Hỏi AI ngay
-                </Link>
-                <Link to="/pricing-plans" className="rounded-2xl border border-white/30 px-5 py-3 font-bold text-white transition hover:bg-white/10">
-                  Xem gói dịch vụ
-                </Link>
-              </div>
-
-              <div className="mt-10 grid max-w-2xl grid-cols-2 gap-3 sm:grid-cols-4">
-                {stats.map(([number, label]) => (
-                  <div key={label} className="rounded-2xl border border-white/15 bg-white/10 p-4 text-center backdrop-blur">
-                    <p className="text-2xl font-black">{number}</p>
-                    <p className="mt-1 text-xs font-semibold text-emerald-100">{label}</p>
-                  </div>
-                ))}
-              </div>
+      <section className="relative isolate min-h-[calc(100vh-72px)] overflow-hidden">
+        <div aria-hidden="true" className="absolute inset-0 bg-[radial-gradient(circle_at_78%_18%,rgba(22,76,55,.9),transparent_34%),radial-gradient(circle_at_12%_58%,rgba(29,78,45,.48),transparent_35%)]" />
+        <div aria-hidden="true" className="absolute inset-0 opacity-[.16] [background-image:repeating-radial-gradient(ellipse_at_75%_80%,transparent_0_22px,rgba(186,255,89,.28)_23px_24px)]" />
+        <div className="relative mx-auto grid min-h-[calc(100vh-72px)] max-w-[1440px] items-center gap-12 px-4 py-16 sm:px-6 lg:grid-cols-[1.02fr_.98fr] lg:px-10 lg:py-20">
+          <div className="max-w-3xl">
+            <p className="text-sm font-semibold text-field-lime">Từ tín hiệu đến hành động</p>
+            <h1 className="mt-6 font-display text-5xl font-extrabold leading-[.94] tracking-[-.055em] sm:text-6xl lg:text-[5.75rem]">Hiểu mùa vụ.<br />Quyết định sớm.</h1>
+            <p className="mt-7 max-w-xl text-lg leading-8 text-slate-300">Theo dõi thời tiết, giá, mùa vụ và kiến thức nông nghiệp trong cùng một luồng làm việc.</p>
+            <div className="mt-9 flex flex-wrap gap-3">
+              <Link to="/login" className="field-button-primary">Bắt đầu sử dụng <ArrowDownRight className="h-4 w-4" /></Link>
+              <Link to="/features" className="field-button-secondary">Xem cách hoạt động</Link>
             </div>
-
-            <div className="rounded-[2rem] border border-white/20 bg-white/10 p-5 shadow-2xl backdrop-blur">
-              <div className="rounded-[1.5rem] bg-white p-6 text-slate-900">
-                <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
-                  <div>
-                    <p className="text-sm font-black uppercase tracking-wide text-emerald-600">Bảng điều khiển AgriAI</p>
-                    <h2 className="mt-2 text-2xl font-black">Tình hình hôm nay</h2>
-                  </div>
-                  <div className="flex h-28 w-28 items-center justify-center overflow-hidden rounded-[1.5rem] border border-emerald-100 bg-white shadow-sm">
-                    <img src={logo} alt="AgriAI" className="h-full w-full object-cover object-center" />
-                  </div>
+          </div>
+          <div className="relative mx-auto h-[510px] w-full max-w-[580px] sm:h-[590px]">
+            <div aria-hidden="true" className="absolute inset-[8%] rounded-full border border-field-lime/20 [transform:rotateX(68deg)]" />
+            <div aria-hidden="true" className="absolute inset-[20%] rounded-full border border-dashed border-white/15 [transform:rotateX(68deg)]" />
+            <TiltCard className="absolute left-1/2 top-16 w-[min(92%,430px)] -translate-x-1/2">
+              <article className="field-panel p-5 sm:p-7">
+                <div className="flex flex-wrap items-start justify-between gap-4">
+                  <div><p className="text-xs font-semibold text-slate-400">Không gian làm việc</p><h2 className="mt-1 font-display text-2xl font-bold">Tín hiệu cần xem</h2></div>
+                  <span className="max-w-[10rem] rounded-full bg-field-lime/10 px-3 py-1 text-center text-xs font-semibold leading-5 text-field-lime">Theo dữ liệu của bạn</span>
                 </div>
-
-                <div className="mt-6 space-y-3">
-                  <div className="rounded-2xl bg-emerald-50 p-4">
-                    <div className="flex items-center justify-between gap-4">
-                      <span className="font-bold text-slate-800">Thời tiết</span>
-                      <span className="rounded-full bg-emerald-600 px-3 py-1 text-xs font-black text-white">Ổn định</span>
-                    </div>
-                    <p className="mt-2 text-sm text-slate-600">Có thể tưới nhẹ vào sáng sớm, theo dõi mưa chiều.</p>
-                  </div>
-                  <div className="rounded-2xl bg-lime-50 p-4">
-                    <div className="flex items-center justify-between gap-4">
-                      <span className="font-bold text-slate-800">Giá nông sản</span>
-                      <span className="rounded-full bg-lime-600 px-3 py-1 text-xs font-black text-white">+3.2%</span>
-                    </div>
-                    <p className="mt-2 text-sm text-slate-600">Giá đang tăng, nên so sánh thêm giữa các vùng trước khi bán.</p>
-                  </div>
-                  <div className="rounded-2xl bg-amber-50 p-4">
-                    <div className="flex items-center justify-between gap-4">
-                      <span className="font-bold text-slate-800">Thu hoạch</span>
-                      <span className="rounded-full bg-amber-500 px-3 py-1 text-xs font-black text-white">Sắp tới</span>
-                    </div>
-                    <p className="mt-2 text-sm text-slate-600">Chuẩn bị nhân công, bao bì và kiểm tra thời tiết trước 3 ngày.</p>
-                  </div>
+                <div className="mt-8 grid gap-3">
+                  <div className="rounded-2xl border border-white/10 bg-white/[.045] p-4"><span className="text-xs text-slate-400">Thời tiết</span><p className="mt-1 font-semibold">Chọn khu vực để kiểm tra</p></div>
+                  <div className="rounded-2xl border border-white/10 bg-white/[.045] p-4"><span className="text-xs text-slate-400">Giá nông sản</span><p className="mt-1 font-semibold">Chọn cây trồng để đối chiếu</p></div>
+                  <div className="rounded-2xl border border-white/10 bg-white/[.045] p-4"><span className="text-xs text-slate-400">Kho tài liệu</span><p className="mt-1 font-semibold">Kiểm tra sau khi đăng nhập</p></div>
                 </div>
-
-                <Link to="/dashboard" className="mt-6 inline-flex w-full items-center justify-center rounded-2xl bg-slate-900 px-4 py-3 font-bold text-white transition hover:bg-emerald-700">
-                  Vào bảng điều khiển
-                </Link>
-              </div>
-            </div>
+              </article>
+            </TiltCard>
+            <div className="absolute bottom-10 left-0 rounded-2xl border border-white/10 bg-field-deep/85 p-4 shadow-field backdrop-blur-xl sm:left-4"><Database className="h-5 w-5 text-field-lime" /><p className="mt-2 text-sm font-semibold">Nguồn đi cùng kết quả</p></div>
+            <div className="absolute bottom-28 right-0 rounded-2xl border border-white/10 bg-field-deep/85 p-4 shadow-field backdrop-blur-xl sm:right-4"><Sprout className="h-5 w-5 text-field-lime" /><p className="mt-2 text-sm font-semibold">Theo ngữ cảnh mùa vụ</p></div>
           </div>
         </div>
       </section>
 
-      <section className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
-        <div className="flex flex-col justify-between gap-4 md:flex-row md:items-end">
-          <div>
-            <p className="text-sm font-black uppercase tracking-wide text-emerald-600">Module nổi bật</p>
-            <h2 className="mt-3 text-3xl font-black tracking-tight sm:text-4xl">Đi thẳng tới công cụ bạn cần</h2>
-            <p className="mt-3 max-w-2xl leading-7 text-slate-600">
-              Các thẻ dưới đây giúp người dùng nhìn là hiểu hệ thống có những chức năng gì và bấm sang sử dụng ngay.
-            </p>
-          </div>
-          <Link to="/features" className="inline-flex rounded-2xl border border-slate-200 bg-white px-5 py-3 font-bold text-slate-700 transition hover:border-emerald-200 hover:text-emerald-700">
-            Xem tất cả tính năng
-          </Link>
-        </div>
-
-        <div className="mt-8 grid gap-6 md:grid-cols-2 xl:grid-cols-4">
-          {coreModules.map((module) => (
-            <article key={module.title} className="group rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:border-emerald-200 hover:shadow-xl hover:shadow-emerald-900/5">
-              <div className="flex items-start justify-between gap-4">
-                <div className="rounded-2xl bg-emerald-50 px-4 py-3 text-3xl transition group-hover:scale-105">
-                  {module.icon}
-                </div>
-                <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-500">
-                  {module.tag}
-                </span>
-              </div>
-              <h3 className="mt-5 text-xl font-black group-hover:text-emerald-700">{module.title}</h3>
-              <p className="mt-3 leading-7 text-slate-600">{module.description}</p>
-              <Link to={module.route} className="mt-6 inline-flex w-full items-center justify-center rounded-2xl bg-slate-900 px-4 py-3 font-bold text-white transition hover:bg-emerald-700">
-                Mở tính năng
+      <section className="relative mx-auto max-w-[1440px] px-4 py-24 sm:px-6 lg:px-10 lg:py-32">
+        <Reveal className="max-w-3xl"><p className="text-sm font-semibold text-field-lime">Ba việc chính</p><h2 className="mt-4 font-display text-4xl font-extrabold tracking-[-.04em] sm:text-5xl lg:text-6xl">Nhìn đúng tín hiệu trước khi hành động.</h2></Reveal>
+        <div className="mt-12 grid gap-4 lg:grid-cols-3">
+          {signals.map((signal, index) => { const Icon = signal.icon; return (
+            <Reveal key={signal.title} delay={index * 80}>
+              <Link to={signal.to} className="group block min-h-[320px] rounded-[2rem] border border-white/10 bg-white/[.045] p-7 transition duration-300 hover:-translate-y-2 hover:border-field-lime/30 hover:bg-white/[.075]">
+                <Icon className="h-7 w-7 text-field-lime" /><h3 className="mt-16 font-display text-2xl font-bold">{signal.title}</h3><p className="mt-4 leading-7 text-slate-400">{signal.description}</p><span className="mt-8 inline-flex items-center gap-2 text-sm font-semibold text-white">{signal.action}<ArrowDownRight className="h-4 w-4 transition-transform group-hover:translate-x-1 group-hover:translate-y-1" /></span>
               </Link>
-            </article>
-          ))}
+            </Reveal>
+          ); })}
         </div>
       </section>
 
-      <section className="bg-white py-12">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="grid gap-8 lg:grid-cols-[0.9fr_1.1fr] lg:items-start">
-            <div>
-              <p className="text-sm font-black uppercase tracking-wide text-emerald-600">Quy trình hoạt động</p>
-              <h2 className="mt-3 text-3xl font-black tracking-tight sm:text-4xl">Từ dữ liệu thực tế đến quyết định sản xuất</h2>
-              <p className="mt-4 leading-8 text-slate-600">
-                Phần này giúp giải thích rõ hệ thống không chỉ có giao diện đẹp mà còn có luồng xử lý hợp lý: nhập dữ liệu, phân tích, khuyến nghị.
-              </p>
-              <div className="mt-6 flex flex-wrap gap-3">
-                <Link to="/articles" className="rounded-2xl bg-emerald-600 px-5 py-3 font-bold text-white transition hover:bg-emerald-700">
-                  Đọc bài viết
-                </Link>
-                <Link to="/contact" className="rounded-2xl border border-slate-200 bg-white px-5 py-3 font-bold text-slate-700 transition hover:border-emerald-200 hover:text-emerald-700">
-                  Liên hệ hỗ trợ
-                </Link>
-              </div>
+      <section className="border-y border-white/10 bg-field-deep">
+        <div className="mx-auto grid max-w-[1440px] gap-14 px-4 py-24 sm:px-6 lg:grid-cols-[.85fr_1.15fr] lg:items-center lg:px-10 lg:py-32">
+          <Reveal>
+            <p className="text-sm font-semibold text-field-lime">Trợ lý nông nghiệp</p><h2 className="mt-4 font-display text-4xl font-extrabold tracking-[-.04em] sm:text-5xl">Câu trả lời bắt đầu từ bằng chứng.</h2>
+            <ol className="mt-10 space-y-3 text-slate-300">{['Nhận cây trồng, khu vực và vấn đề', 'Tìm đoạn tài liệu phù hợp', 'Trả lời kèm nguồn và giới hạn'].map((item, index) => <li key={item} className="flex items-center gap-4 rounded-2xl border border-white/10 p-4"><span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-field-lime/10 font-semibold text-field-lime">{index + 1}</span>{item}</li>)}</ol>
+          </Reveal>
+          <Reveal delay={100}>
+            <div className="rounded-[2.25rem] bg-field-mist p-7 text-field-ink shadow-field sm:p-10">
+              <div className="flex items-center gap-3"><span className="grid h-11 w-11 place-items-center rounded-2xl bg-field-ink text-field-lime"><Bot className="h-5 w-5" /></span><span className="font-display font-bold">AgriAI</span></div>
+              <h3 className="mt-9 font-display text-2xl font-extrabold sm:text-3xl">Hỏi theo tình trạng thực tế của ruộng.</h3><p className="mt-4 leading-7 text-slate-600">Cung cấp cây trồng, khu vực và dấu hiệu bạn quan sát được. Trợ lý sẽ cho biết nguồn nào đã được dùng.</p><Link to="/ai-chat" className="mt-7 inline-flex min-h-11 items-center rounded-full bg-field-ink px-5 text-sm font-bold text-white hover:bg-emerald-900">Mở trợ lý</Link>
             </div>
-
-            <div className="space-y-4">
-              {workflow.map((item) => (
-                <div key={item.step} className="rounded-[2rem] border border-slate-200 bg-slate-50 p-5">
-                  <div className="flex gap-4">
-                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-emerald-600 text-lg font-black text-white">
-                      {item.step}
-                    </div>
-                    <div>
-                      <h3 className="text-lg font-black">{item.title}</h3>
-                      <p className="mt-2 leading-7 text-slate-600">{item.description}</p>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
+          </Reveal>
         </div>
       </section>
-
-      <section className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
-        <div className="rounded-[2rem] bg-slate-950 p-8 text-white sm:p-10 lg:p-12">
-          <div className="grid gap-8 lg:grid-cols-[1fr_0.8fr] lg:items-center">
-            <div>
-              <p className="text-sm font-black uppercase tracking-wide text-emerald-300">Sẵn sàng trải nghiệm</p>
-              <h2 className="mt-3 text-3xl font-black tracking-tight sm:text-4xl">Bắt đầu với trợ lý AI nông nghiệp</h2>
-              <p className="mt-4 max-w-2xl leading-8 text-slate-300">
-                Người dùng có thể hỏi AI về thời tiết, giá cả, thu hoạch, thị trường hoặc chuyển sang bảng điều khiển để xem dữ liệu chi tiết.
-              </p>
-            </div>
-            <div className="flex flex-wrap gap-3 lg:justify-end">
-              <Link to="/ai-chat" className="rounded-2xl bg-white px-5 py-3 font-bold text-slate-950 transition hover:bg-emerald-50">
-                Hỏi AI ngay
-              </Link>
-              <Link to="/dashboard" className="rounded-2xl border border-white/20 px-5 py-3 font-bold text-white transition hover:bg-white/10">
-                Vào bảng điều khiển
-              </Link>
-            </div>
-          </div>
-        </div>
-      </section>
+      <PublicFooter />
     </main>
   );
 }

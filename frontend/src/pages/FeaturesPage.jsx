@@ -1,278 +1,53 @@
-import React, { useMemo, useState } from "react";
-import { Link } from "react-router-dom";
-import AgriNavbar from "../components/AgriNavbar";
-import logo from "../assets/agri-ai-logo.png";
+import { ArrowUpRight, Bot, CloudSun, Database, ScanSearch, Sprout, TrendingUp } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import AgriNavbar from '../components/AgriNavbar';
+import PublicFooter from '../components/PublicFooter';
+import Reveal from '../components/ui/Reveal';
 
-const categories = ["Tất cả", "Thời tiết", "Giá nông sản", "Thu hoạch", "Thị trường", "Trợ lý AI"];
-
-const featureCards = [
-  {
-    title: "Thời tiết nông nghiệp thời gian thực",
-    category: "Thời tiết",
-    icon: "🌦️",
-    route: "/weather",
-    badge: "Dữ liệu thời gian thực",
-    description: "Theo dõi nhiệt độ, lượng mưa, độ ẩm, gió và cảnh báo rủi ro thời tiết theo khu vực canh tác.",
-    highlights: ["Dự báo 7 ngày", "Cảnh báo mưa lớn", "Gợi ý tưới tiêu"],
-  },
-  {
-    title: "Định giá nông sản thông minh",
-    category: "Giá nông sản",
-    icon: "📈",
-    route: "/pricing",
-    badge: "Định giá AI",
-    description: "Cập nhật giá nông sản, so sánh vùng miền và hỗ trợ nông dân quyết định nên bán hay theo dõi thêm.",
-    highlights: ["Giá hiện tại", "Biểu đồ xu hướng", "So sánh khu vực"],
-  },
-  {
-    title: "Dự báo ngày thu hoạch",
-    category: "Thu hoạch",
-    icon: "🌾",
-    route: "/harvest",
-    badge: "Dự báo",
-    description: "Ước tính ngày thu hoạch dựa trên cây trồng, ngày xuống giống, khu vực, thời tiết và lịch sử mùa vụ.",
-    highlights: ["Timeline mùa vụ", "Độ tin cậy", "Checklist chuẩn bị"],
-  },
-  {
-    title: "Phân tích thị trường tiêu thụ",
-    category: "Thị trường",
-    icon: "🛒",
-    route: "/market",
-    badge: "Dữ liệu thị trường",
-    description: "Theo dõi nhu cầu thị trường, tin tức nông sản và gợi ý kênh bán phù hợp với sản lượng thực tế.",
-    highlights: ["Tin tức thị trường", "Kênh bán hàng", "Chiến lược tiêu thụ"],
-  },
-  {
-    title: "Trợ lý AI nông nghiệp",
-    category: "Trợ lý AI",
-    icon: "🤖",
-    route: "/ai-chat",
-    badge: "Trợ lý AI",
-    description: "Cho phép người dùng hỏi về thời tiết, giá cả, sâu bệnh, thu hoạch, thị trường và nhận tư vấn dễ hiểu.",
-    highlights: ["Gợi ý câu hỏi", "Trả lời có ngữ cảnh", "Nút hành động nhanh"],
-  },
-  {
-    title: "Bài viết và kiến thức nông nghiệp",
-    category: "Thị trường",
-    icon: "📰",
-    route: "/articles",
-    badge: "Kiến thức",
-    description: "Tập hợp bài viết, hướng dẫn và tin tức giúp người dùng hiểu thị trường và cách vận hành hệ thống.",
-    highlights: ["Bộ lọc chủ đề", "Tóm tắt nội dung", "Liên kết phân hệ"],
-  },
+const workflows = [
+  { icon: CloudSun, title: 'Theo dõi điều kiện canh tác', description: 'Chọn khu vực, xem thời tiết và đọc cảnh báo kèm thời điểm cập nhật.', steps: ['Chọn khu vực', 'Kiểm tra nguồn', 'Lưu cảnh báo'], to: '/weather' },
+  { icon: TrendingUp, title: 'Đối chiếu giá và thị trường', description: 'Chọn nông sản và vùng để so sánh dữ liệu giá đang có trong hệ thống.', steps: ['Chọn nông sản', 'Đọc trạng thái dữ liệu', 'So sánh khu vực'], to: '/pricing' },
+  { icon: Bot, title: 'Hỏi trợ lý có nguồn', description: 'Đặt câu hỏi theo ngữ cảnh và mở tài liệu gốc từ phần trích dẫn.', steps: ['Mô tả tình trạng', 'Tra cứu tài liệu', 'Kiểm tra trích dẫn'], to: '/ai-chat' },
 ];
 
-const dataLayers = [
-  {
-    name: "Dữ liệu thời gian thực",
-    value: "Dữ liệu bên ngoài",
-    description: "Dùng cho thời tiết, giá thị trường, tin tức hoặc các nguồn dữ liệu thay đổi liên tục theo ngày.",
-  },
-  {
-    name: "Cơ sở dữ liệu",
-    value: "Dữ liệu nội bộ",
-    description: "Lưu hồ sơ mùa vụ, lịch sử giá, lịch sử chat, thông tin người dùng và các cảnh báo đã tạo.",
-  },
-  {
-    name: "Mô hình AI",
-    value: "Dự báo và khuyến nghị",
-    description: "AI dùng dữ liệu đầu vào để dự báo thu hoạch, gợi ý bán hàng và tư vấn nông nghiệp có ngữ cảnh.",
-  },
-];
-
-const roadmap = [
-  "Tạo bộ lọc cây trồng/khu vực dùng chung cho các trang chính.",
-  "Hiển thị nhãn nguồn dữ liệu: thời gian thực, cơ sở dữ liệu, mô hình AI.",
-  "Thêm trạng thái loading skeleton, empty state và error state.",
-  "Cho phép lưu cảnh báo giá/thời tiết trực tiếp từ từng tính năng.",
-  "Liên kết Trợ lý AI với dữ liệu trang hiện tại để tư vấn có ngữ cảnh.",
+const capabilities = [
+  { icon: ScanSearch, title: 'Kiểm định chất lượng', text: 'Phân tích ảnh nông sản bằng mô hình đang được cấu hình.', to: '/quality' },
+  { icon: Sprout, title: 'Quản lý mùa vụ', text: 'Lưu và theo dõi mùa vụ thuộc tài khoản của bạn.', to: '/season-management' },
+  { icon: Database, title: 'Kho tài liệu', text: 'Theo dõi tài liệu đã duyệt và trạng thái lập chỉ mục.', to: '/knowledge-documents' },
 ];
 
 export default function FeaturesPage() {
-  const [selectedCategory, setSelectedCategory] = useState("Tất cả");
-
-  const filteredFeatures = useMemo(() => {
-    if (selectedCategory === "Tất cả") return featureCards;
-    return featureCards.filter((feature) => feature.category === selectedCategory);
-  }, [selectedCategory]);
-
   return (
-    <main className="min-h-screen bg-slate-50 text-slate-900">
+    <main className="min-h-screen overflow-x-hidden bg-field-ink text-white">
       <AgriNavbar />
-
-      <section className="relative overflow-hidden bg-gradient-to-br from-emerald-950 via-green-900 to-lime-700 text-white">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.20),transparent_30%),radial-gradient(circle_at_bottom_right,rgba(190,242,100,0.24),transparent_34%)]" />
-        <div className="relative mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8 lg:py-20">
-          <div className="grid gap-10 lg:grid-cols-[1.05fr_0.95fr] lg:items-center">
-            <div>
-              <span className="inline-flex rounded-full border border-white/20 bg-white/10 px-4 py-2 text-sm font-bold text-emerald-50 backdrop-blur">
-                ✨ Trung tâm tính năng AgriAI
-              </span>
-              <h1 className="mt-6 max-w-3xl text-4xl font-black tracking-tight sm:text-5xl">
-                Tất cả công cụ cần thiết để nông dân ra quyết định nhanh hơn
-              </h1>
-              <p className="mt-5 max-w-2xl text-base leading-8 text-emerald-50 sm:text-lg">
-                Trang tính năng được bổ sung thanh menu, logo và bố cục đồng bộ với trang chủ, bài viết, bảng giá và liên hệ. Người dùng có thể hiểu từng phân hệ dùng dữ liệu gì và bấm sang dùng ngay.
-              </p>
-              <div className="mt-8 flex flex-wrap gap-3">
-                <Link to="/ai-chat" className="rounded-2xl bg-white px-5 py-3 font-bold text-emerald-800 shadow-lg shadow-black/10 transition hover:-translate-y-0.5 hover:bg-emerald-50">
-                  Dùng thử trợ lý AI
-                </Link>
-                <Link to="/pricing-plans" className="rounded-2xl border border-white/30 px-5 py-3 font-bold text-white transition hover:bg-white/10">
-                  Xem gói dịch vụ
-                </Link>
-                <Link to="/contact" className="rounded-2xl border border-white/30 px-5 py-3 font-bold text-white transition hover:bg-white/10">
-                  Liên hệ hỗ trợ
-                </Link>
-              </div>
-            </div>
-
-            <div className="rounded-[2rem] border border-white/20 bg-white/10 p-5 shadow-2xl backdrop-blur">
-              <div className="rounded-[1.5rem] bg-white p-6 text-slate-900">
-                <div className="flex items-center justify-between gap-4">
-                  <div>
-                    <p className="text-sm font-black uppercase tracking-wide text-emerald-600">Tổng quan hệ thống</p>
-                    <h2 className="mt-2 text-2xl font-black">5 phân hệ chính + AI hỗ trợ</h2>
-                  </div>
-                  <div className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-[1.5rem] border border-emerald-100 bg-white shadow-sm">
-                    <img src={logo} alt="AgriAI" className="h-full w-full object-cover object-center" />
-                  </div>
-                </div>
-
-                <div className="mt-6 grid grid-cols-2 gap-3">
-                  <div className="rounded-2xl bg-emerald-50 p-4">
-                    <p className="text-2xl font-black text-emerald-700">Dữ liệu</p>
-                    <p className="text-sm text-slate-600">Thời gian thực</p>
-                  </div>
-                  <div className="rounded-2xl bg-lime-50 p-4">
-                    <p className="text-2xl font-black text-lime-700">AI</p>
-                    <p className="text-sm text-slate-600">Tư vấn thông minh</p>
-                  </div>
-                  <div className="rounded-2xl bg-amber-50 p-4">
-                    <p className="text-2xl font-black text-amber-700">Lưu trữ</p>
-                    <p className="text-sm text-slate-600">Lưu lịch sử</p>
-                  </div>
-                  <div className="rounded-2xl bg-sky-50 p-4">
-                    <p className="text-2xl font-black text-sky-700">Dễ dùng</p>
-                    <p className="text-sm text-slate-600">Dễ dùng hơn</p>
-                  </div>
-                </div>
-
-                <div className="mt-6 rounded-2xl bg-slate-900 p-4 text-white">
-                  <p className="text-sm font-bold text-emerald-200">Luồng trải nghiệm đề xuất</p>
-                  <p className="mt-2 text-sm leading-6 text-slate-200">
-                    Chọn khu vực → xem dữ liệu thời gian thực → nhận phân tích AI → lưu cảnh báo hoặc hành động.
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
+      <section className="relative overflow-hidden border-b border-white/10">
+        <div aria-hidden="true" className="absolute inset-0 bg-[radial-gradient(circle_at_85%_10%,rgba(22,76,55,.9),transparent_38%)]" />
+        <div className="relative mx-auto max-w-[1440px] px-4 py-20 sm:px-6 lg:px-10 lg:py-28">
+          <p className="text-sm font-semibold text-field-lime">Cách AgriAI hỗ trợ</p>
+          <h1 className="mt-5 max-w-5xl font-display text-5xl font-extrabold leading-[.98] tracking-[-.05em] sm:text-6xl lg:text-7xl">Mỗi công cụ dẫn tới một quyết định rõ ràng.</h1>
+          <p className="mt-6 max-w-2xl text-lg leading-8 text-slate-300">Chọn đúng luồng làm việc, kiểm tra nguồn dữ liệu và tiếp tục trong hệ thống.</p>
         </div>
       </section>
-
-      <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
-        <div className="rounded-[2rem] border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <div>
-              <p className="text-sm font-black uppercase tracking-wide text-emerald-600">Danh sách tính năng</p>
-              <h2 className="mt-1 text-2xl font-black">Lọc theo nhóm chức năng</h2>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {categories.map((category) => (
-                <button
-                  key={category}
-                  type="button"
-                  onClick={() => setSelectedCategory(category)}
-                  className={`rounded-2xl px-4 py-3 text-sm font-bold transition ${
-                    selectedCategory === category
-                      ? "bg-emerald-600 text-white shadow-lg shadow-emerald-600/20"
-                      : "bg-slate-100 text-slate-600 hover:bg-emerald-50 hover:text-emerald-700"
-                  }`}
-                >
-                  {category}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        <div className="mt-8 grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-          {filteredFeatures.map((feature) => (
-            <article key={feature.title} className="group rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:border-emerald-200 hover:shadow-xl hover:shadow-emerald-900/5">
-              <div className="flex items-start justify-between gap-4">
-                <div className="rounded-2xl bg-emerald-50 px-4 py-3 text-3xl transition group-hover:scale-105">
-                  {feature.icon}
-                </div>
-                <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-500">
-                  {feature.badge}
-                </span>
-              </div>
-              <p className="mt-5 text-sm font-black uppercase tracking-wide text-emerald-600">{feature.category}</p>
-              <h3 className="mt-2 text-xl font-black leading-snug group-hover:text-emerald-700">{feature.title}</h3>
-              <p className="mt-3 leading-7 text-slate-600">{feature.description}</p>
-              <div className="mt-5 space-y-2">
-                {feature.highlights.map((item) => (
-                  <div key={item} className="flex items-center gap-2 rounded-2xl bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-700">
-                    <span className="text-emerald-600">✓</span>
-                    {item}
-                  </div>
-                ))}
-              </div>
-              <Link to={feature.route} className="mt-6 inline-flex w-full items-center justify-center rounded-2xl bg-slate-900 px-4 py-3 font-bold text-white transition hover:bg-emerald-700">
-                Mở tính năng
-              </Link>
-            </article>
-          ))}
+      <section className="mx-auto max-w-[1440px] px-4 py-24 sm:px-6 lg:px-10">
+        <div className="space-y-5">
+          {workflows.map((workflow, index) => { const Icon = workflow.icon; return (
+            <Reveal key={workflow.title} delay={index * 70}>
+              <article className="group grid gap-8 rounded-[2rem] border border-white/10 bg-white/[.045] p-6 transition duration-300 hover:border-field-lime/30 hover:bg-white/[.07] sm:p-8 lg:grid-cols-[.8fr_1.2fr] lg:items-center">
+                <div><span className="grid h-12 w-12 place-items-center rounded-2xl bg-field-lime/10 text-field-lime"><Icon className="h-6 w-6" /></span><h2 className="mt-6 font-display text-3xl font-bold tracking-tight">{workflow.title}</h2><p className="mt-3 max-w-xl leading-7 text-slate-400">{workflow.description}</p></div>
+                <div className="grid gap-3 sm:grid-cols-3">{workflow.steps.map((step, stepIndex) => <div key={step} className="rounded-2xl border border-white/10 bg-field-deep p-4"><span className="text-xs font-semibold text-field-lime">Bước {stepIndex + 1}</span><p className="mt-2 font-semibold">{step}</p></div>)}</div>
+                <Link to={workflow.to} className="inline-flex items-center gap-2 text-sm font-semibold text-field-lime lg:col-start-2">Mở công cụ <ArrowUpRight className="h-4 w-4 transition-transform group-hover:translate-x-1 group-hover:-translate-y-1" /></Link>
+              </article>
+            </Reveal>
+          ); })}
         </div>
       </section>
-
-      <section className="bg-white py-12">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="grid gap-6 lg:grid-cols-3">
-            {dataLayers.map((layer) => (
-              <div key={layer.name} className="rounded-[2rem] border border-slate-200 bg-slate-50 p-6">
-                <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-black text-emerald-700">
-                  {layer.name}
-                </span>
-                <h3 className="mt-4 text-2xl font-black">{layer.value}</h3>
-                <p className="mt-3 leading-7 text-slate-600">{layer.description}</p>
-              </div>
-            ))}
-          </div>
+      <section className="bg-field-mist text-field-ink">
+        <div className="mx-auto max-w-[1440px] px-4 py-24 sm:px-6 lg:px-10">
+          <Reveal className="max-w-2xl"><p className="text-sm font-semibold text-emerald-800">Công cụ trong hệ thống</p><h2 className="mt-4 font-display text-4xl font-extrabold tracking-[-.04em] sm:text-5xl">Dữ liệu của bạn được giữ đúng ngữ cảnh.</h2></Reveal>
+          <div className="mt-12 grid gap-4 md:grid-cols-3">{capabilities.map((item, index) => { const Icon = item.icon; return <Reveal key={item.title} delay={index * 70}><Link to={item.to} className="group block min-h-64 rounded-[2rem] border border-emerald-950/10 bg-white p-7 transition duration-300 hover:-translate-y-2 hover:shadow-xl"><Icon className="h-6 w-6 text-emerald-800" /><h3 className="mt-14 font-display text-2xl font-bold">{item.title}</h3><p className="mt-3 leading-7 text-slate-600">{item.text}</p></Link></Reveal>; })}</div>
         </div>
       </section>
-
-      <section className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
-        <div className="grid gap-8 lg:grid-cols-[0.9fr_1.1fr] lg:items-start">
-          <div>
-            <p className="text-sm font-black uppercase tracking-wide text-emerald-600">Nâng cấp nên làm tiếp</p>
-            <h2 className="mt-3 text-3xl font-black tracking-tight sm:text-4xl">Biến trang tính năng thành trung tâm điều hướng thật sự</h2>
-            <p className="mt-4 leading-8 text-slate-600">
-              Không nên chỉ liệt kê tính năng. Hãy cho người dùng thấy mỗi tính năng lấy dữ liệu từ đâu, giải quyết vấn đề gì và có thể bấm sang dùng ngay.
-            </p>
-            <div className="mt-6 flex flex-wrap gap-3">
-              <Link to="/weather" className="rounded-2xl bg-emerald-600 px-5 py-3 font-bold text-white transition hover:bg-emerald-700">
-                Xem thời tiết
-              </Link>
-              <Link to="/market" className="rounded-2xl border border-slate-200 bg-white px-5 py-3 font-bold text-slate-700 transition hover:border-emerald-200 hover:text-emerald-700">
-                Xem thị trường
-              </Link>
-            </div>
-          </div>
-
-          <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
-            <h3 className="text-2xl font-black">Checklist chỉnh sửa / nâng cấp</h3>
-            <div className="mt-5 space-y-3">
-              {roadmap.map((item) => (
-                <div key={item} className="flex gap-3 rounded-2xl bg-slate-50 p-4 text-sm font-semibold text-slate-700">
-                  <span className="mt-0.5 text-emerald-600">✓</span>
-                  <span>{item}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
+      <PublicFooter />
     </main>
   );
 }
