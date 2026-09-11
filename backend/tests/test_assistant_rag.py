@@ -83,6 +83,12 @@ def test_chunking_and_invalid_documents():
             extract_pages(filename, content)
 
 
+def test_text_exported_from_pdf_keeps_page_boundaries():
+    pages = extract_pages("guide.txt", "Trang một\fTrang hai".encode("utf-8"))
+
+    assert pages == [(1, "Trang một"), (2, "Trang hai")]
+
+
 def test_embedding_failure_does_not_publish_partial_document(rag, monkeypatch):
     def fail(*args):
         raise RuntimeError("embedding offline")
@@ -96,6 +102,19 @@ def test_unavailable_retrieval_is_explicit(rag, monkeypatch):
     rag.ingest(1, "guide.txt", "lúa".encode())
     monkeypatch.setattr(RagService, "embed", lambda *args: (_ for _ in ()).throw(RuntimeError("offline")))
     assert rag.retrieve("lúa", 1) == {"status": "unavailable", "sources": []}
+
+
+def test_retrieval_excludes_arabica_document_for_robusta_question(rag):
+    rag.ingest(
+        0,
+        "Hướng dẫn cà phê chè Arabica Tây Bắc.md",
+        "Kỹ thuật trồng cà phê chè và chuẩn bị đất vườn ươm.".encode("utf-8"),
+    )
+
+    result = rag.retrieve("Trồng cà phê vối Robusta tại Đắk Lắk", None)
+
+    assert result["status"] == "no_match"
+    assert result["sources"] == []
 
 
 def test_shared_knowledge_is_visible_without_leaking_another_users_documents(rag):

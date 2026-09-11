@@ -31,6 +31,7 @@ INTENT_ALIASES = {
     "weather_advice": "weather_analysis",
     "harvest": "harvest_analysis",
     "harvest_advice": "harvest_analysis",
+    "cultivation": "cultivation_advice",
     "quality": "quality_analysis",
     "quality_check": "quality_analysis",
     "alert": "alert_analysis",
@@ -50,6 +51,7 @@ DB_TOPIC_BY_INTENT = {
     "harvest_analysis": "Thu hoach",
     "harvest_advice": "Thu hoach",
     "harvest": "Thu hoach",
+    "cultivation_advice": "Ky thuat canh tac",
     "quality_analysis": "Chat luong",
     "quality_check": "Chat luong",
     "quality": "Chat luong",
@@ -60,7 +62,7 @@ DB_TOPIC_BY_INTENT = {
     "alert_analysis": "Khac",
     "alert_summary": "Khac",
     "full_farm_analysis": "Khac",
-    "cultivation": "Khac",
+    "cultivation": "Ky thuat canh tac",
     "soil_salinity": "Khac",
     "soil_acidity": "Khac",
     "agriculture": "Khac",
@@ -357,6 +359,10 @@ def classify_user_intent(message: str) -> str:
         "lich gieo",
         "ngay du kien thu hoach",
         "giai doan hien tai",
+        "sau thu hoach",
+        "bao quan",
+    )
+    cultivation_keywords = (
         "ky thuat trong",
         "ky thuat canh tac",
         "cach trong",
@@ -365,10 +371,9 @@ def classify_user_intent(message: str) -> str:
         "canh tac",
         "phan bon",
         "bon phan",
-        "bao quan",
-        "sau thu hoach",
         "mat do trong",
         "khoang cach trong",
+        "chuan bi dat",
         "lam dat",
         "dat trong",
         "giong cay",
@@ -423,6 +428,8 @@ def classify_user_intent(message: str) -> str:
         return "price_analysis"
     if _contains_any(text, weather_keywords) or _has_word(text, "gio"):
         return "weather_analysis"
+    if _contains_any(text, cultivation_keywords):
+        return "cultivation_advice"
     if _contains_any(text, harvest_keywords):
         return "harvest_analysis"
     if _contains_any(text, quality_keywords):

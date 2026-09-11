@@ -27,14 +27,14 @@ class Settings(BaseSettings):
     AI_BASE_URL: str = "http://localhost:11434"
     AI_MODEL_NAME: str = "qwen3:4b-instruct"
     AI_TIMEOUT_SECONDS: float = 120.0
-    AI_CONTEXT_TOKENS: int = 4096
-    AI_MAX_OUTPUT_TOKENS: int = 600
+    AI_CONTEXT_TOKENS: int = 3072
+    AI_MAX_OUTPUT_TOKENS: int = 256
     RAG_ENABLED: bool = True
     RAG_STORAGE_PATH: str = "storage/rag"
     RAG_EMBEDDING_MODEL: str = "embeddinggemma"
     RAG_TIMEOUT_SECONDS: float = 60.0
     RAG_TOP_K: int = 4
-    RAG_MAX_CHUNKS_PER_DOCUMENT: int = 2
+    RAG_MAX_CHUNKS_PER_DOCUMENT: int = 1
     RAG_MIN_SIMILARITY: float = 0.35
     KNOWLEDGE_AGENT_ENABLED: bool = False
     KNOWLEDGE_AGENT_HOUR: int = 2

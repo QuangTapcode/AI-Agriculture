@@ -10,7 +10,7 @@ from app.core.config import settings
 from app.core.database import Base
 from app.models.knowledge import KnowledgeDocument
 from app.services.knowledge_ingestion_service import KnowledgeIngestionService, configured_sources
-from app.services.rag_service import RagService, rag_service
+from app.services.rag_service import RagService, extract_pages, rag_service
 from app.tasks.celery_app import celery_app
 
 
@@ -177,10 +177,32 @@ def test_pdf_is_converted_to_text_before_embedding(agent, monkeypatch):
     pdf = httpx.Response(200, content=b"%PDF-fake", headers={"content-type": "application/pdf"},
                          request=httpx.Request("GET", "https://example.org/rice.pdf"))
     monkeypatch.setattr("app.services.knowledge_ingestion_service.extract_pages",
-                        lambda *args: [(1, "Kỹ thuật canh tác lúa và quản lý sâu bệnh.")])
+                        lambda *args: [(1, "Kỹ thuật canh tác lúa."), (2, "Quản lý sâu bệnh.")])
     extracted = agent.extract(str(pdf.url), pdf)
     assert extracted["filename"] == "rice.txt"
     assert extracted["content"].startswith("Kỹ thuật".encode())
+    assert extract_pages(extracted["filename"], extracted["content"]) == [
+        (1, "Kỹ thuật canh tác lúa."),
+        (2, "Quản lý sâu bệnh."),
+    ]
+
+
+def test_pdf_filename_is_url_decoded_before_becoming_a_source_label(agent, monkeypatch):
+    pdf = httpx.Response(
+        200,
+        content=b"%PDF-fake",
+        headers={"content-type": "application/pdf"},
+        request=httpx.Request("GET", "https://example.org/H%C6%B0%E1%BB%9Bng-d%E1%BA%ABn-c%C3%A0-ph%C3%AA.pdf"),
+    )
+    monkeypatch.setattr(
+        "app.services.knowledge_ingestion_service.extract_pages",
+        lambda *args: [(1, "Kỹ thuật canh tác cà phê và quản lý sâu bệnh.")],
+    )
+
+    extracted = agent.extract(str(pdf.url), pdf)
+
+    assert extracted["title"] == "Hướng dẫn cà phê"
+    assert extracted["filename"] == "Hướng-dẫn-cà-phê.txt"
 
 
 def test_html_extraction_keeps_article_inside_aspnet_form(agent):

@@ -3,6 +3,7 @@ import hashlib
 import io
 import logging
 import math
+import unicodedata
 from datetime import datetime, timezone
 from functools import lru_cache
 from pathlib import Path
@@ -15,6 +16,22 @@ from app.core.config import settings
 logger = logging.getLogger(__name__)
 MAX_UPLOAD_BYTES = 10 * 1024 * 1024
 MAX_TEXT_CHARS = 300_000
+
+
+def _normalized_search_text(value: str | None) -> str:
+    text = unicodedata.normalize("NFD", value or "")
+    text = "".join(char for char in text if unicodedata.category(char) != "Mn")
+    return text.lower().replace("đ", "d")
+
+
+def _source_conflicts_with_query(query: str, metadata: dict) -> bool:
+    normalized_query = _normalized_search_text(query)
+    normalized_title = _normalized_search_text(metadata.get("name"))
+    asks_robusta = "robusta" in normalized_query or "ca phe voi" in normalized_query
+    asks_arabica = "arabica" in normalized_query or "ca phe che" in normalized_query
+    title_is_robusta = "robusta" in normalized_title or "ca phe voi" in normalized_title
+    title_is_arabica = "arabica" in normalized_title or "ca phe che" in normalized_title
+    return (asks_robusta and title_is_arabica) or (asks_arabica and title_is_robusta)
 
 
 def extract_pages(filename: str, content: bytes, max_bytes: int = MAX_UPLOAD_BYTES,
@@ -44,7 +61,8 @@ def extract_pages(filename: str, content: bytes, max_bytes: int = MAX_UPLOAD_BYT
             raise ValueError("Không đọc được PDF. Hãy dùng PDF có lớp văn bản.") from exc
     else:
         try:
-            pages = [(1, content.decode("utf-8-sig"))]
+            text_pages = content.decode("utf-8-sig").split("\f")
+            pages = [(index, text) for index, text in enumerate(text_pages, start=1)]
         except UnicodeDecodeError as exc:
             raise ValueError("Tệp văn bản cần được lưu bằng UTF-8.") from exc
     if sum(len(text) for _, text in pages) > max_text_chars:
@@ -108,7 +126,7 @@ class RagService:
             response = client.post(f"{settings.AI_BASE_URL.rstrip('/')}/api/embed", json={
                 "model": settings.RAG_EMBEDDING_MODEL, "input": texts,
                 # A small embedding model runs on CPU, leaving the 4 GB GPU for chat.
-                "truncate": False, "keep_alive": 0, "options": {"num_gpu": 0},
+                "truncate": False, "keep_alive": "10m", "options": {"num_gpu": 0},
             })
             response.raise_for_status()
             vectors = response.json()["embeddings"]
@@ -200,6 +218,8 @@ class RagService:
                     include=["documents", "metadatas", "distances"],
                 )
                 for text, meta, distance in zip(result["documents"][0], result["metadatas"][0], result["distances"][0]):
+                    if _source_conflicts_with_query(query, meta):
+                        continue
                     score = 1 - distance
                     if score >= settings.RAG_MIN_SIMILARITY:
                         candidates.append((score, text, meta))

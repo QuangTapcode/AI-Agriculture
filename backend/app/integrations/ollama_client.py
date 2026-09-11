@@ -92,6 +92,7 @@ class OllamaClient:
                         {"role": "user", "content": prompt},
                     ],
                     "stream": False,
+                    "keep_alive": "15m",
                     **({"think": False} if self.model.startswith("qwen3") else {}),
                     "options": {"num_ctx": settings.AI_CONTEXT_TOKENS, "temperature": 0.2},
                 })
@@ -125,6 +126,7 @@ class OllamaClient:
             "messages": ([{"role": "system", "content": system_prompt}] if system_prompt else [])
                         + list(messages),
             "stream": False,
+            "keep_alive": "15m",
             **({"think": False} if self.model.startswith("qwen3") else {}),
             "options": {"num_predict": max_tokens, "num_ctx": settings.AI_CONTEXT_TOKENS, "temperature": 0.2},
         }

@@ -29,14 +29,14 @@ const fromTurns = (turns) => turns.flatMap((turn) => [
   { id: `${turn.id}-bot`, role: 'assistant', content: turn.ai_response, createdAt: turn.created_at, rag: turn.rag },
 ]);
 
-function Sources({ rag }) {
+export function Sources({ rag }) {
   if (!rag || rag.status === 'not_used') return null;
   return <div className="mt-3 border-t border-gray-100 pt-3 text-xs text-gray-500">
     <p>{ragLabels[rag.status]}</p>
     {rag.sources?.map((source) => <details key={source.citation} className="mt-2 rounded-lg bg-green-50 p-2 text-gray-700">
-      <summary className="cursor-pointer font-medium text-green-800">[{source.citation}] {source.name} · Trang {source.page}</summary>
-      <p className="mt-2 whitespace-pre-wrap leading-5">{source.excerpt}</p>
-      {source.source_url && <a href={source.source_url} target="_blank" rel="noreferrer" className="mt-2 inline-block font-medium text-green-800 underline">Mở nguồn: {source.source_name || source.source_url}</a>}
+      <summary className="cursor-pointer break-words font-medium text-green-800 [overflow-wrap:anywhere]">[{source.citation}] {source.source_name || source.name} · Trang {source.page}</summary>
+      <p className="mt-2 whitespace-pre-wrap break-words leading-5 [overflow-wrap:anywhere]">{source.excerpt}</p>
+      {source.source_url && <a href={source.source_url} target="_blank" rel="noreferrer" className="mt-2 inline-block break-all font-medium text-green-800 underline">Mở tài liệu gốc</a>}
     </details>)}
   </div>;
 }
@@ -232,7 +232,7 @@ export default function AIChatPage() {
     </> : <p className="text-sm leading-6 text-gray-500">Đăng nhập để lưu hội thoại, tiếp tục trao đổi và sử dụng kho tài liệu riêng.</p>}
   </>;
 
-  return <div className="flex h-[calc(100dvh-8rem)] min-h-[560px] gap-4">
+  return <div className="flex h-[calc(100dvh-8rem)] min-h-[560px] max-w-full gap-4 overflow-x-hidden">
     <aside className="hidden w-72 shrink-0 overflow-y-auto rounded-2xl border bg-white p-4 lg:block">{sidebar}</aside>
     {historyOpen && <div className="fixed inset-0 z-40 bg-black/40 lg:hidden"><aside className="h-full w-80 max-w-[90vw] overflow-y-auto bg-white p-4">{sidebar}</aside></div>}
     <section className="flex min-w-0 flex-1 flex-col overflow-hidden rounded-2xl border bg-white">
@@ -278,7 +278,7 @@ export default function AIChatPage() {
         {!messages.length && <div className="mx-auto max-w-xl py-10 text-center"><Bot size={44} className="mx-auto mb-4 text-green-700" /><h2 className="text-xl font-bold">Hôm nay bạn cần hỗ trợ gì?</h2><p className="mt-3 text-sm leading-6 text-gray-500">Hãy cho biết cây trồng, khu vực và tình trạng thực tế. Bạn có thể nạp tài liệu để câu trả lời có nguồn tham khảo rõ ràng.</p><div className="mt-6 grid gap-2 sm:grid-cols-2">{suggestions.map((text) => <button key={text} onClick={() => setInput(text)} className="rounded-xl border bg-white p-3 text-left text-sm hover:border-green-500">{text}</button>)}</div></div>}
         {messages.map((message) => <article key={message.id} className={`mb-5 flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
           <div className={`min-w-0 max-w-[95%] rounded-2xl p-4 sm:max-w-[85%] ${message.role === 'user' ? 'bg-green-700 text-white' : message.isError ? 'border border-red-200 bg-red-50' : 'border bg-white'}`}>
-            {message.role === 'user' ? <p className="whitespace-pre-wrap text-sm">{message.content}</p> : <div className="prose prose-sm max-w-none break-words prose-pre:overflow-x-auto"><ReactMarkdown>{message.content}</ReactMarkdown></div>}
+            {message.role === 'user' ? <p className="whitespace-pre-wrap break-words text-sm [overflow-wrap:anywhere]">{message.content}</p> : <div className="prose prose-sm max-w-none break-words [overflow-wrap:anywhere] prose-a:break-all prose-pre:max-w-full prose-pre:overflow-x-auto"><ReactMarkdown>{message.content}</ReactMarkdown></div>}
             <Sources rag={message.rag} />
             <div className={`mt-2 flex items-center gap-3 text-xs ${message.role === 'user' ? 'text-green-100' : 'text-gray-400'}`}><span>{timeLabel(message.createdAt)}</span>
               {message.role === 'assistant' && <button aria-label="Sao chép câu trả lời" onClick={async () => { try { await navigator.clipboard.writeText(message.content); setCopied(message.id); } catch { setError('Không sao chép được. Hãy chọn văn bản để sao chép.'); } }}>{copied === message.id ? <Check size={14} /> : <Copy size={14} />}</button>}

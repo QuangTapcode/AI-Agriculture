@@ -9,7 +9,7 @@ import time
 from datetime import datetime
 from email.utils import parsedate_to_datetime
 from pathlib import Path
-from urllib.parse import urldefrag, urljoin, urlparse
+from urllib.parse import unquote, urldefrag, urljoin, urlparse
 
 import httpx
 from bs4 import BeautifulSoup
@@ -193,14 +193,14 @@ class KnowledgeIngestionService:
         suffix = Path(urlparse(url).path).suffix.lower()
         published_at = _parse_date(response.headers.get("last-modified"))
         if suffix == ".pdf" or "application/pdf" in content_type:
-            filename = Path(urlparse(url).path).name or "document.pdf"
+            filename = unquote(Path(urlparse(url).path).name) or "document.pdf"
             pages = extract_pages(filename, response.content,
                                   settings.KNOWLEDGE_AGENT_MAX_BYTES,
                                   settings.KNOWLEDGE_AGENT_MAX_TEXT_CHARS)
             title = Path(filename).stem.replace("-", " ").replace("_", " ").strip()
             filename = Path(filename).stem + ".txt"
         elif suffix in {".txt", ".md"} or content_type.startswith("text/plain"):
-            filename = Path(urlparse(url).path).name or "document.txt"
+            filename = unquote(Path(urlparse(url).path).name) or "document.txt"
             pages = extract_pages(filename, response.content,
                                   settings.KNOWLEDGE_AGENT_MAX_BYTES,
                                   settings.KNOWLEDGE_AGENT_MAX_TEXT_CHARS)
@@ -249,8 +249,10 @@ class KnowledgeIngestionService:
                     published_at = _parse_date(tag["content"]) or published_at
                     break
             published_at = published_at or _parse_date(text[:2000])
-        normalized = "\n\n".join(re.sub(r"\s+", " ", text).strip() for _, text in pages if text.strip())
-        return {"title": title[:300], "filename": filename, "content": normalized.encode("utf-8"),
+        normalized_pages = [re.sub(r"\s+", " ", text).strip() for _, text in pages if text.strip()]
+        normalized = "\n\n".join(normalized_pages)
+        indexed_text = ("\f" if suffix == ".pdf" or "application/pdf" in content_type else "\n\n").join(normalized_pages)
+        return {"title": title[:300], "filename": filename, "content": indexed_text.encode("utf-8"),
                 "text": normalized, "published_at": published_at or datetime.utcnow()}
 
     def quality_report(self, prepared: dict, text: str, questions: list[str]) -> tuple[bool, float, dict]:

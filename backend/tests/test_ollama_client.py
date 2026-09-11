@@ -12,9 +12,18 @@ import json
 import httpx
 import pytest
 
+from app.core.config import Settings
 from app.integrations.ollama_client import OllamaClient
 
 TRA_LOI = "Cà chua trồng tốt nhất vào tháng 9-10, đất tơi xốp thoát nước."
+
+
+def test_local_model_defaults_fit_a_four_gigabyte_gpu_and_bound_response_time():
+    config = Settings(_env_file=None)
+
+    assert config.AI_CONTEXT_TOKENS == 3072
+    assert config.AI_MAX_OUTPUT_TOKENS == 256
+    assert config.RAG_MAX_CHUNKS_PER_DOCUMENT == 1
 
 
 def _ollama_gia_lap(noi_dung=TRA_LOI, status=200):
@@ -122,5 +131,6 @@ def test_qwen_hides_reasoning_and_requests_direct_answer():
     result = client.complete(original)
     assert result["answer"] == "Câu trả lời [TL1]."
     assert captured["think"] is False
+    assert captured["keep_alive"] == "15m"
     assert captured["messages"][-1]["content"].endswith("/no_think")
     assert original[0]["content"] == "Câu hỏi"
