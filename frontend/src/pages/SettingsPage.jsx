@@ -37,12 +37,20 @@ const channels = [
   { key: 'smsChannel', label: 'SMS', channel: 'sms' },
 ];
 
-const Toggle = ({ checked, onChange, disabled = false }) => (
-  <label className="relative inline-flex cursor-pointer items-center">
-    <input type="checkbox" checked={checked} onChange={onChange} disabled={disabled} className="peer sr-only" />
+const Toggle = ({ checked, onChange, disabled = false, label }) => (
+  <span className="relative inline-flex cursor-pointer items-center">
+    <input
+      type="checkbox"
+      role="switch"
+      aria-label={label}
+      checked={checked}
+      onChange={onChange}
+      disabled={disabled}
+      className="peer sr-only"
+    />
     <span className="h-6 w-11 rounded-full bg-gray-200 transition peer-checked:bg-green-700 peer-disabled:opacity-50" />
     <span className="absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow transition peer-checked:translate-x-5" />
-  </label>
+  </span>
 );
 
 const statusClass = (status) => {
@@ -403,24 +411,24 @@ const SettingsPage = () => {
 
             <div className="grid gap-4 md:grid-cols-2">
               <div>
-                <label className="mb-2 block text-sm font-medium text-gray-700">Họ và tên</label>
-                <input
+                <label htmlFor="settings-ho-va-ten" className="mb-2 block text-sm font-medium text-gray-700">Họ và tên</label>
+                <input id="settings-ho-va-ten"
                   value={settings.fullName}
                   onChange={(event) => updateSetting('fullName', event.target.value)}
                   className="w-full rounded-lg border border-gray-300 px-4 py-3 outline-none focus:border-green-600 focus:ring-2 focus:ring-green-100"
                 />
               </div>
               <div>
-                <label className="mb-2 block text-sm font-medium text-gray-700">Số điện thoại</label>
-                <input
+                <label htmlFor="settings-so-dien-thoai" className="mb-2 block text-sm font-medium text-gray-700">Số điện thoại</label>
+                <input id="settings-so-dien-thoai"
                   value={settings.phone}
                   onChange={(event) => updateSetting('phone', event.target.value)}
                   className="w-full rounded-lg border border-gray-300 px-4 py-3 outline-none focus:border-green-600 focus:ring-2 focus:ring-green-100"
                 />
               </div>
               <div>
-                <label className="mb-2 block text-sm font-medium text-gray-700">Email</label>
-                <input
+                <label htmlFor="settings-email" className="mb-2 block text-sm font-medium text-gray-700">Email</label>
+                <input id="settings-email"
                   type="email"
                   value={settings.email}
                   onChange={(event) => updateSetting('email', event.target.value)}
@@ -428,8 +436,8 @@ const SettingsPage = () => {
                 />
               </div>
               <div>
-                <label className="mb-2 block text-sm font-medium text-gray-700">Zalo UID theo OA</label>
-                <input
+                <label htmlFor="settings-zalo-uid-theo-oa" className="mb-2 block text-sm font-medium text-gray-700">Zalo UID theo OA</label>
+                <input id="settings-zalo-uid-theo-oa"
                   value={settings.zaloUserId}
                   onChange={(event) => updateSetting('zaloUserId', event.target.value)}
                   placeholder="UID người dùng đã quan tâm OA"
@@ -455,8 +463,8 @@ const SettingsPage = () => {
 
             <div className="grid gap-4 md:grid-cols-4">
               <div className="md:col-span-2">
-                <label className="mb-2 block text-sm font-medium text-gray-700">{t('normalizedRegion')}</label>
-                <select
+                <label htmlFor="settings-t-normalizedregion" className="mb-2 block text-sm font-medium text-gray-700">{t('normalizedRegion')}</label>
+                <select id="settings-t-normalizedregion"
                   value={settings.regionKey}
                   onChange={(event) => handleRegionChange(event.target.value)}
                   className="w-full rounded-lg border border-gray-300 px-4 py-3 outline-none focus:border-green-600 focus:ring-2 focus:ring-green-100"
@@ -470,8 +478,8 @@ const SettingsPage = () => {
                 </select>
               </div>
               <div>
-                <label className="mb-2 block text-sm font-medium text-gray-700">{t('language')}</label>
-                <select
+                <label htmlFor="settings-t-language" className="mb-2 block text-sm font-medium text-gray-700">{t('language')}</label>
+                <select id="settings-t-language"
                   value={settings.language}
                   onChange={(event) => updateSetting('language', event.target.value)}
                   className="w-full rounded-lg border border-gray-300 px-4 py-3 outline-none focus:border-green-600 focus:ring-2 focus:ring-green-100"
@@ -481,8 +489,8 @@ const SettingsPage = () => {
                 </select>
               </div>
               <div>
-                <label className="mb-2 block text-sm font-medium text-gray-700">{t('theme')}</label>
-                <select
+                <label htmlFor="settings-t-theme" className="mb-2 block text-sm font-medium text-gray-700">{t('theme')}</label>
+                <select id="settings-t-theme"
                   value={settings.theme}
                   onChange={(event) => updateSetting('theme', event.target.value)}
                   className="w-full rounded-lg border border-gray-300 px-4 py-3 outline-none focus:border-green-600 focus:ring-2 focus:ring-green-100"
@@ -521,6 +529,7 @@ const SettingsPage = () => {
                   {channels.map((channel) => (
                     <div key={channel.key} className="flex items-center justify-center p-3">
                       <Toggle
+                        label={`${eventType.label} qua ${channel.label}`}
                         checked={channel.key === 'app' ? settings[eventType.key] : settings[eventType.key] && settings[channel.key]}
                         onChange={() =>
                           channel.key === 'app'
@@ -549,18 +558,18 @@ const SettingsPage = () => {
             </div>
 
             <div className="mb-4 grid gap-3">
-              <label className="flex items-center justify-between rounded-lg border border-gray-200 p-3">
+              <div className="flex items-center justify-between rounded-lg border border-gray-200 p-3">
                 <span className="text-sm font-medium text-gray-900">Email</span>
-                <Toggle checked={settings.emailChannel} onChange={() => updateSetting('emailChannel', !settings.emailChannel)} />
-              </label>
-              <label className="flex items-center justify-between rounded-lg border border-gray-200 p-3">
+                <Toggle label="Email" checked={settings.emailChannel} onChange={() => updateSetting('emailChannel', !settings.emailChannel)} />
+              </div>
+              <div className="flex items-center justify-between rounded-lg border border-gray-200 p-3">
                 <span className="text-sm font-medium text-gray-900">Zalo OA</span>
-                <Toggle checked={settings.zaloChannel} onChange={() => updateSetting('zaloChannel', !settings.zaloChannel)} />
-              </label>
-              <label className="flex items-center justify-between rounded-lg border border-gray-200 p-3">
+                <Toggle label="Zalo OA" checked={settings.zaloChannel} onChange={() => updateSetting('zaloChannel', !settings.zaloChannel)} />
+              </div>
+              <div className="flex items-center justify-between rounded-lg border border-gray-200 p-3">
                 <span className="text-sm font-medium text-gray-900">SMS</span>
-                <Toggle checked={settings.smsChannel} onChange={() => updateSetting('smsChannel', !settings.smsChannel)} />
-              </label>
+                <Toggle label="SMS" checked={settings.smsChannel} onChange={() => updateSetting('smsChannel', !settings.smsChannel)} />
+              </div>
             </div>
 
             <div className="space-y-3">

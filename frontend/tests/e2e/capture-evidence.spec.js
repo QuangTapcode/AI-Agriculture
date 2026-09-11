@@ -22,6 +22,19 @@ const GROUPS = {
     { path: '/crop/ca-phe', slug: 'crop-detail' },
     { path: '/market', slug: 'market' },
   ],
+  'group-5-operations': [
+    { path: '/quality', slug: 'quality' },
+    { path: '/harvest', slug: 'harvest' },
+    { path: '/season-management', slug: 'season' },
+    { path: '/alerts', slug: 'alerts' },
+    { path: '/notifications', slug: 'notifications' },
+  ],
+  'group-6-ai-account': [
+    { path: '/ai-chat', slug: 'ai-chat' },
+    { path: '/knowledge-documents', slug: 'knowledge' },
+    { path: '/settings', slug: 'settings' },
+    { path: '/profile', slug: 'profile' },
+  ],
 };
 
 const GROUP = process.env.EVIDENCE_GROUP || 'group-3-app-shell';

@@ -166,8 +166,8 @@ const ProfilePage = () => {
               </div>
               <div className="space-y-4">
                 <div>
-                  <label className="mb-2 block text-sm font-medium text-gray-700">Ngôn ngữ hiển thị</label>
-                  <select
+                  <label htmlFor="profile-ngon-ngu-hien-thi" className="mb-2 block text-sm font-medium text-gray-700">Ngôn ngữ hiển thị</label>
+                  <select id="profile-ngon-ngu-hien-thi"
                     value={language}
                     onChange={(event) => setLanguage(event.target.value)}
                     className="w-full rounded-lg border border-gray-300 px-4 py-3 outline-none focus:border-green-600 focus:ring-2 focus:ring-green-100"
