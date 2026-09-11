@@ -1,51 +1,27 @@
 import { ArrowLeft, Home } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
+import AgriNavbar from '../components/AgriNavbar';
 import PublicFooter from '../components/PublicFooter';
-import PublicHeader from '../components/PublicHeader';
 
-const NotFoundContent = () => {
+function NotFoundContent() {
   const navigate = useNavigate();
-
   return (
-    <div className="mx-auto flex min-h-[60vh] max-w-3xl flex-col items-center justify-center px-4 py-16 text-center">
-      <p className="text-sm font-semibold uppercase tracking-wide text-green-700">404</p>
-      <h1 className="mt-3 text-4xl font-bold text-gray-900">Không tìm thấy trang</h1>
-      <p className="mt-4 max-w-xl leading-7 text-gray-600">
-        Đường dẫn này chưa tồn tại hoặc đã được đổi tên. Bạn có thể quay lại trang trước hoặc mở bảng điều khiển.
-      </p>
-      <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-        <button
-          type="button"
-          onClick={() => navigate(-1)}
-          className="inline-flex items-center justify-center gap-2 rounded-lg border border-gray-300 px-5 py-3 font-semibold text-gray-800 hover:bg-gray-50"
-        >
-          <ArrowLeft className="h-5 w-5" />
-          Quay lại
-        </button>
-        <Link
-          to="/dashboard"
-          className="inline-flex items-center justify-center gap-2 rounded-lg bg-green-700 px-5 py-3 font-semibold text-white hover:bg-green-800"
-        >
-          <Home className="h-5 w-5" />
-          Vào bảng điều khiển
-        </Link>
+    <section className="relative flex min-h-[68vh] items-center overflow-hidden bg-field-ink px-5 py-20 text-white">
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(186,255,89,0.12),transparent_32%)]" />
+      <div className="relative mx-auto w-full max-w-3xl text-center">
+        <p className="font-display text-sm font-bold uppercase tracking-[0.3em] text-field-lime">Lỗi 404</p>
+        <h1 className="mt-5 font-display text-5xl font-extrabold tracking-[-0.04em] sm:text-7xl">Không tìm thấy trang</h1>
+        <p className="mx-auto mt-5 max-w-xl text-lg leading-8 text-slate-300">Đường dẫn có thể đã thay đổi hoặc chưa tồn tại.</p>
+        <div className="mt-9 flex flex-col justify-center gap-3 sm:flex-row">
+          <button type="button" onClick={() => navigate(-1)} className="field-button-secondary border-white/20 bg-transparent text-white hover:bg-white/10"><ArrowLeft className="h-4 w-4" aria-hidden="true" /> Quay lại</button>
+          <Link to="/" className="field-button-primary"><Home className="h-4 w-4" aria-hidden="true" /> Về trang chủ</Link>
+        </div>
       </div>
-    </div>
+    </section>
   );
-};
+}
 
-const NotFoundPage = ({ publicLayout = true }) => {
-  if (!publicLayout) {
-    return <NotFoundContent />;
-  }
-
-  return (
-    <div className="min-h-screen bg-white">
-      <PublicHeader />
-      <NotFoundContent />
-      <PublicFooter />
-    </div>
-  );
-};
-
-export default NotFoundPage;
+export default function NotFoundPage({ publicLayout = true }) {
+  if (!publicLayout) return <NotFoundContent />;
+  return <main className="min-h-screen bg-field-ink"><AgriNavbar /><NotFoundContent /><PublicFooter /></main>;
+}
