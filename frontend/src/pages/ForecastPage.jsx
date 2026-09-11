@@ -26,6 +26,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import DataSourceBadge from '../components/DataSourceBadge';
 import { getApiErrorMessage } from '../services/api';
 import { weatherApi } from '../services/weatherApi';
+import { cropImpacts } from '../utils/cropImpact';
+import { thunderstormRisk } from '../utils/weatherRisk';
 import { severityLabel, translateUiText } from '../utils/vietnameseText';
 
 const regions = [
@@ -240,34 +242,6 @@ const UVBar = ({ value }) => {
   );
 };
 
-// ── Crop impact rules ──────────────────────────────────────────────────────────
-const cropImpacts = (hour) => {
-  const items = [];
-  const h = hour.humidity ?? 0;
-  const rain = hour.rain_probability ?? 0;
-  const wind = hour.wind_speed ?? 0;
-  const uv = hour.uv_index ?? 0;
-  const temp = hour.temperature ?? 25;
-
-  if (h > 85) items.push({ level: 'high', text: 'Độ ẩm cao — nguy cơ nấm bệnh, đạo ôn. Không phun thuốc.' });
-  else if (h > 70) items.push({ level: 'medium', text: 'Độ ẩm trung bình — theo dõi bệnh hại lá.' });
-  else items.push({ level: 'ok', text: 'Độ ẩm phù hợp canh tác.' });
-
-  if (rain > 70) items.push({ level: 'high', text: 'Xác suất mưa cao — tránh bón phân, phun thuốc.' });
-  else if (rain > 40) items.push({ level: 'medium', text: 'Có thể có mưa — chuẩn bị thoát nước.' });
-  else items.push({ level: 'ok', text: 'Ít mưa — thích hợp phun thuốc, bón phân.' });
-
-  if (wind > 25) items.push({ level: 'high', text: `Gió ${formatNumber(wind, ' km/h', 0)} — không phun hóa chất, nguy cơ đổ cây.` });
-  else if (wind > 15) items.push({ level: 'medium', text: 'Gió vừa — phun thuốc cẩn thận, chọn vòi định hướng.' });
-
-  if (uv > 7) items.push({ level: 'medium', text: 'UV cao — che phủ cây non, tưới sáng sớm hoặc chiều tối.' });
-
-  if (temp > 37) items.push({ level: 'high', text: `Nhiệt độ ${formatNumber(temp, '°C')} — cây dễ stress nhiệt. Tăng tưới, che nắng.` });
-  else if (temp < 15) items.push({ level: 'medium', text: 'Nhiệt độ thấp — cây lúa và rau màu có thể bị lạnh cóng.' });
-
-  return items;
-};
-
 // ── Hour detail: 6 sections ────────────────────────────────────────────────────
 const HourDetail = ({ hour }) => {
   if (!hour) return null;
@@ -277,10 +251,15 @@ const HourDetail = ({ hour }) => {
   const visScore = hour.visibility != null
     ? hour.visibility >= 10000 ? 'Rất tốt' : hour.visibility >= 5000 ? 'Tốt' : hour.visibility >= 2000 ? 'Trung bình' : 'Kém'
     : '—';
-  const isThunderstorm = [95, 96, 99].includes(hour.weather_code) || hour.condition === 'thunderstorm' || hour.condition === 'thunderstorm_hail';
-  const isHeavyRainRisk = ['heavy_rain', 'heavy_showers'].includes(hour.condition);
-  const thunderRisk = isThunderstorm ? 'Đang xảy ra' : isHeavyRainRisk ? 'Nguy cơ cao' : 'Không có';
-  const thunderColor = isThunderstorm ? 'text-red-600' : isHeavyRainRisk ? 'text-orange-500' : 'text-green-600';
+  const thunder = thunderstormRisk(hour);
+  const isThunderstorm = thunder.level === 'active';
+  const thunderRisk = thunder.label;
+  const thunderColor = {
+    active: 'text-red-600',
+    elevated: 'text-orange-500',
+    none: 'text-green-600',
+    unknown: 'text-gray-500',
+  }[thunder.level];
   const impacts = cropImpacts(hour);
   const levelColor = { high: 'text-red-600 bg-red-50 border-red-200', medium: 'text-orange-600 bg-orange-50 border-orange-200', ok: 'text-green-700 bg-green-50 border-green-200' };
 
@@ -336,10 +315,12 @@ const HourDetail = ({ hour }) => {
                 ? 'Giông kèm mưa đá — không ra ngoài, che chắn nhà kính và thiết bị nông nghiệp.'
                 : 'Giông bão đang xảy ra — không làm việc ngoài trời, tránh cây cao, thu dọn dụng cụ.'}
             </p>
-          ) : isHeavyRainRisk ? (
+          ) : thunder.level === 'elevated' ? (
             <p className="text-xs text-orange-600">Mưa lớn/mưa rào mạnh có thể kéo theo giông. Theo dõi sát, chuẩn bị thoát nước đồng ruộng.</p>
-          ) : (
+          ) : thunder.level === 'none' ? (
             <p className="text-xs text-gray-400">Không có nguy cơ giông lốc trong khung giờ này.</p>
+          ) : (
+            <p className="text-xs text-gray-500">Chưa có dữ liệu điều kiện thời tiết cho khung giờ này.</p>
           )}
         </Section>
 
@@ -351,12 +332,18 @@ const HourDetail = ({ hour }) => {
         {/* 6. Ảnh hưởng đến cây trồng */}
         <Section icon={Leaf} title="Ảnh hưởng đến cây trồng" iconColor="text-emerald-600" borderColor="border-emerald-100">
           <div className="space-y-1.5">
-            {impacts.map((item, i) => (
-              <div key={i} className={`flex items-start gap-2 rounded-lg border px-2 py-1.5 text-xs ${levelColor[item.level]}`}>
-                <span className="mt-0.5 shrink-0">{item.level === 'high' ? '⚠' : item.level === 'medium' ? '●' : '✓'}</span>
-                <span>{item.text}</span>
-              </div>
-            ))}
+            {impacts.length ? (
+              impacts.map((item, i) => (
+                <div key={i} className={`flex items-start gap-2 rounded-lg border px-2 py-1.5 text-xs ${levelColor[item.level]}`}>
+                  <span className="mt-0.5 shrink-0">{item.level === 'high' ? '⚠' : item.level === 'medium' ? '●' : '✓'}</span>
+                  <span>{item.text}</span>
+                </div>
+              ))
+            ) : (
+              <p className="rounded-lg border border-dashed border-gray-200 px-2 py-3 text-center text-xs text-gray-500">
+                Chưa đủ số đo thời tiết cho giờ này để đưa ra khuyến nghị canh tác.
+              </p>
+            )}
           </div>
         </Section>
 
