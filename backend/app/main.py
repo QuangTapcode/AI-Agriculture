@@ -22,7 +22,7 @@ from sqlalchemy.exc import OperationalError, SQLAlchemyError
 from app.api import (
     ai, ai_chat, alert, assistant_library, auth, chat, crawler, crops, dashboard,
     harvest, locations, market, market_news, news, notifications, prices,
-    price_forecast, pricing, quality, reports, season, weather,
+    price_forecast, pricing, public_contact, quality, reports, season, weather,
 )
 from app.api import admin as admin_router
 from app.api import settings as settings_router
@@ -123,6 +123,7 @@ app.include_router(season.router)
 app.include_router(settings_router.router)
 app.include_router(market_news.router)
 app.include_router(locations.router)
+app.include_router(public_contact.router)
 app.include_router(alert.alerts_router)
 app.include_router(alert.weather_alert_router)
 

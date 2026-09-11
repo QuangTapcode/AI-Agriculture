@@ -10,6 +10,7 @@ from .market_news import MarketNews
 from .notification import Notification, NotificationDelivery
 from .price import MarketPrice, PriceForecastResult, PriceHistory, PricingRequest
 from .store_price import StorePrice
+from .support_request import SupportRequest
 from .quality import QualityCheck, QualityRecord
 from .season import Season
 from .settings import NotificationPreference, UserSettings
@@ -54,6 +55,7 @@ __all__ = [
     "RegionalPriceSnapshot",
     "Season",
     "StorePrice",
+    "SupportRequest",
     "User",
     "UserSettings",
     "CropWeatherRule",
