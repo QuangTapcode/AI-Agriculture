@@ -6,6 +6,7 @@ import math
 from datetime import datetime, timezone
 from functools import lru_cache
 from pathlib import Path
+from threading import Lock
 
 import httpx
 
@@ -73,11 +74,22 @@ def chunk_pages(pages: list[tuple[int, str]]) -> list[dict]:
     return chunks
 
 
+_chroma_init_lock = Lock()
+
+
 @lru_cache(maxsize=4)
-def _chroma(path: str):
+def _cached_chroma(path: str):
     import chromadb
     from chromadb.config import Settings
     return chromadb.PersistentClient(path=path, settings=Settings(anonymized_telemetry=False))
+
+
+def _chroma(path: str):
+    # functools.lru_cache may execute the wrapped function more than once when
+    # concurrent calls miss the same key. Chroma's in-process system registry
+    # cannot tolerate concurrent PersistentClient initialization for one path.
+    with _chroma_init_lock:
+        return _cached_chroma(path)
 
 
 class RagService:

@@ -1,4 +1,6 @@
 import json
+from concurrent.futures import ThreadPoolExecutor
+from threading import Barrier
 from types import SimpleNamespace
 
 import pytest
@@ -177,6 +179,23 @@ def test_document_upload_and_validation(api):
     assert client.post('/api/ai-chat/documents', files={'file': ('file.exe', b'wrong')}).status_code == 422
     client.delete('/api/ai-chat/documents/' + response.json()['id'])
     assert client.get('/api/ai-chat/documents').json()['documents'] == []
+
+
+def test_fresh_document_library_handles_concurrent_api_requests(api):
+    """Opening an empty library must stay available when the UI loads its panels together."""
+    client, _, _ = api
+    workers = 8
+    barrier = Barrier(workers)
+
+    def open_library(_):
+        barrier.wait()
+        return client.get('/api/ai-chat/documents')
+
+    with ThreadPoolExecutor(max_workers=workers) as pool:
+        responses = list(pool.map(open_library, range(workers)))
+
+    assert [response.status_code for response in responses] == [200] * workers
+    assert all(response.json() == {'documents': []} for response in responses)
 
 
 def test_knowledge_status_reports_latest_nightly_run(api, rag):

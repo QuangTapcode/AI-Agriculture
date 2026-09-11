@@ -172,6 +172,7 @@ export default function AIChatPage() {
   };
 
   const refreshLibrary = () => {
+    setError('');
     refreshDocuments();
     refreshKnowledgeStatus();
   };
