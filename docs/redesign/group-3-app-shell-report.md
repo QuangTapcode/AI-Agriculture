@@ -83,17 +83,19 @@ Thư mục `docs/redesign/evidence/group-3-app-shell/` (không commit media):
   `dashboard-tablet-768.png`, `dashboard-tablet-1024.png`
 - `reports-*.png` cho cùng bốn khung hình
 - `drawer-open-mobile-390.png`, `drawer-open-tablet-768.png`
-- `scroll-desktop-1440.webm`, `scroll-mobile-390.webm`
+- `scroll-*.mp4` (H.264) cho cả bốn khung hình, kèm bản `.webm` gốc
 
-Video đang ở định dạng WebM chứ chưa phải MP4: ffmpeg đi kèm Playwright là bản
-rút gọn chỉ có muxer webm, và máy này chưa cài ffmpeg hệ thống. Cài ffmpeg là đủ
-để xuất MP4, cần bạn duyệt trước khi tôi cài.
+Video cuộn trang đã xuất MP4 bằng ffmpeg 9.0.1 (cài qua winget, bạn đã duyệt).
+Mỗi video giữ đúng tỉ lệ khung hình của viewport tương ứng — không ép chung một
+khung 1280x800 nữa, nếu không video "mobile" thực chất là trang 390px bị phóng to.
 
 Tạo lại toàn bộ:
 
 ```bash
 cd frontend
-npx playwright test tests/e2e/capture-evidence.spec.js --project=desktop-1440 --project=mobile-390
+npx playwright test tests/e2e/capture-evidence.spec.js
+cd ../docs/redesign/evidence/group-3-app-shell
+for f in *.webm; do ffmpeg -y -i "$f" -c:v libx264 -preset slow -crf 23 \n  -pix_fmt yuv420p -movflags +faststart \n  -vf "scale=trunc(iw/2)*2:trunc(ih/2)*2" "${f%.webm}.mp4"; done
 ```
 
 ## Ghi chú còn mở

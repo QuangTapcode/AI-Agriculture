@@ -56,7 +56,9 @@ const installSession = async (page) => {
 };
 
 // Video chỉ bật cho file này để không làm chậm bộ e2e thường.
-test.use({ video: { mode: 'on', size: { width: 1280, height: 800 } } });
+// Không ép size: để Playwright ghi đúng khung hình của từng project, nếu không
+// video "mobile" lại là trang 390px bị phóng vào khung 1280x800.
+test.use({ video: 'on' });
 
 test.beforeAll(() => {
   fs.mkdirSync(OUTPUT_DIR, { recursive: true });
@@ -99,13 +101,15 @@ test('record a scroll pass over the dashboard', async ({ page }, testInfo) => {
   await page.waitForLoadState('networkidle');
 
   const height = await page.evaluate(() => document.body.scrollHeight);
-  const step = Math.max(Math.round((page.viewportSize()?.height ?? 800) / 3), 120);
+  // Bước nhỏ và nghỉ lâu hơn để video đủ chậm cho người xem đọc được nội dung.
+  const step = Math.max(Math.round((page.viewportSize()?.height ?? 800) / 6), 90);
 
+  await page.waitForTimeout(900);
   for (let offset = 0; offset < height; offset += step) {
     await page.mouse.wheel(0, step);
-    await page.waitForTimeout(90);
+    await page.waitForTimeout(160);
   }
-  await page.waitForTimeout(400);
+  await page.waitForTimeout(900);
 
   // Playwright chỉ ghi xong video khi context đóng; copy ở teardown của testInfo.
   const target = path.join(OUTPUT_DIR, `scroll-${testInfo.project.name}.webm`);
