@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Bar, Line } from 'react-chartjs-2';
-import { useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { InlineLoading, PageError } from '../components/StatusState';
 import { cropsApi } from '../services/cropsApi';
 import { pricingApi } from '../services/pricingApi';
@@ -42,6 +42,21 @@ const CropDetailPage = () => {
   const [regionComparison, setRegionComparison] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [shareNotice, setShareNotice] = useState('');
+
+  const handleShare = async () => {
+    const url = window.location.href;
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: document.title, url });
+        return;
+      }
+      await navigator.clipboard.writeText(url);
+      setShareNotice('Đã sao chép liên kết.');
+    } catch {
+      setShareNotice('Không chia sẻ được, bạn có thể sao chép từ thanh địa chỉ.');
+    }
+  };
 
   useEffect(() => {
     if (!cropId) return;
@@ -194,9 +209,19 @@ const CropDetailPage = () => {
             </p>
           </div>
           <div className="flex items-center space-x-3">
-            <button className="p-3 border-2 border-gray-300 rounded-xl hover:border-green-700 hover:text-green-700 transition">
-              <Share2 className="w-5 h-5" />
+            <button
+              type="button"
+              onClick={handleShare}
+              aria-label={`Chia sẻ trang ${crop.crop_name}`}
+              className="rounded-xl border-2 border-gray-300 p-3 transition hover:border-green-700 hover:text-green-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-700"
+            >
+              <Share2 className="h-5 w-5" aria-hidden="true" />
             </button>
+            {shareNotice && (
+              <span role="status" className="text-sm text-gray-600">
+                {shareNotice}
+              </span>
+            )}
           </div>
         </div>
 
@@ -224,10 +249,15 @@ const CropDetailPage = () => {
               <span className="text-gray-500">so sánh hôm qua</span>
             </div>
           </div>
-          <button className="bg-green-700 text-white px-8 py-4 rounded-xl font-bold hover:bg-green-800 transition flex items-center space-x-2">
-            <Bell className="w-5 h-5" />
-            <span>Đặt Cảnh Báo Giá</span>
-          </button>
+          {/* Nút này từng không có handler. Cảnh báo giá có sẵn ở /alerts nên
+              điều hướng sang đó kèm cây trồng thay vì hứa suông. */}
+          <Link
+            to={`/alerts?crop=${encodeURIComponent(crop.crop_name)}`}
+            className="flex items-center space-x-2 rounded-xl bg-green-700 px-8 py-4 font-bold text-white transition hover:bg-green-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-700"
+          >
+            <Bell className="h-5 w-5" aria-hidden="true" />
+            <span>Đặt cảnh báo giá</span>
+          </Link>
         </div>
       </div>
 
@@ -237,10 +267,13 @@ const CropDetailPage = () => {
           <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-bold text-gray-900">Dự Báo 7 Ngày</h2>
-              <div className="flex items-center space-x-2">
-                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-                <span className="text-sm text-gray-500">Dữ liệu thực</span>
-              </div>
+              {/* Chỉ gắn nhãn "dữ liệu thực" khi thực sự có dòng dự báo để hiển thị. */}
+              {forecastRows.length > 0 && (
+                <div className="flex items-center space-x-2">
+                  <div className="h-2 w-2 rounded-full bg-green-500 motion-reduce:animate-none animate-pulse" />
+                  <span className="text-sm text-gray-500">Dữ liệu thực</span>
+                </div>
+              )}
             </div>
             {forecastRows.length > 0 ? (
               <div className="space-y-3">
@@ -344,7 +377,7 @@ const CropDetailPage = () => {
                   <span className="text-gray-700">Chu kỳ sinh trưởng</span>
                 </div>
                 <span className="text-xl font-bold text-gray-900">
-                  {crop.growth_duration_days ? `${crop.growth_duration_days} ngày` : 'N/A'}
+                  {crop.growth_duration_days ? `${crop.growth_duration_days} ngày` : MISSING}
                 </span>
               </div>
               <div className="flex items-center justify-between p-4 bg-orange-50 rounded-xl">
@@ -352,7 +385,7 @@ const CropDetailPage = () => {
                   <Thermometer className="w-6 h-6 text-orange-600" />
                   <span className="text-gray-700">Mùa vụ</span>
                 </div>
-                <span className="font-bold text-gray-900">{crop.harvest_season || 'Quanh năm'}</span>
+                <span className="font-bold text-gray-900">{crop.harvest_season || MISSING}</span>
               </div>
             </div>
           </div>

@@ -101,3 +101,63 @@ describe('crop detail real-data contract', () => {
     expect(screen.queryByText(/CẬP NHẬT HÔM NAY/i)).not.toBeInTheDocument();
   });
 });
+
+describe('crop detail controls do what they say', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    getCropDetail.mockResolvedValue(CROP);
+    getCurrentPrice.mockResolvedValue(null);
+    getPriceHistory.mockResolvedValue(null);
+    getPriceForecast.mockResolvedValue(null);
+    compareRegions.mockResolvedValue(null);
+  });
+
+  it('sends the price-alert button to the alert centre for this crop', async () => {
+    renderCrop();
+
+    const alertButton = await screen.findByRole('link', { name: /Đặt cảnh báo giá/i });
+    expect(alertButton).toHaveAttribute('href', expect.stringContaining('/alerts'));
+    expect(alertButton.getAttribute('href')).toContain('crop=');
+  });
+
+  it('gives the share control an accessible name', async () => {
+    renderCrop();
+
+    expect(await screen.findByRole('button', { name: /Chia sẻ/i })).toBeInTheDocument();
+  });
+});
+
+describe('crop detail labels match what is on screen', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    getCropDetail.mockResolvedValue(CROP);
+    getCurrentPrice.mockResolvedValue(null);
+    getPriceHistory.mockResolvedValue(null);
+    getPriceForecast.mockResolvedValue(null);
+    compareRegions.mockResolvedValue(null);
+  });
+
+  it('does not badge an empty forecast panel as real data', async () => {
+    renderCrop();
+
+    await screen.findByTestId('crop-current-price');
+    expect(screen.queryByText('Dữ liệu thực')).not.toBeInTheDocument();
+  });
+
+  it('badges the forecast as real data once rows arrive', async () => {
+    getPriceForecast.mockResolvedValue({
+      forecast_data: [{ date: '2026-09-20', predicted_price: 8200 }],
+    });
+
+    renderCrop();
+
+    expect(await screen.findByText('Dữ liệu thực')).toBeInTheDocument();
+  });
+
+  it('does not claim a year-round season when none was recorded', async () => {
+    renderCrop();
+
+    await screen.findByTestId('crop-current-price');
+    expect(screen.queryByText('Quanh năm')).not.toBeInTheDocument();
+  });
+});

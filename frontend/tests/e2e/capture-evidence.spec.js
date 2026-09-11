@@ -1,59 +1,38 @@
 import { expect, test } from '@playwright/test';
 import fs from 'node:fs';
 import path from 'node:path';
+import { installSession } from './helpers/session.js';
 
 /**
- * Sinh ảnh và video nghiệm thu cho nhóm đang hoàn thiện.
- * Chạy: npx playwright test tests/e2e/capture-evidence.spec.js --project=<viewport>
- * Kết quả nằm ở docs/redesign/evidence/<nhóm>/ ngoài repo build.
+ * Sinh ảnh và video nghiệm thu cho một nhóm page.
+ *
+ * Chạy:       npx playwright test tests/e2e/capture-evidence.spec.js
+ * Chọn nhóm:  EVIDENCE_GROUP=group-4-market-data npx playwright test ...
+ *
+ * Kết quả nằm ngoài build, ở docs/redesign/evidence/<nhóm>/.
  */
-const OUTPUT_DIR = path.resolve(process.cwd(), '..', 'docs', 'redesign', 'evidence', 'group-3-app-shell');
-
-const envelope = (data) => ({
-  success: true,
-  ...data,
-  data,
-  source: 'database',
-  source_name: 'Cơ sở dữ liệu AgriAI',
-  is_mock: false,
-  cache_status: 'from_db',
-  confidence: null,
-  warning: null,
-  error: null,
-});
-
-const installSession = async (page) => {
-  await page.route('**/api/auth/me', (route) =>
-    route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({
-        user_id: 1,
-        full_name: 'Nông hộ thử nghiệm',
-        email: 'nonghothunghiem@example.com',
-        region: 'Dak Lak',
-        role: 'farmer',
-      }),
-    })
-  );
-
-  await page.route('**/api/**', async (route) => {
-    if (route.request().url().includes('/api/auth/me')) return route.fallback();
-    return route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify(envelope({ region: 'Dak Lak', crop_name: 'lua' })),
-    });
-  });
-
-  await page.addInitScript(() => {
-    localStorage.setItem('token', 'evidence-token');
-    localStorage.setItem(
-      'agriai_user',
-      JSON.stringify({ id: 1, name: 'Nông hộ thử nghiệm', region: 'Dak Lak', role: 'farmer' })
-    );
-  });
+const GROUPS = {
+  'group-3-app-shell': [
+    { path: '/dashboard', slug: 'dashboard' },
+    { path: '/reports', slug: 'reports' },
+  ],
+  'group-4-market-data': [
+    { path: '/weather', slug: 'weather' },
+    { path: '/pricing', slug: 'pricing' },
+    { path: '/crop/ca-phe', slug: 'crop-detail' },
+    { path: '/market', slug: 'market' },
+  ],
 };
+
+const GROUP = process.env.EVIDENCE_GROUP || 'group-3-app-shell';
+const ROUTES = GROUPS[GROUP];
+const OUTPUT_DIR = path.resolve(process.cwd(), '..', 'docs', 'redesign', 'evidence', GROUP);
+
+if (!ROUTES) {
+  throw new Error(
+    `EVIDENCE_GROUP không hợp lệ: ${GROUP}. Chọn một trong ${Object.keys(GROUPS).join(', ')}`
+  );
+}
 
 // Video chỉ bật cho file này để không làm chậm bộ e2e thường.
 // Không ép size: để Playwright ghi đúng khung hình của từng project, nếu không
@@ -64,14 +43,13 @@ test.beforeAll(() => {
   fs.mkdirSync(OUTPUT_DIR, { recursive: true });
 });
 
-for (const route of ['/dashboard', '/reports']) {
-  test(`capture ${route}`, async ({ page }, testInfo) => {
+for (const route of ROUTES) {
+  test(`capture ${route.path}`, async ({ page }, testInfo) => {
     await installSession(page);
-    await page.goto(route);
+    await page.goto(route.path);
     await page.waitForLoadState('networkidle');
 
-    const slug = route.replace(/\//g, '') || 'home';
-    const file = path.join(OUTPUT_DIR, `${slug}-${testInfo.project.name}.png`);
+    const file = path.join(OUTPUT_DIR, `${route.slug}-${testInfo.project.name}.png`);
     await page.screenshot({ path: file, fullPage: true });
     expect(fs.existsSync(file)).toBe(true);
   });
@@ -81,7 +59,7 @@ test('capture the mobile drawer open', async ({ page }, testInfo) => {
   test.skip((page.viewportSize()?.width ?? 0) >= 1024, 'drawer only exists below lg');
 
   await installSession(page);
-  await page.goto('/dashboard');
+  await page.goto(ROUTES[0].path);
   await page.waitForLoadState('networkidle');
   await page.getByRole('button', { name: 'Mở menu' }).click();
   // Drawer trượt 300ms: chờ transform dừng hẳn rồi mới chụp.
@@ -95,9 +73,9 @@ test('capture the mobile drawer open', async ({ page }, testInfo) => {
   expect(fs.existsSync(file)).toBe(true);
 });
 
-test('record a scroll pass over the dashboard', async ({ page }, testInfo) => {
+test('record a scroll pass over the first page of the group', async ({ page }, testInfo) => {
   await installSession(page);
-  await page.goto('/dashboard');
+  await page.goto(ROUTES[0].path);
   await page.waitForLoadState('networkidle');
 
   const height = await page.evaluate(() => document.body.scrollHeight);
@@ -111,7 +89,7 @@ test('record a scroll pass over the dashboard', async ({ page }, testInfo) => {
   }
   await page.waitForTimeout(900);
 
-  // Playwright chỉ ghi xong video khi context đóng; copy ở teardown của testInfo.
+  // Playwright chỉ ghi xong video khi page đóng.
   const target = path.join(OUTPUT_DIR, `scroll-${testInfo.project.name}.webm`);
   const video = page.video();
   testInfo.annotations.push({ type: 'scroll-pass', description: `${height}px` });

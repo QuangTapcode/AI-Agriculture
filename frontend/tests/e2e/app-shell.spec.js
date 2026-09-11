@@ -1,59 +1,6 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test } from '@playwright/test';
-
-/**
- * Vỏ ứng dụng nằm sau ProtectedRoute nên e2e phải tự dựng phiên đăng nhập.
- * Ta chặn tầng mạng thay vì chạy backend thật: mục tiêu của nhóm này là khung
- * giao diện và điều hướng, còn hợp đồng dữ liệu đã có test riêng ở backend.
- */
-const envelope = (data, overrides = {}) => ({
-  success: true,
-  ...data,
-  data,
-  source: 'database',
-  source_name: 'Cơ sở dữ liệu AgriAI',
-  is_mock: false,
-  cache_status: 'from_db',
-  confidence: null,
-  warning: null,
-  error: null,
-  ...overrides,
-});
-
-const installSession = async (page) => {
-  await page.route('**/api/auth/me', (route) =>
-    route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({
-        user_id: 1,
-        full_name: 'Nông hộ thử nghiệm',
-        email: 'nonghothunghiem@example.com',
-        region: 'Dak Lak',
-        role: 'farmer',
-      }),
-    })
-  );
-
-  await page.route('**/api/**', async (route) => {
-    if (route.request().url().includes('/api/auth/me')) {
-      return route.fallback();
-    }
-    return route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify(envelope({ region: 'Dak Lak', crop_name: 'lua' })),
-    });
-  });
-
-  await page.addInitScript(() => {
-    localStorage.setItem('token', 'e2e-test-token');
-    localStorage.setItem(
-      'agriai_user',
-      JSON.stringify({ id: 1, name: 'Nông hộ thử nghiệm', region: 'Dak Lak', role: 'farmer' })
-    );
-  });
-};
+import { expectNoHorizontalOverflow, installSession } from './helpers/session.js';
 
 const appRoutes = ['/dashboard', '/reports'];
 
@@ -68,11 +15,7 @@ for (const route of appRoutes) {
 
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
 
-    const dimensions = await page.evaluate(() => ({
-      scrollWidth: document.documentElement.scrollWidth,
-      clientWidth: document.documentElement.clientWidth,
-    }));
-    expect(dimensions.scrollWidth).toBeLessThanOrEqual(dimensions.clientWidth + 1);
+    await expectNoHorizontalOverflow(page, expect);
 
     expect(consoleErrors).toEqual([]);
   });
