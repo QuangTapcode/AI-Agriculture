@@ -23,10 +23,16 @@ import { EmptyState, InlineLoading, PageError } from '../components/StatusState'
 import { useAuth } from '../contexts/AuthContext';
 import { getApiErrorMessage } from '../services/api';
 import { reportsApi } from '../services/reportsApi';
+import { MISSING, hasValue } from '../utils/format';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Tooltip, Legend);
 
-const formatCurrency = (value) => `${Number(value || 0).toLocaleString('vi-VN')} đ`;
+/** Thiếu số liệu thì trả em dash; số 0 thật vẫn hiện là 0. */
+const formatCurrency = (value) =>
+  hasValue(value) ? `${Number(value).toLocaleString('vi-VN')} đ` : MISSING;
+
+const formatQuantity = (value) =>
+  hasValue(value) ? `${Number(value).toLocaleString('vi-VN')} kg` : MISSING;
 
 const formatDate = (value) => {
   if (!value) return 'Chưa cập nhật';
@@ -60,13 +66,14 @@ const ReportsPage = () => {
     market: [],
     quality: [],
   });
+  // Khởi tạo rỗng chứ không phải 0: chưa tải xong thì chưa biết con số nào.
   const [summary, setSummary] = useState({
-    total_revenue: 0,
-    total_quantity: 0,
+    total_revenue: null,
+    total_quantity: null,
     quality_summary: {},
     top_quality_grade: null,
     monthly_revenue: [],
-    record_counts: { harvest: 0, market: 0, quality: 0 },
+    record_counts: null,
   });
 
   const loadReports = async () => {
@@ -81,7 +88,7 @@ const ReportsPage = () => {
         harvest: data.harvest || [],
         market: data.market || [],
       });
-      setSummary(data);
+      setSummary(data || {});
     } catch (err) {
       setError(getApiErrorMessage(err, 'Không thể tải báo cáo của tài khoản'));
     } finally {
@@ -94,12 +101,12 @@ const ReportsPage = () => {
   }, [user?.id]);
 
   const totalRevenue = useMemo(
-    () => Number(summary.total_revenue || 0),
+    () => (hasValue(summary.total_revenue) ? Number(summary.total_revenue) : null),
     [summary.total_revenue]
   );
 
   const totalQuantity = useMemo(
-    () => Number(summary.total_quantity || 0),
+    () => (hasValue(summary.total_quantity) ? Number(summary.total_quantity) : null),
     [summary.total_quantity]
   );
 
@@ -203,6 +210,7 @@ const ReportsPage = () => {
     {
       icon: <DollarSign className="h-6 w-6 text-green-600" />,
       label: 'Tổng doanh thu theo tài khoản',
+      testId: 'report-total-revenue',
       value: formatCurrency(totalRevenue),
       subtitle: `${reportData.market.length} bản ghi gợi ý thị trường`,
       bgColor: 'bg-green-50',
@@ -210,6 +218,7 @@ const ReportsPage = () => {
     {
       icon: <Package className="h-6 w-6 text-yellow-600" />,
       label: 'Chất lượng thường gặp',
+      testId: 'report-top-quality',
       value: qualitySummary,
       subtitle: `${reportData.quality.length} đợt kiểm định`,
       bgColor: 'bg-yellow-50',
@@ -217,7 +226,8 @@ const ReportsPage = () => {
     {
       icon: <TrendingUp className="h-6 w-6 text-red-600" />,
       label: 'Sản lượng đã ghi nhận',
-      value: `${totalQuantity.toLocaleString('vi-VN')} kg`,
+      testId: 'report-total-quantity',
+      value: formatQuantity(totalQuantity),
       subtitle: `${reportData.harvest.length} dự báo thu hoạch`,
       bgColor: 'bg-red-50',
     },
@@ -259,7 +269,9 @@ const ReportsPage = () => {
                   </div>
                 </div>
                 <div className="text-sm font-medium uppercase text-gray-600">{card.label}</div>
-                <div className="mt-2 text-3xl font-bold text-gray-900">{card.value}</div>
+                <div data-testid={card.testId} className="mt-2 text-3xl font-bold text-gray-900">
+                  {card.value}
+                </div>
                 <div className="mt-2 text-sm text-gray-600">{card.subtitle}</div>
               </div>
             ))}

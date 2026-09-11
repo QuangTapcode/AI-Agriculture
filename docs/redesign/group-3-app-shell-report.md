@@ -15,7 +15,7 @@ Nhánh `feat/ui-field-command`. Mọi thay đổi tunnel trong `deploy/agriai-de
 ## Kết quả kiểm thử
 
 ```
-Unit (Vitest)      15 file, 68 test — pass
+Unit (Vitest)      16 file, 71 test — pass
 E2E (Playwright)   66 test trên 4 khung hình, 2 skip — pass
 Backend (pytest)   478 pass, 7 skip, 1 fail (có sẵn, xem bên dưới)
 Build production   pass
@@ -49,6 +49,8 @@ trong khi thay đổi backend của nhóm này chỉ gồm 3 dòng ở `app/api/
 9. Badge "Trung tâm cảnh báo" hiển thị "0 cảnh báo" cả khi backend không trả
    trường `alert_center`.
 10. Navbar hiển thị chấm thông báo chưa đọc mà không có dữ liệu nào phía sau.
+11. Trang Báo cáo khởi tạo state bằng `0` và format bằng `Number(value || 0)`,
+    nên tài khoản chưa có bản ghi nào vẫn thấy "0 đ" doanh thu và "0 kg" sản lượng.
 
 ## Lỗi chất lượng khác đã sửa
 
@@ -65,7 +67,7 @@ trong khi thay đổi backend của nhóm này chỉ gồm 3 dòng ở `app/api/
 
 | Tiêu chí | Kết quả |
 | --- | --- |
-| Không có dữ liệu mẫu trình bày như dữ liệu thật | Đạt — 10 điểm vi phạm ở trên đã sửa |
+| Không có dữ liệu mẫu trình bày như dữ liệu thật | Đạt — 11 điểm vi phạm ở trên đã sửa |
 | Không có lỗi console hoặc request hỏng bị che | Đạt — e2e assert `consoleErrors` rỗng |
 | Không tràn ngang ở 4 khung hình | Đạt — assert `scrollWidth <= clientWidth` |
 | Chuột, bàn phím, cảm ứng | Đạt — drawer mở/đóng bằng nút, Escape; link focus được |
