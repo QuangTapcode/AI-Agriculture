@@ -7,10 +7,9 @@ import ProtectedRoute from './components/ProtectedRoute';
 import Sidebar from './components/Sidebar';
 import { AuthProvider } from './contexts/AuthContext';
 import { useLanguage } from './contexts/LanguageContext';
+import { resolveRoute } from './routes/appRoutes';
 
 const AIChatPage = lazy(() => import('./pages/AIChatPage'));
-const KnowledgeDocumentsPage = lazy(() => import('./pages/KnowledgeDocumentsPage'));
-const AlertManagementPage = lazy(() => import('./pages/AlertManagementPage'));
 const AlertPage = lazy(() => import('./pages/AlertPage'));
 const ArticlesPage = lazy(() => import('./pages/ArticlesPage'));
 const ContactPage = lazy(() => import('./pages/ContactPage'));
@@ -18,65 +17,20 @@ const CropDetailPage = lazy(() => import('./pages/CropDetailPage'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const FeaturesPage = lazy(() => import('./pages/FeaturesPage'));
 const ForecastPage = lazy(() => import('./pages/ForecastPage'));
-const HarvestForecastPage = lazy(() => import('./pages/HarvestForecastPage'));
 const HarvestPage = lazy(() => import('./pages/HarvestPage'));
+const KnowledgeDocumentsPage = lazy(() => import('./pages/KnowledgeDocumentsPage'));
 const LandingPage = lazy(() => import('./pages/LandingPage'));
 const LoginPage = lazy(() => import('./pages/LoginPage'));
 const MarketPage = lazy(() => import('./pages/MarketPage'));
-const MarketStrategyPage = lazy(() => import('./pages/MarketStrategyPage'));
-const NewDashboard = lazy(() => import('./pages/NewDashboard'));
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage'));
 const NotificationsPage = lazy(() => import('./pages/NotificationsPage'));
-const PricingDashboard = lazy(() => import('./pages/PricingDashboard'));
 const PricingPage = lazy(() => import('./pages/PricingPage'));
 const ProfilePage = lazy(() => import('./pages/ProfilePage'));
-const QualityCheckPage = lazy(() => import('./pages/QualityCheckPage'));
 const QualityPage = lazy(() => import('./pages/QualityPage'));
-const SettingsPage = lazy(() => import('./pages/SettingsPage'));
+const ReportsPage = lazy(() => import('./pages/ReportsPage'));
 const SeasonManagementPage = lazy(() => import('./pages/SeasonManagementPage'));
+const SettingsPage = lazy(() => import('./pages/SettingsPage'));
 const SubscriptionPricingPage = lazy(() => import('./pages/SubscriptionPricingPage'));
-
-const publicRoutes = new Set(['/', '/features', '/articles', '/pricing-plans', '/contact', '/login', '/register']);
-
-const appRoutes = [
-  '/dashboard',
-  '/dashboard-new',
-  '/pricing',
-  '/pricing-dashboard',
-  '/crop',
-  '/quality',
-  '/quality-check',
-  '/harvest',
-  '/harvest-forecast',
-  '/weather',
-  '/market',
-  '/market-strategy',
-  '/alerts',
-  '/alerts-management',
-  '/reports',
-  '/ai-chat',
-  '/knowledge-documents',
-  '/notifications',
-  '/season-management',
-  '/settings',
-  '/profile',
-];
-
-const localeSegments = new Set(['en', 'vi']);
-
-const normalizePathname = (pathname) => {
-  const segments = pathname.split('/').filter(Boolean);
-
-  if (!segments.length || !localeSegments.has(segments[0])) {
-    return pathname;
-  }
-
-  const normalizedPath = `/${segments.slice(1).join('/')}`;
-  return normalizedPath === '/' ? normalizedPath : normalizedPath.replace(/\/$/, '') || '/';
-};
-
-const isKnownAppRoute = (pathname) =>
-  appRoutes.some((route) => pathname === route || pathname.startsWith(`${route}/`));
 
 const publicRouteConfigs = [
   { path: '/', element: <LandingPage /> },
@@ -86,6 +40,24 @@ const publicRouteConfigs = [
   { path: '/contact', element: <ContactPage /> },
   { path: '/login', element: <LoginPage initialMode="login" /> },
   { path: '/register', element: <LoginPage initialMode="register" /> },
+];
+
+const appRouteConfigs = [
+  { path: '/dashboard', element: <Dashboard /> },
+  { path: '/reports', element: <ReportsPage /> },
+  { path: '/weather', element: <ForecastPage /> },
+  { path: '/pricing', element: <PricingPage /> },
+  { path: '/crop/:cropId', element: <CropDetailPage /> },
+  { path: '/market', element: <MarketPage /> },
+  { path: '/quality', element: <QualityPage /> },
+  { path: '/harvest', element: <HarvestPage /> },
+  { path: '/season-management', element: <SeasonManagementPage /> },
+  { path: '/alerts', element: <AlertPage /> },
+  { path: '/notifications', element: <NotificationsPage /> },
+  { path: '/ai-chat/*', element: <AIChatPage /> },
+  { path: '/knowledge-documents', element: <KnowledgeDocumentsPage /> },
+  { path: '/settings', element: <SettingsPage /> },
+  { path: '/profile', element: <ProfilePage /> },
 ];
 
 const renderLocalizedRoutes = (routeConfigs) =>
@@ -104,61 +76,25 @@ const AppShell = ({ sidebarOpen, setSidebarOpen }) => {
 
   return (
     <ProtectedRoute>
-      <div className="flex min-h-screen bg-gray-50">
+      <div className="flex min-h-screen bg-field-canvas">
+        <a
+          href="#main-content"
+          className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-full focus:bg-field-lime focus:px-5 focus:py-3 focus:text-sm focus:font-bold focus:text-field-ink"
+        >
+          Bỏ qua điều hướng, tới nội dung chính
+        </a>
         <Sidebar open={sidebarOpen} setOpen={setSidebarOpen} />
 
         <div className="flex min-w-0 flex-1 flex-col lg:ml-64">
           <Navbar setSidebarOpen={setSidebarOpen} />
 
-          <main className="min-w-0 flex-1 overflow-x-hidden overflow-y-auto p-4 md:p-6 lg:p-8">
+          <main
+            id="main-content"
+            className="min-w-0 flex-1 overflow-x-hidden overflow-y-auto p-4 md:p-6 lg:p-8"
+          >
             <Suspense fallback={<LoadingSpinner text={t('loadingPage')} />}>
               <Routes>
-                <Route path="/dashboard" element={<Dashboard />} />
-                <Route path="/:locale/dashboard" element={<Dashboard />} />
-                <Route path="/dashboard-new" element={<NewDashboard />} />
-                <Route path="/:locale/dashboard-new" element={<NewDashboard />} />
-
-                <Route path="/pricing" element={<PricingPage />} />
-                <Route path="/:locale/pricing" element={<PricingPage />} />
-                <Route path="/pricing-dashboard" element={<PricingDashboard />} />
-                <Route path="/:locale/pricing-dashboard" element={<PricingDashboard />} />
-                <Route path="/crop/:cropId" element={<CropDetailPage />} />
-                <Route path="/:locale/crop/:cropId" element={<CropDetailPage />} />
-
-                <Route path="/quality" element={<QualityPage />} />
-                <Route path="/:locale/quality" element={<QualityPage />} />
-                <Route path="/quality-check" element={<QualityCheckPage />} />
-                <Route path="/:locale/quality-check" element={<QualityCheckPage />} />
-
-                <Route path="/harvest" element={<HarvestPage />} />
-                <Route path="/:locale/harvest" element={<HarvestPage />} />
-                <Route path="/harvest-forecast" element={<HarvestForecastPage />} />
-                <Route path="/:locale/harvest-forecast" element={<HarvestForecastPage />} />
-                <Route path="/weather" element={<ForecastPage />} />
-                <Route path="/:locale/weather" element={<ForecastPage />} />
-
-                <Route path="/market" element={<MarketPage />} />
-                <Route path="/:locale/market" element={<MarketPage />} />
-                <Route path="/market-strategy" element={<MarketStrategyPage />} />
-                <Route path="/:locale/market-strategy" element={<MarketStrategyPage />} />
-
-                <Route path="/alerts" element={<AlertPage />} />
-                <Route path="/:locale/alerts" element={<AlertPage />} />
-                <Route path="/alerts-management" element={<AlertManagementPage />} />
-                <Route path="/:locale/alerts-management" element={<AlertManagementPage />} />
-
-                <Route path="/ai-chat/*" element={<AIChatPage />} />
-                <Route path="/:locale/ai-chat/*" element={<AIChatPage />} />
-                <Route path="/knowledge-documents" element={<KnowledgeDocumentsPage />} />
-                <Route path="/:locale/knowledge-documents" element={<KnowledgeDocumentsPage />} />
-                <Route path="/notifications" element={<NotificationsPage />} />
-                <Route path="/:locale/notifications" element={<NotificationsPage />} />
-                <Route path="/season-management" element={<SeasonManagementPage />} />
-                <Route path="/:locale/season-management" element={<SeasonManagementPage />} />
-                <Route path="/settings" element={<SettingsPage />} />
-                <Route path="/:locale/settings" element={<SettingsPage />} />
-                <Route path="/profile" element={<ProfilePage />} />
-                <Route path="/:locale/profile" element={<ProfilePage />} />
+                {renderLocalizedRoutes(appRouteConfigs)}
                 <Route path="*" element={<NotFoundPage publicLayout={false} />} />
               </Routes>
             </Suspense>
@@ -169,21 +105,24 @@ const AppShell = ({ sidebarOpen, setSidebarOpen }) => {
   );
 };
 
-function AppContent() {
+export function AppRoutes() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
   const { t } = useLanguage();
 
   const pageFallback = (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-field-canvas">
       <LoadingSpinner text={t('loadingInterface')} />
     </div>
   );
 
-  const normalizedPathname =
-    location.pathname.replace(/^\/[a-z]{2}(?=\/|$)/i, '') || '/';
+  const route = resolveRoute(location.pathname);
 
-  if (publicRoutes.has(normalizedPathname)) {
+  if (route.kind === 'redirect') {
+    return <Navigate to={`${route.to}${location.search}${location.hash}`} replace />;
+  }
+
+  if (route.kind === 'public') {
     return (
       <Suspense fallback={pageFallback}>
         <PublicRoutes />
@@ -191,7 +130,7 @@ function AppContent() {
     );
   }
 
-  if (!isKnownAppRoute(normalizedPathname)) {
+  if (route.kind === 'notFound') {
     return (
       <Suspense fallback={pageFallback}>
         <NotFoundPage />
@@ -207,7 +146,7 @@ function App() {
     <ErrorBoundary>
       <AuthProvider>
         <Router>
-          <AppContent />
+          <AppRoutes />
         </Router>
       </AuthProvider>
     </ErrorBoundary>

@@ -6,12 +6,14 @@ import {
   CalendarDays,
   Camera,
   CloudSun,
+  FileText,
   LayoutDashboard,
   Settings,
   Sprout,
   TrendingUp,
   X,
 } from 'lucide-react';
+import { useEffect, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import logo from '../assets/agri-ai-logo.png';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -29,28 +31,35 @@ export const navigation = [
     name: { vi: 'Bảng điều khiển', en: 'Dashboard' },
     href: '/dashboard',
     icon: LayoutDashboard,
-    match: ['/dashboard', '/dashboard-new'],
+    match: ['/dashboard'],
+  },
+  {
+    key: 'reports',
+    name: { vi: 'Báo cáo', en: 'Reports' },
+    href: '/reports',
+    icon: FileText,
+    match: ['/reports'],
   },
   {
     key: 'pricing',
     name: { vi: 'Định giá nông sản', en: 'Crop Pricing' },
     href: '/pricing',
     icon: TrendingUp,
-    match: ['/pricing', '/pricing-dashboard', '/crop'],
+    match: ['/pricing', '/crop'],
   },
   {
     key: 'quality',
     name: { vi: 'Kiểm định chất lượng', en: 'Quality Check' },
     href: '/quality',
     icon: Camera,
-    match: ['/quality', '/quality-check'],
+    match: ['/quality'],
   },
   {
     key: 'harvest',
     name: { vi: 'Dự báo thu hoạch', en: 'Harvest Forecast' },
     href: '/harvest',
     icon: Sprout,
-    match: ['/harvest', '/harvest-forecast'],
+    match: ['/harvest'],
   },
   {
     key: 'seasonManagement',
@@ -64,14 +73,14 @@ export const navigation = [
     name: { vi: 'Phân tích thị trường', en: 'Market Analysis' },
     href: '/market',
     icon: BarChart3,
-    match: ['/market', '/market-strategy'],
+    match: ['/market'],
   },
   {
     key: 'alerts',
     name: { vi: 'Cảnh báo giá', en: 'Price Alerts' },
     href: '/alerts',
     icon: Bell,
-    match: ['/alerts', '/alerts-management'],
+    match: ['/alerts'],
   },
   {
     key: 'aiAssistant',
@@ -103,49 +112,92 @@ export const navigation = [
   },
 ];
 
+const stripLocale = (pathname) => pathname.replace(/^\/[a-z]{2}(?=\/|$)/i, '') || '/';
+
 const Sidebar = ({ open, setOpen }) => {
   const location = useLocation();
   const { language, t } = useLanguage();
+  const closeButtonRef = useRef(null);
+
+  const currentPath = stripLocale(location.pathname);
 
   const isActive = (item) =>
-    item.match.some((path) =>
-      path === item.href ? location.pathname === path : location.pathname.startsWith(path)
-    );
+    item.match.some((path) => currentPath === path || currentPath.startsWith(`${path}/`));
+
+  useEffect(() => {
+    if (!open) return undefined;
+
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        setOpen(false);
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    closeButtonRef.current?.focus();
+
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [open, setOpen]);
+
+  const linkClass = (active) =>
+    [
+      'group relative flex min-h-11 items-center gap-3 rounded-xl px-3 py-2.5 text-sm',
+      'transition-colors duration-200 motion-reduce:transition-none',
+      'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-field-lime',
+      active
+        ? 'bg-field-lime/10 font-semibold text-field-lime'
+        : 'font-medium text-[#A7BCB0] hover:bg-white/[0.06] hover:text-white',
+    ].join(' ');
 
   return (
     <>
       {open && (
         <button
           type="button"
-          className="fixed inset-0 z-20 bg-gray-600/75 lg:hidden"
+          className="fixed inset-0 z-20 bg-field-ink/70 backdrop-blur-sm lg:hidden"
           onClick={() => setOpen(false)}
           aria-label={t('closeMenu')}
         />
       )}
 
       <aside
-        className={`fixed inset-y-0 left-0 z-30 w-64 transform border-r border-gray-200 bg-white transition-transform duration-300 ease-in-out lg:translate-x-0 ${open ? 'translate-x-0' : '-translate-x-full'}`}
+        aria-label={t('smartAgriculture')}
+        className={`fixed inset-y-0 left-0 z-30 w-64 transform border-r border-white/10 bg-field-ink transition-transform duration-300 ease-out motion-reduce:transition-none lg:translate-x-0 ${
+          open ? 'translate-x-0' : '-translate-x-full'
+        }`}
       >
         <div className="flex h-full flex-col">
-          <div className="flex h-16 items-center justify-between border-b border-gray-200 px-6">
-            <Link to="/" className="flex items-center gap-3" onClick={() => setOpen(false)}>
-              <img src={logo} alt="AgriAI Logo" className="h-10 w-auto" />
+          <div className="flex h-16 shrink-0 items-center justify-between border-b border-white/10 px-5">
+            <Link
+              to="/"
+              className="flex items-center gap-3 rounded-xl focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-field-lime"
+              onClick={() => setOpen(false)}
+            >
+              <img src={logo} alt="" aria-hidden="true" className="h-9 w-auto" />
               <span>
-                <span className="block text-xl font-bold text-gray-900">AgriAI</span>
-                <span className="block text-xs text-gray-500">{t('smartAgriculture')}</span>
+                <span className="block font-display text-lg font-extrabold tracking-tight text-white">
+                  AgriAI
+                </span>
+                <span className="block text-[0.6875rem] uppercase tracking-[0.16em] text-[#8FA79A]">
+                  {t('smartAgriculture')}
+                </span>
               </span>
             </Link>
             <button
+              ref={closeButtonRef}
               type="button"
               onClick={() => setOpen(false)}
-              className="rounded-lg p-1 text-gray-500 hover:bg-gray-100 hover:text-gray-700 lg:hidden"
+              className="rounded-lg p-1.5 text-[#A7BCB0] transition-colors hover:bg-white/10 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-field-lime lg:hidden"
               aria-label={t('closeMenu')}
             >
-              <X className="h-6 w-6" />
+              <X className="h-5 w-5" aria-hidden="true" />
             </button>
           </div>
 
-          <nav className="flex-1 space-y-1 overflow-y-auto px-4 py-6 scrollbar-hide">
+          <nav
+            aria-label="Điều hướng chính"
+            className="flex-1 space-y-0.5 overflow-y-auto px-3 py-5 scrollbar-hide"
+          >
             {navigation.map((item) => {
               const Icon = item.icon;
               const active = isActive(item);
@@ -154,21 +206,34 @@ const Sidebar = ({ open, setOpen }) => {
                   key={item.key}
                   to={item.href}
                   onClick={() => setOpen(false)}
-                  className={`flex items-center rounded-lg px-4 py-3 text-sm font-medium transition-colors ${active ? 'bg-emerald-50 text-emerald-700' : 'text-gray-700 hover:bg-gray-50'}`}
+                  aria-current={active ? 'page' : undefined}
+                  className={linkClass(active)}
                 >
-                  <Icon className={`mr-3 h-5 w-5 ${active ? 'text-emerald-600' : 'text-gray-400'}`} />
-                  {item.name[language]}
+                  {active && (
+                    <span
+                      aria-hidden="true"
+                      className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-r-full bg-field-lime"
+                    />
+                  )}
+                  <Icon
+                    className={`h-[1.125rem] w-[1.125rem] shrink-0 ${
+                      active ? 'text-field-lime' : 'text-[#7A9184] group-hover:text-white'
+                    }`}
+                    aria-hidden="true"
+                  />
+                  <span className="truncate">{item.name[language]}</span>
                 </Link>
               );
             })}
           </nav>
 
-          <div className="border-t border-gray-200 p-4">
+          <div className="shrink-0 border-t border-white/10 p-4">
             <Link
-              to="/quality-check"
+              to="/quality"
               onClick={() => setOpen(false)}
-              className="flex w-full items-center justify-center rounded-lg bg-emerald-600 px-4 py-3 font-medium text-white transition-colors hover:bg-emerald-700"
+              className="flex min-h-11 w-full items-center justify-center gap-2 rounded-full bg-field-lime px-4 py-2.5 text-sm font-bold text-field-ink transition-transform duration-200 hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-field-lime motion-reduce:transition-none motion-reduce:hover:translate-y-0"
             >
+              <Camera className="h-4 w-4" aria-hidden="true" />
               {t('newAnalysis')}
             </Link>
           </div>
