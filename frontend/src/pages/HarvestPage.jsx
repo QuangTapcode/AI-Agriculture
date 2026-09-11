@@ -133,7 +133,7 @@ const HarvestPage = () => {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-primary-600 text-white py-2 px-4 rounded-md hover:bg-primary-700 disabled:bg-gray-300"
+              className="w-full bg-primary-700 text-white py-2 px-4 rounded-md hover:bg-primary-800 disabled:bg-gray-300"
             >
               {loading ? 'Đang dự báo...' : 'Dự báo thu hoạch'}
             </button>

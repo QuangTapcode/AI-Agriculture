@@ -338,7 +338,7 @@ const NotificationsPage = () => {
               <div className="text-sm text-gray-600">cảnh báo giá</div>
             </div>
             <div data-testid="summary-failed" className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
-              <ShieldAlert className="mb-3 h-6 w-6 text-red-600" aria-hidden="true" />
+              <ShieldAlert className="mb-3 h-6 w-6 text-red-700" aria-hidden="true" />
               <div data-testid="summary-value" className="text-2xl font-bold text-gray-900">
                 {formatNumber(summary.delivery_failed)}
               </div>
@@ -364,7 +364,7 @@ const NotificationsPage = () => {
             <button
               type="button"
               onClick={bulkDelete}
-              className="ml-auto inline-flex items-center gap-2 rounded-lg border border-red-200 px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50"
+              className="ml-auto inline-flex items-center gap-2 rounded-lg border border-red-200 px-3 py-2 text-sm font-medium text-red-700 hover:bg-red-50"
             >
               <Trash2 className="h-4 w-4" />
               Xóa theo bộ lọc
@@ -428,7 +428,7 @@ const NotificationsPage = () => {
                       <button
                         type="button"
                         onClick={() => removeNotification(selectedNotification.id)}
-                        className="rounded-lg p-2 text-gray-500 hover:bg-red-50 hover:text-red-600"
+                        className="rounded-lg p-2 text-gray-500 hover:bg-red-50 hover:text-red-700"
                         aria-label="Xóa thông báo"
                       >
                         <Trash2 className="h-5 w-5" />
@@ -462,7 +462,7 @@ const NotificationsPage = () => {
                                 <div className="mt-1 text-xs text-gray-500">
                                   {formatTime(delivery.sent_at)}
                                 </div>
-                                {delivery.error_message && <div className="mt-1 text-xs text-red-600">{delivery.error_message}</div>}
+                                {delivery.error_message && <div className="mt-1 text-xs text-red-700">{delivery.error_message}</div>}
                               </div>
                             ))}
                             {!detail?.deliveries?.length && (

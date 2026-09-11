@@ -106,18 +106,18 @@ const ScoreRing = ({ score, grade }) => {
       </svg>
       <div className="text-center z-10">
         <p className="text-2xl font-black text-gray-900 leading-none">{score}</p>
-        <p className="text-xs text-gray-400 leading-none mt-0.5">/ 100</p>
+        <p className="text-xs text-gray-500 leading-none mt-0.5">/ 100</p>
       </div>
     </div>
   );
 };
 
 // ── Detail row ─────────────────────────────────────────────────────────────────
-const Row = ({ icon: Icon, label, children, iconClass = 'text-gray-400' }) => (
+const Row = ({ icon: Icon, label, children, iconClass = 'text-gray-500' }) => (
   <div className="flex gap-3 py-3 border-b border-gray-50 last:border-0">
     <Icon className={`h-4 w-4 mt-0.5 shrink-0 ${iconClass}`} />
     <div className="flex-1 min-w-0">
-      <p className="text-xs font-medium text-gray-400 mb-0.5">{label}</p>
+      <p className="text-xs font-medium text-gray-500 mb-0.5">{label}</p>
       {children}
     </div>
   </div>
@@ -161,7 +161,7 @@ const CameraModal = ({ onCapture, onClose }) => {
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden">
         <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
           <div className="flex items-center gap-2">
-            <Camera className="h-5 w-5 text-emerald-600" />
+            <Camera className="h-5 w-5 text-emerald-700" />
             <span className="font-bold text-gray-900 text-sm">Chụp ảnh nông sản</span>
           </div>
           <button
@@ -191,7 +191,7 @@ const CameraModal = ({ onCapture, onClose }) => {
           <button
             onClick={capture}
             disabled={!ready || !!error}
-            className="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:bg-gray-200 disabled:text-gray-400 text-white text-sm font-semibold flex items-center justify-center gap-2 transition-colors"
+            className="flex-1 py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 disabled:bg-gray-200 disabled:text-gray-500 text-white text-sm font-semibold flex items-center justify-center gap-2 transition-colors"
           >
             <Camera className="h-4 w-4" /> Chụp ảnh
           </button>
@@ -462,7 +462,7 @@ const VideoQualityPanel = ({ region, onResult, onError, onLoadingChange }) => {
   if (cameraError) {
     return (
       <div className="flex flex-col items-center justify-center gap-3 py-10 text-center px-4">
-        <VideoOff className="h-10 w-10 text-gray-300" />
+        <VideoOff className="h-10 w-10 text-gray-500" />
         <p className="text-sm text-gray-500">{cameraError}</p>
       </div>
     );
@@ -549,7 +549,7 @@ const VideoQualityPanel = ({ region, onResult, onError, onLoadingChange }) => {
         <div className="flex items-center justify-between bg-gray-50 rounded-xl px-4 py-3 border border-gray-200">
           <div>
             <p className="text-sm font-semibold text-gray-700">Phân tích ngay khi quay</p>
-            <p className="text-xs text-gray-400 mt-0.5">AI cập nhật kết quả mỗi 4 giây</p>
+            <p className="text-xs text-gray-500 mt-0.5">AI cập nhật kết quả mỗi 4 giây</p>
           </div>
           <button
             onClick={() => setLiveMode((v) => !v)}
@@ -566,7 +566,7 @@ const VideoQualityPanel = ({ region, onResult, onError, onLoadingChange }) => {
           <button
             onClick={startRecording}
             disabled={!cameraReady}
-            className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-red-500 hover:bg-red-600 disabled:bg-gray-200 disabled:text-gray-400 text-white text-sm font-semibold transition-colors shadow-sm"
+            className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-red-500 hover:bg-red-600 disabled:bg-gray-200 disabled:text-gray-500 text-white text-sm font-semibold transition-colors shadow-sm"
           >
             <Circle className="h-4 w-4 fill-white" /> Bắt đầu quay
           </button>
@@ -582,7 +582,7 @@ const VideoQualityPanel = ({ region, onResult, onError, onLoadingChange }) => {
           <button
             onClick={analyzeCapture}
             disabled={liveAnalyzing}
-            className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:bg-gray-200 disabled:text-gray-400 text-white text-sm font-semibold transition-colors shadow-sm"
+            className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 disabled:bg-gray-200 disabled:text-gray-500 text-white text-sm font-semibold transition-colors shadow-sm"
           >
             {liveAnalyzing ? (
               <><span className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> Đang phân tích...</>
@@ -594,7 +594,7 @@ const VideoQualityPanel = ({ region, onResult, onError, onLoadingChange }) => {
       </div>
 
       {!recording && !capturedFrame && analyses.length === 0 && (
-        <p className="text-xs text-gray-400 text-center">
+        <p className="text-xs text-gray-500 text-center">
           {liveMode ? 'Nhấn Bắt đầu quay — AI tự phân tích trong lúc bạn quay.' : 'Nhấn Bắt đầu quay → Dừng → Phân tích frame cuối.'}
         </p>
       )}
@@ -608,7 +608,7 @@ const VideoQualityPanel = ({ region, onResult, onError, onLoadingChange }) => {
             </p>
             <button
               onClick={() => setAnalyses([])}
-              className="text-xs text-gray-400 hover:text-red-500 transition-colors"
+              className="text-xs text-gray-500 hover:text-red-500 transition-colors"
             >
               Xóa
             </button>
@@ -640,7 +640,7 @@ const VideoQualityPanel = ({ region, onResult, onError, onLoadingChange }) => {
                   }`}
                   style={isSelected ? { borderColor: c.bg } : {}}
                 >
-                  <span className="text-xs text-gray-300 font-mono w-4 shrink-0 text-right">
+                  <span className="text-xs text-gray-500 font-mono w-4 shrink-0 text-right">
                     {analyses.length - idx}
                   </span>
                   <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: c.bg }} />
@@ -651,10 +651,10 @@ const VideoQualityPanel = ({ region, onResult, onError, onLoadingChange }) => {
                   >
                     {gradeShort}
                   </span>
-                  <span className="w-8 shrink-0 text-right text-xs text-gray-400">
+                  <span className="w-8 shrink-0 text-right text-xs text-gray-500">
                     {formatConfidence(a.confidence)}
                   </span>
-                  <span className="text-xs text-gray-300 shrink-0 hidden sm:block">{a.time}</span>
+                  <span className="text-xs text-gray-500 shrink-0 hidden sm:block">{a.time}</span>
                   {isSelected && (
                     <span className="text-xs font-bold shrink-0" style={{ color: c.bg }}>▶</span>
                   )}
@@ -752,7 +752,7 @@ const QualityPage = () => {
       <div className="bg-white border-b border-gray-100 px-6 py-5">
         <div className="max-w-6xl mx-auto flex items-center gap-3">
           <div className="p-2 rounded-xl bg-emerald-50">
-            <Sparkles className="h-5 w-5 text-emerald-600" />
+            <Sparkles className="h-5 w-5 text-emerald-700" />
           </div>
           <div>
             <h1 className="text-xl font-bold text-gray-900">Kiểm định chất lượng nông sản</h1>
@@ -774,10 +774,11 @@ const QualityPage = () => {
           <div className="bg-white rounded-2xl border border-gray-200 p-4 shadow-sm space-y-3">
             {/* Crop selector */}
             <div>
-              <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
-                <Leaf className="h-4 w-4 text-emerald-500" /> Loại nông sản
+              <label htmlFor="quality-crop" className="mb-2 flex items-center gap-2 text-sm font-medium text-gray-700">
+                <Leaf className="h-4 w-4 text-emerald-700" aria-hidden="true" /> Loại nông sản
               </label>
               <select
+                id="quality-crop"
                 value={cropName}
                 onChange={(e) => setCropName(e.target.value)}
                 className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-gray-50"
@@ -794,8 +795,8 @@ const QualityPage = () => {
                 </optgroup>
               </select>
               {YOLO_CROPS.some((c) => c.value === cropName) && (
-                <p className="text-xs text-emerald-600 mt-1 flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
+                <p className="mt-1 flex items-center gap-1 text-xs text-emerald-800">
+                  <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-700" aria-hidden="true" />
                   Dùng YOLO11 + EfficientNet — nhanh, không cần internet
                 </p>
               )}
@@ -803,10 +804,11 @@ const QualityPage = () => {
 
             {/* Region selector */}
             <div>
-              <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
-                <MapPin className="h-4 w-4 text-emerald-500" /> Khu vực thị trường
+              <label htmlFor="quality-region" className="mb-2 flex items-center gap-2 text-sm font-medium text-gray-700">
+                <MapPin className="h-4 w-4 text-emerald-700" aria-hidden="true" /> Khu vực thị trường
               </label>
               <select
+                id="quality-region"
                 value={region}
                 onChange={(e) => setRegion(e.target.value)}
                 className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-gray-50"
@@ -849,22 +851,22 @@ const QualityPage = () => {
                       <button
                         type="button"
                         onClick={() => setShowCamera(true)}
-                        className="flex items-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-semibold shadow-sm transition-colors"
+                        className="flex items-center gap-2 px-4 py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-sm font-semibold shadow-sm transition-colors"
                       >
                         <Camera className="h-4 w-4" /> Chụp ảnh bằng camera
                       </button>
                       <div className="flex items-center gap-3 w-full max-w-xs">
                         <div className="flex-1 h-px bg-gray-200" />
-                        <span className="text-xs text-gray-400">hoặc</span>
+                        <span className="text-xs text-gray-500">hoặc</span>
                         <div className="flex-1 h-px bg-gray-200" />
                       </div>
                       <label htmlFor="file-upload" className="cursor-pointer flex flex-col items-center gap-2 w-full">
                         <div className={`p-4 rounded-2xl border-2 border-dashed transition-colors ${dragOver ? 'border-emerald-400 bg-emerald-100' : 'border-gray-300 bg-white'}`}>
-                          <Upload className={`h-8 w-8 ${dragOver ? 'text-emerald-500' : 'text-gray-300'}`} />
+                          <Upload className={`h-8 w-8 ${dragOver ? 'text-emerald-500' : 'text-gray-500'}`} />
                         </div>
                         <div className="text-center">
-                          <p className="text-sm font-semibold text-emerald-600">Kéo thả hoặc chọn ảnh</p>
-                          <p className="text-xs text-gray-400 mt-1">PNG, JPG, WEBP — tối đa 10MB</p>
+                          <p className="text-sm font-semibold text-emerald-700">Kéo thả hoặc chọn ảnh</p>
+                          <p className="text-xs text-gray-500 mt-1">PNG, JPG, WEBP — tối đa 10MB</p>
                         </div>
                         <input id="file-upload" type="file" className="sr-only" accept="image/*" onChange={handleFileSelect} />
                       </label>
@@ -886,7 +888,7 @@ const QualityPage = () => {
                   <button
                     onClick={handleImageSubmit}
                     disabled={!selectedFile || imageLoading}
-                    className="w-full bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 text-white py-3 px-4 rounded-xl text-sm font-semibold disabled:from-gray-200 disabled:to-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed transition-all shadow-sm"
+                    className="w-full bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 text-white py-3 px-4 rounded-xl text-sm font-semibold disabled:from-gray-200 disabled:to-gray-200 disabled:text-gray-500 disabled:cursor-not-allowed transition-all shadow-sm"
                   >
                     {imageLoading ? (
                       <span className="flex items-center justify-center gap-2">
@@ -941,10 +943,10 @@ const QualityPage = () => {
         {/* ── RIGHT: Results ───────────────────────────────────────────────── */}
         <div className="lg:col-span-3">
           {!result && !loading && (
-            <div className="h-full min-h-[400px] bg-white rounded-2xl border border-gray-200 shadow-sm flex flex-col items-center justify-center gap-4 text-gray-300">
+            <div className="h-full min-h-[400px] bg-white rounded-2xl border border-gray-200 shadow-sm flex flex-col items-center justify-center gap-4 text-gray-500">
               {tab === 'video' ? <Video className="h-16 w-16" /> : <Camera className="h-16 w-16" />}
               <div className="text-center">
-                <p className="text-base font-semibold text-gray-400">Chưa có kết quả phân tích</p>
+                <p className="text-base font-semibold text-gray-500">Chưa có kết quả phân tích</p>
                 <p className="text-sm mt-1">
                   {tab === 'video'
                     ? 'Quay video nông sản — AI sẽ định giá ngay khi quay hoặc khi bạn dừng lại'
@@ -962,7 +964,7 @@ const QualityPage = () => {
               </div>
               <div className="text-center">
                 <p className="text-sm font-semibold text-gray-700">AI đang phân tích {resultSource === 'video' ? 'video' : 'hình ảnh'}</p>
-                <p className="text-xs text-gray-400 mt-1">Nhận diện loại quả · Đánh giá màu sắc · Phát hiện khuyết tật</p>
+                <p className="text-xs text-gray-500 mt-1">Nhận diện loại quả · Đánh giá màu sắc · Phát hiện khuyết tật</p>
               </div>
             </div>
           )}
@@ -1056,7 +1058,7 @@ const QualityPage = () => {
                     <span className="text-sm font-bold text-gray-800 flex items-center gap-2">
                       🔍 Phát hiện {(result.all_detections || []).length} quả
                     </span>
-                    <span className="text-xs text-gray-400">
+                    <span className="text-xs text-gray-500">
                       {hoveredIdx >= 0 ? `Đang xem quả #${hoveredIdx + 1}` : 'Hover để xem từng quả'}
                     </span>
                   </div>
@@ -1178,7 +1180,7 @@ const QualityPage = () => {
                             <p className="text-sm font-semibold text-gray-900 truncate">
                               {det.fruit_type_vi} — {det.grade_label_vi}
                             </p>
-                            <p className="text-xs text-gray-400">
+                            <p className="text-xs text-gray-500">
                               YOLO {formatConfidence(det.yolo_confidence)}
                               {hasValue(det.efficientnet_confidence) &&
                                 Number(det.efficientnet_confidence) > 0 &&
@@ -1262,7 +1264,7 @@ const QualityPage = () => {
                     </Row>
                   ) : (
                     <Row icon={CheckCircle2} label="Khuyết tật" iconClass="text-emerald-500">
-                      <p className="text-sm text-emerald-600 font-medium">Không phát hiện khuyết tật</p>
+                      <p className="text-sm text-emerald-700 font-medium">Không phát hiện khuyết tật</p>
                     </Row>
                   )}
                 </div>
@@ -1299,7 +1301,7 @@ const QualityPage = () => {
                         <Row icon={MapPin} label={`Khu vực ${result.region}`} iconClass="text-blue-400">
                           <p className="text-xl font-black text-gray-900">
                             {result.suggested_price_range.min.toLocaleString('vi-VN')}
-                            <span className="text-base font-medium text-gray-400 mx-1">–</span>
+                            <span className="text-base font-medium text-gray-500 mx-1">–</span>
                             {result.suggested_price_range.max.toLocaleString('vi-VN')}
                             <span className="text-sm font-medium text-gray-500 ml-1">đ/kg</span>
                           </p>
@@ -1311,7 +1313,7 @@ const QualityPage = () => {
                             </span>
                           </Row>
                         )}
-                        <Row icon={Tag} label="Nguồn giá" iconClass="text-gray-300">
+                        <Row icon={Tag} label="Nguồn giá" iconClass="text-gray-500">
                           <p className="text-xs text-gray-500">
                             {result.price_source === 'market_db' ? '✓ Giá thị trường thực tế' : '~ Ước tính'}
                             {result.weather_summary ? ` · ${result.weather_summary}` : ''}

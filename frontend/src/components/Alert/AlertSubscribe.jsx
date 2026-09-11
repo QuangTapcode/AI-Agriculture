@@ -31,11 +31,11 @@ const AlertSubscribe = ({ mode = 'price', onCreated }) => {
   const [error, setError] = useState(null);
 
   const selectedCrop = useMemo(
-    () => options.crops.find((crop) => String(crop.crop_id || crop.crop_name) === String(formData.cropId)),
+    () => options.crops?.find((crop) => String(crop.crop_id || crop.crop_name) === String(formData.cropId)),
     [formData.cropId, options.crops]
   );
   const selectedRegion = useMemo(
-    () => options.regions.find((region) => region.region_key === formData.regionKey),
+    () => options.regions?.find((region) => region.region_key === formData.regionKey),
     [formData.regionKey, options.regions]
   );
 
@@ -47,10 +47,21 @@ const AlertSubscribe = ({ mode = 'price', onCreated }) => {
       try {
         const data = await alertApi.getOptions();
         if (!active) return;
-        const firstCrop = data.crops?.[0];
+        const firstCrop = data?.crops?.[0];
         const defaultRegion =
-          data.regions?.find((region) => region.display_name === data.default_region) || data.regions?.[0];
-        setOptions(data);
+          data?.regions?.find((region) => region.display_name === data.default_region) || data?.regions?.[0];
+        /*
+         * Giữ nguyên hình dạng mảng cho mọi danh sách. Trước đây ta gán thẳng
+         * `data` vào state, nên một phản hồi thiếu `crops` biến options.crops
+         * thành undefined và `.find()` ngay dưới làm sập toàn bộ trang cảnh báo.
+         */
+        setOptions({
+          ...data,
+          crops: Array.isArray(data?.crops) ? data.crops : [],
+          regions: Array.isArray(data?.regions) ? data.regions : [],
+          channels: Array.isArray(data?.channels) ? data.channels : [],
+          rule_types: Array.isArray(data?.rule_types) ? data.rule_types : [],
+        });
         setFormData((current) => ({
           ...current,
           cropId: current.cropId || String(firstCrop?.crop_id || firstCrop?.crop_name || ''),
@@ -128,7 +139,7 @@ const AlertSubscribe = ({ mode = 'price', onCreated }) => {
   };
 
   const handleCropChange = (value) => {
-    const crop = options.crops.find((item) => String(item.crop_id || item.crop_name) === String(value));
+    const crop = options.crops?.find((item) => String(item.crop_id || item.crop_name) === String(value));
     setFormData((current) => ({
       ...current,
       cropId: value,
@@ -137,7 +148,7 @@ const AlertSubscribe = ({ mode = 'price', onCreated }) => {
   };
 
   const handleRegionChange = (value) => {
-    const region = options.regions.find((item) => item.region_key === value);
+    const region = options.regions?.find((item) => item.region_key === value);
     setFormData((current) => ({
       ...current,
       regionKey: value,
@@ -236,8 +247,8 @@ const AlertSubscribe = ({ mode = 'price', onCreated }) => {
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
-            <label className="mb-2 block text-sm font-medium text-gray-700">Nông sản</label>
-            <select
+            <label htmlFor="alert-nong-san" className="mb-2 block text-sm font-medium text-gray-700">Nông sản</label>
+            <select id="alert-nong-san"
               value={formData.cropId}
               onChange={(event) => handleCropChange(event.target.value)}
               className="w-full rounded-lg border border-gray-300 px-3 py-2.5 outline-none focus:border-green-600 focus:ring-2 focus:ring-green-100"
@@ -251,8 +262,8 @@ const AlertSubscribe = ({ mode = 'price', onCreated }) => {
           </div>
 
           <div>
-            <label className="mb-2 block text-sm font-medium text-gray-700">Khu vực chuẩn hóa</label>
-            <select
+            <label htmlFor="alert-khu-vuc-chuan-hoa" className="mb-2 block text-sm font-medium text-gray-700">Khu vực chuẩn hóa</label>
+            <select id="alert-khu-vuc-chuan-hoa"
               value={formData.regionKey}
               onChange={(event) => handleRegionChange(event.target.value)}
               className="w-full rounded-lg border border-gray-300 px-3 py-2.5 outline-none focus:border-green-600 focus:ring-2 focus:ring-green-100"
@@ -270,8 +281,8 @@ const AlertSubscribe = ({ mode = 'price', onCreated }) => {
           <>
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
-                <label className="mb-2 block text-sm font-medium text-gray-700">Điều kiện</label>
-                <select
+                <label htmlFor="alert-dieu-kien" className="mb-2 block text-sm font-medium text-gray-700">Điều kiện</label>
+                <select id="alert-dieu-kien"
                   value={formData.condition}
                   onChange={(event) => updateField('condition', event.target.value)}
                   className="w-full rounded-lg border border-gray-300 px-3 py-2.5 outline-none focus:border-green-600 focus:ring-2 focus:ring-green-100"
@@ -282,8 +293,8 @@ const AlertSubscribe = ({ mode = 'price', onCreated }) => {
               </div>
 
               <div>
-                <label className="mb-2 block text-sm font-medium text-gray-700">Giá mục tiêu</label>
-                <input
+                <label htmlFor="alert-gia-muc-tieu" className="mb-2 block text-sm font-medium text-gray-700">Giá mục tiêu</label>
+                <input id="alert-gia-muc-tieu"
                   type="number"
                   min="1"
                   value={formData.targetPrice}
@@ -344,8 +355,8 @@ const AlertSubscribe = ({ mode = 'price', onCreated }) => {
           <>
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
-                <label className="mb-2 block text-sm font-medium text-gray-700">Loại rủi ro</label>
-                <select
+                <label htmlFor="alert-loai-rui-ro" className="mb-2 block text-sm font-medium text-gray-700">Loại rủi ro</label>
+                <select id="alert-loai-rui-ro"
                   value={formData.weatherCondition}
                   onChange={(event) => updateField('weatherCondition', event.target.value)}
                   className="w-full rounded-lg border border-gray-300 px-3 py-2.5 outline-none focus:border-green-600 focus:ring-2 focus:ring-green-100"
@@ -357,8 +368,8 @@ const AlertSubscribe = ({ mode = 'price', onCreated }) => {
                 </select>
               </div>
               <div>
-                <label className="mb-2 block text-sm font-medium text-gray-700">Ngưỡng cảnh báo</label>
-                <input
+                <label htmlFor="alert-nguong-canh-bao" className="mb-2 block text-sm font-medium text-gray-700">Ngưỡng cảnh báo</label>
+                <input id="alert-nguong-canh-bao"
                   type="number"
                   min="0"
                   value={formData.weatherThreshold}
@@ -394,8 +405,8 @@ const AlertSubscribe = ({ mode = 'price', onCreated }) => {
 
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
-            <label className="mb-2 block text-sm font-medium text-gray-700">Kênh nhận</label>
-            <select
+            <label htmlFor="alert-kenh-nhan" className="mb-2 block text-sm font-medium text-gray-700">Kênh nhận</label>
+            <select id="alert-kenh-nhan"
               value={formData.notifyMethod}
               onChange={(event) => updateField('notifyMethod', event.target.value)}
               className="w-full rounded-lg border border-gray-300 px-3 py-2.5 outline-none focus:border-green-600 focus:ring-2 focus:ring-green-100"
@@ -409,8 +420,8 @@ const AlertSubscribe = ({ mode = 'price', onCreated }) => {
           </div>
 
           <div>
-            <label className="mb-2 block text-sm font-medium text-gray-700">Người nhận</label>
-            <input
+            <label htmlFor="alert-nguoi-nhan" className="mb-2 block text-sm font-medium text-gray-700">Người nhận</label>
+            <input id="alert-nguoi-nhan"
               type={formData.notifyMethod === 'email' ? 'email' : 'text'}
               value={formData.contact}
               onChange={(event) => updateField('contact', event.target.value)}

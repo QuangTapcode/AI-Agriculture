@@ -40,8 +40,22 @@ export const installSession = async (page, { payload } = {}) => {
     route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(TEST_USER) })
   );
 
+  // SSE phải trả đúng text/event-stream, nếu không trình duyệt tự log lỗi MIME
+  // và cổng "không có lỗi console" sẽ báo động vì chính cái stub của ta.
+  await page.route('**/api/notifications/stream**', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'text/event-stream',
+      headers: { 'cache-control': 'no-cache', connection: 'keep-alive' },
+      body: ': connected\n\n',
+    })
+  );
+
   await page.route('**/api/**', async (route) => {
-    if (route.request().url().includes('/api/auth/me')) return route.fallback();
+    const url = route.request().url();
+    if (url.includes('/api/auth/me') || url.includes('/api/notifications/stream')) {
+      return route.fallback();
+    }
     return route.fulfill({
       status: 200,
       contentType: 'application/json',
