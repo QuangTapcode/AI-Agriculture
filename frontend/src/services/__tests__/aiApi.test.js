@@ -35,6 +35,16 @@ describe('assistant API contracts', () => {
     await expect(aiApi.getDocuments()).rejects.toMatchObject({ message: 'Kho tài liệu chưa sẵn sàng' });
   });
 
+  it('loads the shared knowledge catalogue with filters', async () => {
+    const catalogue = { documents: [{ id: 1, indexed: true }], summary: { indexed_documents: 1 } };
+    api.get.mockResolvedValue({ status: 200, data: catalogue });
+
+    expect(await aiApi.getKnowledgeDocuments({ status: 'approved', q: 'cà phê' })).toEqual(catalogue);
+    expect(api.get).toHaveBeenCalledWith('/api/ai-chat/knowledge-documents', {
+      params: { status: 'approved', q: 'cà phê' },
+    });
+  });
+
   it('encodes the selected conversation id and unwraps deletion response', async () => {
     api.delete.mockResolvedValue({ status: 200, data: { success: true, data: { deleted_count: 2 } } });
     expect(await aiApi.deleteConversation('a/b')).toEqual({ deleted_count: 2 });

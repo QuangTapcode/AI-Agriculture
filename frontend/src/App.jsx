@@ -9,6 +9,7 @@ import { AuthProvider } from './contexts/AuthContext';
 import { useLanguage } from './contexts/LanguageContext';
 
 const AIChatPage = lazy(() => import('./pages/AIChatPage'));
+const KnowledgeDocumentsPage = lazy(() => import('./pages/KnowledgeDocumentsPage'));
 const AlertManagementPage = lazy(() => import('./pages/AlertManagementPage'));
 const AlertPage = lazy(() => import('./pages/AlertPage'));
 const ArticlesPage = lazy(() => import('./pages/ArticlesPage'));
@@ -54,6 +55,7 @@ const appRoutes = [
   '/alerts-management',
   '/reports',
   '/ai-chat',
+  '/knowledge-documents',
   '/notifications',
   '/season-management',
   '/settings',
@@ -147,6 +149,8 @@ const AppShell = ({ sidebarOpen, setSidebarOpen }) => {
 
                 <Route path="/ai-chat/*" element={<AIChatPage />} />
                 <Route path="/:locale/ai-chat/*" element={<AIChatPage />} />
+                <Route path="/knowledge-documents" element={<KnowledgeDocumentsPage />} />
+                <Route path="/:locale/knowledge-documents" element={<KnowledgeDocumentsPage />} />
                 <Route path="/notifications" element={<NotificationsPage />} />
                 <Route path="/:locale/notifications" element={<NotificationsPage />} />
                 <Route path="/season-management" element={<SeasonManagementPage />} />

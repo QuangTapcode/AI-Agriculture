@@ -8,12 +8,21 @@ from app.core.config import settings
 
 class EmailClient:
     def send(self, receiver: str, subject: str, message: str, html_message: str | None = None) -> dict:
-        if not settings.SMTP_HOST or not settings.SMTP_USER or not settings.SMTP_PASSWORD:
+        missing_settings = [
+            name
+            for name, value in (
+                ("SMTP_HOST", settings.SMTP_HOST),
+                ("SMTP_USER", settings.SMTP_USER),
+                ("SMTP_PASSWORD", settings.SMTP_PASSWORD),
+            )
+            if not value
+        ]
+        if missing_settings:
             return {
                 "receiver": receiver,
                 "status": "failed",
                 "message_id": None,
-                "error": "SMTP chưa được cấu hình",
+                "error": f"SMTP chưa được cấu hình: thiếu {', '.join(missing_settings)}",
             }
 
         try:

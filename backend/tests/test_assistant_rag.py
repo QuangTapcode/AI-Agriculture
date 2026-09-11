@@ -1,5 +1,6 @@
 import json
 from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime, timedelta
 from threading import Barrier
 from types import SimpleNamespace
 
@@ -240,6 +241,37 @@ def test_knowledge_status_reports_latest_nightly_run(api, rag):
     assert data['approved_documents'] == 1
     assert data['indexed_documents'] == 1
     assert data['indexed_chunks'] == 1
+
+
+def test_knowledge_documents_lists_new_and_indexed_shared_documents(api, rag):
+    client, db, _ = api
+    indexed = rag.ingest(0, 'coffee.md', 'Kỹ thuật trồng cà phê.'.encode())
+    started_at = datetime.utcnow() - timedelta(minutes=5)
+    db.add(DataIngestionLog(
+        SourceName='configured_sources', JobName='knowledge_agent', Status='success',
+        RecordsFetched=1, RecordsSaved=1, StartedAt=started_at, FinishedAt=datetime.utcnow(),
+    ))
+    db.add(KnowledgeDocument(
+        SourceName='VAAS', CanonicalURL='https://example.org/coffee', URLHash='coffee-url',
+        ContentHash='coffee-content', Title='Hướng dẫn cà phê', Version=2, Status='approved',
+        Crop='Cà phê', Region='Tây Nguyên', RagDocumentID=indexed['id'],
+        QualityScore=0.9, FetchedAt=datetime.utcnow(), ApprovedAt=datetime.utcnow(),
+    ))
+    db.commit()
+
+    response = client.get('/api/ai-chat/knowledge-documents', params={
+        'status': 'approved', 'q': 'cà phê',
+    })
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data['summary']['approved'] == 1
+    assert data['summary']['indexed_documents'] == 1
+    assert data['summary']['indexed_chunks'] == 1
+    assert data['documents'][0]['title'] == 'Hướng dẫn cà phê'
+    assert data['documents'][0]['is_new'] is True
+    assert data['documents'][0]['indexed'] is True
+    assert data['documents'][0]['chunks'] == 1
 
 
 def test_empty_question_rejected(api):

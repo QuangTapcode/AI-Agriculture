@@ -165,6 +165,85 @@ def knowledge_status(db: Session = Depends(get_db), _user: User = Depends(get_cu
     }
 
 
+@router.get("/knowledge-documents")
+def knowledge_documents(
+    status: str = Query("approved", pattern="^(all|approved|pending|rejected|failed|superseded)$"),
+    q: str = Query("", max_length=200),
+    limit: int = Query(200, ge=1, le=500),
+    db: Session = Depends(get_db),
+    _user: User = Depends(get_current_user),
+):
+    """List shared documents with their database and vector-index state."""
+    latest = db.query(DataIngestionLog).filter(
+        DataIngestionLog.JobName == "knowledge_agent"
+    ).order_by(DataIngestionLog.StartedAt.desc(), DataIngestionLog.LogID.desc()).first()
+
+    query = db.query(KnowledgeDocument)
+    if status != "all":
+        query = query.filter(KnowledgeDocument.Status == status)
+    search = q.strip()
+    if search:
+        like = f"%{search}%"
+        query = query.filter(or_(
+            KnowledgeDocument.Title.ilike(like),
+            KnowledgeDocument.SourceName.ilike(like),
+            KnowledgeDocument.Crop.ilike(like),
+            KnowledgeDocument.Region.ilike(like),
+        ))
+    rows = query.order_by(KnowledgeDocument.FetchedAt.desc(), KnowledgeDocument.DocumentKey.desc()).limit(limit).all()
+
+    try:
+        indexed_rows = rag_service.documents(0)
+        indexed_by_id = {item["id"]: item for item in indexed_rows}
+        indexed_chunks = rag_service.collection(0).count()
+        index_status = "ready"
+    except Exception:
+        logger.exception("Cannot read shared document index")
+        indexed_by_id = {}
+        indexed_chunks = None
+        index_status = "unavailable"
+
+    counts = {key: 0 for key in ("approved", "pending", "rejected", "failed", "superseded")}
+    for row_status, count in db.query(
+        KnowledgeDocument.Status, func.count(KnowledgeDocument.DocumentKey)
+    ).group_by(KnowledgeDocument.Status).all():
+        counts[row_status] = count
+
+    documents = []
+    for row in rows:
+        indexed = indexed_by_id.get(row.RagDocumentID)
+        documents.append({
+            "id": row.DocumentKey,
+            "title": row.Title or "Tài liệu chưa có tiêu đề",
+            "source_name": row.SourceName,
+            "source_url": row.CanonicalURL,
+            "published_at": utc_iso(row.PublishedAt),
+            "fetched_at": utc_iso(row.FetchedAt),
+            "approved_at": utc_iso(row.ApprovedAt),
+            "region": row.Region,
+            "crop": row.Crop,
+            "version": row.Version,
+            "status": row.Status,
+            "quality_score": row.QualityScore,
+            "indexed": indexed is not None,
+            "chunks": indexed["chunks"] if indexed else 0,
+            "is_new": bool(latest and row.FetchedAt and row.FetchedAt >= latest.StartedAt),
+        })
+
+    return {
+        "documents": documents,
+        "summary": {
+            **counts,
+            "total": sum(counts.values()),
+            "indexed_documents": len(indexed_by_id),
+            "indexed_chunks": indexed_chunks,
+            "index_status": index_status,
+            "last_run_started_at": utc_iso(latest.StartedAt) if latest else None,
+            "last_run_status": latest.Status if latest else None,
+        },
+    }
+
+
 @router.post("/documents")
 def upload_document(file: UploadFile = File(...), user: User = Depends(get_current_user)):
     try:

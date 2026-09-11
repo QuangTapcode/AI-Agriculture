@@ -1,6 +1,7 @@
 import { BookOpen, Bot, Check, Copy, FileText, Loader2, Menu, Plus, Search, Send, Trash2, X } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { aiApi } from '../services/aiApi';
 
@@ -262,6 +263,7 @@ export default function AIChatPage() {
               <div className="rounded-lg bg-gray-50 p-2"><strong className="block text-base text-gray-900">{knowledgeStatus.indexed_documents ?? '—'}</strong>Đã lập chỉ mục</div>
             </div>
             <p className="mt-2 text-gray-500">{knowledgeStatus.indexed_chunks ?? '—'} đoạn embedding có thể tra cứu.</p>
+            <Link to="/knowledge-documents" className="mt-3 inline-flex items-center gap-1 font-semibold text-green-800 hover:underline">Xem tất cả tài liệu đã nạp</Link>
             {knowledgeStatus.last_run?.has_error && <details className="mt-2 rounded-lg bg-amber-50 p-2 text-amber-900"><summary className="cursor-pointer font-medium">Xem nguồn gặp lỗi</summary><p className="mt-2 whitespace-pre-wrap break-words">{knowledgeStatus.last_run.error}</p></details>}
           </>}
         </div>}

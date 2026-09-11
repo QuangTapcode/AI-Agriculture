@@ -44,6 +44,9 @@ export const aiApi = {
   getDocuments: () => request(() => api.get('/api/ai-chat/documents'), 'Không tải được kho tài liệu'),
   getKnowledgeStatus: () => request(
     () => api.get('/api/ai-chat/knowledge-status'), 'Không tải được trạng thái kho tri thức'),
+  getKnowledgeDocuments: ({ status = 'approved', q = '' } = {}) => request(
+    () => api.get('/api/ai-chat/knowledge-documents', { params: { status, q } }),
+    'Không tải được danh sách tài liệu'),
   uploadDocument: (file) => {
     const form = new FormData();
     form.append('file', file);

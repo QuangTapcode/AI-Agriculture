@@ -1,6 +1,7 @@
 import {
   BarChart3,
   Bell,
+  BookOpen,
   Bot,
   CalendarDays,
   Camera,
@@ -78,6 +79,13 @@ export const navigation = [
     href: '/ai-chat',
     icon: Bot,
     match: ['/ai-chat'],
+  },
+  {
+    key: 'knowledgeDocuments',
+    name: { vi: 'Kho tài liệu', en: 'Knowledge Library' },
+    href: '/knowledge-documents',
+    icon: BookOpen,
+    match: ['/knowledge-documents'],
   },
   {
     key: 'notifications',
