@@ -28,3 +28,18 @@ export function formatPct(value) {
   const number = Number(value);
   return `${number >= 0 ? '+' : ''}${number.toFixed(1)}%`;
 }
+
+/**
+ * Độ tin cậy dạng phần trăm.
+ *
+ * Nhiều trang từng viết `(value || 0) * 100`, biến "không đo được độ tin cậy"
+ * thành "độ tin cậy 0%" — hai điều hoàn toàn khác nhau với người đọc. Thiếu thì
+ * trả MISSING; 0 thật vẫn là 0%.
+ *
+ * @param {number|string|null|undefined} value
+ * @param {{scale?: number}} [options] scale = 100 khi backend trả tỉ lệ 0..1
+ */
+export function formatConfidence(value, { scale = 100 } = {}) {
+  if (!hasValue(value)) return MISSING;
+  return `${Math.round(Number(value) * scale)}%`;
+}

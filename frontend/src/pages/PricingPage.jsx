@@ -17,6 +17,7 @@ import { EmptyState, InlineLoading, PageError } from '../components/StatusState'
 import { getApiErrorMessage } from '../services/api';
 import { pricingApi } from '../services/pricingApi';
 import { CROP_SUGGESTIONS, REGION_SUGGESTIONS, buildPriceQuery, normalizePriceInput } from '../utils/priceInputs';
+import { MISSING, formatConfidence, hasValue } from '../utils/format';
 import { sourceNameLabel, translateUiText } from '../utils/vietnameseText';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, Filler);
@@ -293,8 +294,11 @@ const PricingPage = () => {
       <section className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
         <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-[1fr_1fr_180px_180px]">
           <div>
-            <label className="mb-2 block text-sm font-medium text-gray-700">Nông sản</label>
+            <label htmlFor="pricing-crop" className="mb-2 block text-sm font-medium text-gray-700">
+              Nông sản
+            </label>
             <input
+              id="pricing-crop"
               value={search.cropName}
               onChange={(event) => setSearch((current) => ({ ...current, cropName: event.target.value }))}
               placeholder="Nhập tên nông sản, ví dụ: Cà phê"
@@ -309,8 +313,11 @@ const PricingPage = () => {
           </div>
 
           <div>
-            <label className="mb-2 block text-sm font-medium text-gray-700">Khu vực</label>
+            <label htmlFor="pricing-region" className="mb-2 block text-sm font-medium text-gray-700">
+              Khu vực
+            </label>
             <input
+              id="pricing-region"
               value={search.region}
               onChange={(event) => setSearch((current) => ({ ...current, region: event.target.value }))}
               placeholder="Nhập khu vực, ví dụ: Đắk Lắk"
@@ -325,8 +332,11 @@ const PricingPage = () => {
           </div>
 
           <div>
-            <label className="mb-2 block text-sm font-medium text-gray-700">Số ngày dự báo</label>
+            <label htmlFor="pricing-days" className="mb-2 block text-sm font-medium text-gray-700">
+              Số ngày dự báo
+            </label>
             <select
+              id="pricing-days"
               value={search.days}
               onChange={(event) => setSearch((current) => ({ ...current, days: Number(event.target.value) }))}
               className="w-full rounded-lg border border-gray-300 px-3 py-2.5 outline-none focus:border-green-600 focus:ring-2 focus:ring-green-100"
@@ -387,9 +397,10 @@ const PricingPage = () => {
         <div className="flex flex-wrap items-center gap-3 rounded-lg border border-gray-200 bg-white p-4 text-sm text-gray-700 shadow-sm">
           <DataSourceBadge source={currentData.source || currentData.source_type} />
           <span>Nguồn dữ liệu: {sourceNameLabel(currentData.source_name)}</span>
-          <span>Loại nguồn: {currentData.source_type || currentData.source || 'database'}</span>
+          {/* Không mặc định 'database': gán nguồn khi chưa biết là bịa xuất xứ. */}
+          <span>Loại nguồn: {currentData.source_type || currentData.source || 'chưa xác định'}</span>
           {currentData.last_updated && <span>Cập nhật: {new Date(currentData.last_updated).toLocaleString('vi-VN')}</span>}
-          <span>Độ tin cậy: {Math.round(Number(currentData.confidence_score ?? currentData.confidence ?? 0) * 100)}%</span>
+          <span>Độ tin cậy: {formatConfidence(currentData.confidence_score ?? currentData.confidence)}</span>
           {currentData.is_mock && <span className="font-medium text-amber-700">{sourceNotice}</span>}
         </div>
       )}
@@ -419,9 +430,13 @@ const PricingPage = () => {
             {currentData.global_reference ? (
               <>
                 <p className="mt-2 text-2xl font-bold text-gray-900">
-                  {Number(currentData.global_reference.price || 0).toLocaleString('vi-VN')} {currentData.global_reference.unit || 'USD/ton'}
+                  {hasValue(currentData.global_reference.price)
+                    ? `${Number(currentData.global_reference.price).toLocaleString('vi-VN')} ${currentData.global_reference.unit || ''}`.trim()
+                    : MISSING}
                 </p>
-                <p className="mt-1 text-xs text-gray-500">{currentData.global_reference.source_name || 'Nguồn tham chiếu quốc tế'}</p>
+                <p className="mt-1 text-xs text-gray-500">
+                  {currentData.global_reference.source_name || 'Chưa ghi nhận nguồn tham chiếu'}
+                </p>
               </>
             ) : (
               <p className="mt-2 text-sm text-gray-500">Chưa có tham chiếu quốc tế cho nông sản này.</p>
@@ -450,7 +465,7 @@ const PricingPage = () => {
             </div>
             <div className="rounded-lg bg-slate-50 p-4">
               <p className="text-sm text-slate-700">Độ tin cậy</p>
-              <p className="mt-2 text-2xl font-bold text-gray-900">{((engineData.confidence || 0) * 100).toFixed(0)}%</p>
+              <p className="mt-2 text-2xl font-bold text-gray-900">{formatConfidence(engineData.confidence)}</p>
             </div>
           </div>
           {hasItems(engineReasons) && (
