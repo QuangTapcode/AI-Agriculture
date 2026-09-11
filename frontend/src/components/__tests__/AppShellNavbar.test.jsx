@@ -31,6 +31,11 @@ describe('app shell navbar', () => {
 
   it('names the current page for the reports route', () => {
     renderNavbar('/reports');
-    expect(screen.getByRole('heading', { level: 1, name: /Báo cáo/i })).toBeInTheDocument();
+    expect(screen.getByText('Báo cáo')).toBeInTheDocument();
+  });
+
+  it('leaves the only level-one heading to the page itself', () => {
+    renderNavbar('/reports');
+    expect(screen.queryByRole('heading', { level: 1 })).not.toBeInTheDocument();
   });
 });

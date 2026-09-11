@@ -43,9 +43,10 @@ const Navbar = ({ setSidebarOpen }) => {
           </button>
           <div className="flex min-w-0 items-center gap-2.5">
             {PageIcon && <PageIcon className="hidden h-5 w-5 shrink-0 text-field-lime sm:block" aria-hidden="true" />}
-            <h1 className="truncate font-display text-base font-extrabold tracking-tight text-white md:text-lg">
+            {/* Trang nội dung đã có <h1> riêng; thanh trên chỉ là nhãn ngữ cảnh. */}
+            <p className="truncate font-display text-base font-extrabold tracking-tight text-white md:text-lg">
               {pageTitle}
-            </h1>
+            </p>
           </div>
         </div>
 

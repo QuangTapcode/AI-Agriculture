@@ -16,9 +16,14 @@ export default defineConfig({
     port: 4173,
     reuseExistingServer: !process.env.CI,
   },
+  // Bốn khung hình bắt buộc trong tiêu chí nghiệm thu.
   projects: [
-    { name: 'mobile', use: { ...devices['Pixel 7'] } },
-    { name: 'tablet', use: { viewport: { width: 768, height: 1024 } } },
-    { name: 'desktop', use: { viewport: { width: 1440, height: 900 } } },
+    {
+      name: 'mobile-390',
+      use: { ...devices['Pixel 7'], viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true },
+    },
+    { name: 'tablet-768', use: { viewport: { width: 768, height: 1024 } } },
+    { name: 'tablet-1024', use: { viewport: { width: 1024, height: 768 } } },
+    { name: 'desktop-1440', use: { viewport: { width: 1440, height: 900 } } },
   ],
 });

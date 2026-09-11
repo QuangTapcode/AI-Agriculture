@@ -26,6 +26,9 @@ test('public navigation works with keyboard and mobile menu', async ({ page, isM
     await page.getByRole('button', { name: 'Mở menu' }).click();
     await expect(page.getByRole('navigation', { name: 'Điều hướng trên điện thoại' })).toBeVisible();
   }
+  // Chromium chỉ bật :focus-visible sau một tương tác bàn phím thật; nếu chỉ
+  // gọi .focus() trên thiết bị cảm ứng thì vòng focus hợp lệ vẫn bị coi là ẩn.
+  await page.keyboard.press('Tab');
   const homeLink = page.getByRole('link', { name: 'Về trang chủ AgriAI' });
   await homeLink.focus();
   await expect(homeLink).toBeFocused();

@@ -486,7 +486,8 @@ const Dashboard = () => {
               <select
                 value={marketCrop}
                 onChange={(e) => setMarketCrop(e.target.value)}
-                className="rounded border border-slate-200 bg-white px-2 py-1 text-xs text-slate-700 focus:outline-none"
+                aria-label="Chọn nông sản xem giá thị trường"
+                className="min-h-9 rounded-lg border border-slate-300 bg-white px-2 py-1 text-xs text-slate-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600"
               >
                 {CROP_OPTIONS.map((c) => (
                   <option key={c.value} value={c.value}>{c.label}</option>
@@ -559,7 +560,8 @@ const Dashboard = () => {
               <select
                 value={weatherRegion}
                 onChange={(e) => setWeatherRegion(e.target.value)}
-                className="rounded border border-slate-200 bg-white px-2 py-1 text-xs text-slate-700 focus:outline-none"
+                aria-label="Chọn tỉnh thành xem thời tiết"
+                className="min-h-9 rounded-lg border border-slate-300 bg-white px-2 py-1 text-xs text-slate-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600"
               >
                 {VIETNAM_PROVINCES.map((p) => (
                   <option key={p} value={p}>{PROVINCE_LABELS[p] || p}</option>
