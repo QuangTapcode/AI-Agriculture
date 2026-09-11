@@ -1,5 +1,6 @@
 import { Globe, RefreshCw, Search, ShoppingCart, Store, TrendingUp, AlertTriangle } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
+import { MISSING, formatConfidence, hasValue } from '../utils/format';
 import DataSourceBadge from '../components/DataSourceBadge';
 import { getApiErrorMessage } from '../services/api';
 import { marketApi } from '../services/marketApi';
@@ -23,7 +24,12 @@ const initialFormData = {
   qualityGrade: 'grade_1',
 };
 
-const formatMoney = (value) => `${Number(value || 0).toLocaleString('vi-VN')} đ/kg`;
+const formatMoney = (value) =>
+  hasValue(value) ? `${Number(value).toLocaleString('vi-VN')} đ/kg` : MISSING;
+
+/** Chỉ gọi tên xu hướng khi backend thật sự trả direction. */
+const TREND_LABELS = { up: 'Tăng', down: 'Giảm', stable: 'Ổn định', flat: 'Ổn định' };
+const trendLabel = (direction) => TREND_LABELS[String(direction || '').toLowerCase()] || MISSING;
 
 const MarketPage = () => {
   const [channels, setChannels] = useState([]);
@@ -188,8 +194,11 @@ const MarketPage = () => {
       <section className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
         <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-[1fr_1fr_180px_180px]">
           <div>
-            <label className="mb-2 block text-sm font-medium text-gray-700">Nông sản</label>
+            <label htmlFor="market-crop" className="mb-2 block text-sm font-medium text-gray-700">
+              Nông sản
+            </label>
             <input
+              id="market-crop"
               value={formData.cropName}
               onChange={(event) => setFormData({ ...formData, cropName: event.target.value })}
               placeholder="Nhập tên nông sản, ví dụ: Cà phê"
@@ -204,8 +213,11 @@ const MarketPage = () => {
           </div>
 
           <div>
-            <label className="mb-2 block text-sm font-medium text-gray-700">Khu vực</label>
+            <label htmlFor="market-region" className="mb-2 block text-sm font-medium text-gray-700">
+              Khu vực
+            </label>
             <input
+              id="market-region"
               value={formData.region}
               onChange={(event) => setFormData({ ...formData, region: event.target.value })}
               placeholder="Nhập khu vực, ví dụ: Đắk Lắk"
@@ -220,8 +232,11 @@ const MarketPage = () => {
           </div>
 
           <div>
-            <label className="mb-2 block text-sm font-medium text-gray-700">Số lượng (kg)</label>
+            <label htmlFor="market-quantity" className="mb-2 block text-sm font-medium text-gray-700">
+              Số lượng (kg)
+            </label>
             <input
+              id="market-quantity"
               type="number"
               min="1"
               value={formData.quantity}
@@ -232,8 +247,11 @@ const MarketPage = () => {
           </div>
 
           <div>
-            <label className="mb-2 block text-sm font-medium text-gray-700">Chất lượng</label>
+            <label htmlFor="market-quality" className="mb-2 block text-sm font-medium text-gray-700">
+              Chất lượng
+            </label>
             <select
+              id="market-quality"
               value={formData.qualityGrade}
               onChange={(event) => setFormData({ ...formData, qualityGrade: event.target.value })}
               className="w-full rounded-lg border border-gray-300 px-3 py-2.5 outline-none focus:border-green-600 focus:ring-2 focus:ring-green-100"
@@ -284,12 +302,16 @@ const MarketPage = () => {
           </div>
           <div className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
             <p className="text-sm text-gray-600">Xu hướng 30 ngày</p>
-            <p className="mt-2 text-2xl font-bold text-gray-900">{longTrend.direction === 'up' ? 'Tăng' : longTrend.direction === 'down' ? 'Giảm' : 'Ổn định'}</p>
+            <p data-testid="market-trend-30d" className="mt-2 text-2xl font-bold text-gray-900">
+              {trendLabel(longTrend.direction)}
+            </p>
             <p className="mt-2 text-sm text-gray-600">{longTrend.summary}</p>
           </div>
           <div className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
             <p className="text-sm text-gray-600">Độ tin cậy</p>
-            <p className="mt-2 text-2xl font-bold text-gray-900">{((analysis.confidence_score || 0) * 100).toFixed(0)}%</p>
+            <p data-testid="market-confidence" className="mt-2 text-2xl font-bold text-gray-900">
+              {formatConfidence(analysis.confidence_score)}
+            </p>
             <p className="mt-2 text-sm text-gray-600">{volatility.summary}</p>
           </div>
         </section>
@@ -386,10 +408,20 @@ const MarketPage = () => {
               <h3 className="text-sm font-semibold text-gray-900">So sánh vùng miền</h3>
               <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
                 {regionalComparison.map((item) => (
-                  <div key={item.region} className="rounded-lg border border-gray-200 p-4">
+                  <div
+                    key={item.region}
+                    data-testid={`regional-row-${item.region}`}
+                    className="rounded-lg border border-gray-200 p-4"
+                  >
                     <div className="font-semibold text-gray-900">{item.region}</div>
-                    <div className="mt-2 text-lg font-bold text-gray-900">{Number(item.price || 0).toLocaleString('vi-VN')} đ/kg</div>
-                    <div className="mt-1 text-sm text-gray-600">{item.difference_percent > 0 ? '+' : ''}{Number(item.difference_percent || 0).toFixed(2)}%</div>
+                    <div data-testid="regional-price" className="mt-2 text-lg font-bold text-gray-900">
+                      {formatMoney(item.price)}
+                    </div>
+                    <div data-testid="regional-difference" className="mt-1 text-sm text-gray-600">
+                      {hasValue(item.difference_percent)
+                        ? `${Number(item.difference_percent) > 0 ? '+' : ''}${Number(item.difference_percent).toFixed(2)}%`
+                        : MISSING}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -433,8 +465,15 @@ const MarketPage = () => {
           <div className="mb-4 flex flex-wrap items-center gap-3">
             <Store className="h-5 w-5 text-green-700" />
             <h2 className="text-lg font-semibold text-gray-900">Giá tại chuỗi cửa hàng lớn</h2>
+            {/* Không bịa nguồn và độ tin cậy: chỉ chuyển tiếp đúng thứ backend trả. */}
             {storePrices && !storePricesLoading && (
-              <DataSourceBadge data={{ source: storePrices.source || 'gemini_search', source_name: storePrices.source_name || 'Gemini Google Search', confidence: storePrices.confidence || 0.72 }} />
+              <DataSourceBadge
+                data={{
+                  source: storePrices.source,
+                  source_name: storePrices.source_name,
+                  confidence: storePrices.confidence ?? null,
+                }}
+              />
             )}
           </div>
 
