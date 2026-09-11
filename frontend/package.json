@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "prototype:ui": "vite prototypes/ui-redesign --host 127.0.0.1 --port 4174"
   },
   "dependencies": {
     "@tailwindcss/typography": "^0.5.19",
