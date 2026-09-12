@@ -81,26 +81,38 @@ export default function ContactPage() {
               )}
 
               <div className="mt-7 grid gap-5 sm:grid-cols-2">
-                <label className="text-sm font-bold text-slate-700">Họ và tên
-                  <input name="name" value={form.name} onChange={updateField} className={inputClass} autoComplete="name" required minLength={2} />
-                </label>
-                <label className="text-sm font-bold text-slate-700">Chủ đề
-                  <select name="topic" value={form.topic} onChange={updateField} className={inputClass}>
+                {/*
+                  * Nhãn gắn qua htmlFor thay vì bọc control. Khi <select> nằm trong
+                  * <label>, tên khả truy cập của nó gộp cả text của mọi <option>,
+                  * nên trình đọc màn hình đọc "Chủ đề Hỗ trợ kỹ thuật Tài khoản…"
+                  * thay vì "Chủ đề".
+                  */}
+                <div>
+                  <label htmlFor="contact-name" className="text-sm font-bold text-slate-700">Họ và tên</label>
+                  <input id="contact-name" name="name" value={form.name} onChange={updateField} className={inputClass} autoComplete="name" required minLength={2} />
+                </div>
+                <div>
+                  <label htmlFor="contact-topic" className="text-sm font-bold text-slate-700">Chủ đề</label>
+                  <select id="contact-topic" name="topic" value={form.topic} onChange={updateField} className={inputClass}>
                     {topics.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
                   </select>
-                </label>
-                <label className="text-sm font-bold text-slate-700">Email
-                  <input name="email" type="email" value={form.email} onChange={updateField} className={inputClass} autoComplete="email" />
-                </label>
-                <label className="text-sm font-bold text-slate-700">Số điện thoại
-                  <input name="phone" type="tel" value={form.phone} onChange={updateField} className={inputClass} autoComplete="tel" />
-                </label>
-                <label className="text-sm font-bold text-slate-700 sm:col-span-2">Nội dung
-                  <textarea name="message" value={form.message} onChange={updateField} className={`${inputClass} resize-y`} rows={6} required minLength={10} />
-                </label>
-                <label className="absolute -left-[9999px]" aria-hidden="true">Website
-                  <input name="website" value={form.website} onChange={updateField} tabIndex={-1} autoComplete="off" />
-                </label>
+                </div>
+                <div>
+                  <label htmlFor="contact-email" className="text-sm font-bold text-slate-700">Email</label>
+                  <input id="contact-email" name="email" type="email" value={form.email} onChange={updateField} className={inputClass} autoComplete="email" />
+                </div>
+                <div>
+                  <label htmlFor="contact-phone" className="text-sm font-bold text-slate-700">Số điện thoại</label>
+                  <input id="contact-phone" name="phone" type="tel" value={form.phone} onChange={updateField} className={inputClass} autoComplete="tel" />
+                </div>
+                <div className="sm:col-span-2">
+                  <label htmlFor="contact-message" className="text-sm font-bold text-slate-700">Nội dung</label>
+                  <textarea id="contact-message" name="message" value={form.message} onChange={updateField} className={`${inputClass} resize-y`} rows={6} required minLength={10} />
+                </div>
+                <div className="absolute -left-[9999px]" aria-hidden="true">
+                  <label htmlFor="contact-website">Website</label>
+                  <input id="contact-website" name="website" value={form.website} onChange={updateField} tabIndex={-1} autoComplete="off" />
+                </div>
               </div>
               <p className="mt-4 text-sm text-slate-500">Cần ít nhất email hoặc số điện thoại để nhận phản hồi.</p>
               <button type="submit" disabled={state.status === 'loading'} className="field-button-primary mt-6 w-full disabled:cursor-wait disabled:opacity-60 sm:w-auto">

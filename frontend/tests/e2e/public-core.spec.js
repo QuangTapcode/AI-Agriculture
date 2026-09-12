@@ -51,3 +51,26 @@ test('reduced motion removes long animation durations', async ({ browser }) => {
   expect(Number.parseFloat(duration)).toBeLessThanOrEqual(0.001);
   await context.close();
 });
+
+test('decorative cards stay inside the viewport at every width', async ({ page }) => {
+  await page.goto('/');
+  await page.waitForLoadState('networkidle');
+
+  /*
+   * .field-tilt ghi đè thuộc tính transform, nên nếu nó dùng chung element với
+   * một utility transform của Tailwind (ví dụ -translate-x-1/2) thì phần căn
+   * chỉnh bị nuốt và thẻ trôi ra ngoài khung nhìn. overflow-hidden của section
+   * che mất lỗi này khỏi phép đo tràn ngang, nên cần kiểm riêng.
+   */
+  const overflowing = await page.evaluate(() => {
+    const viewport = window.innerWidth;
+    return [...document.querySelectorAll('.field-tilt')]
+      .map((node) => {
+        const rect = node.getBoundingClientRect();
+        return { right: Math.round(rect.right), left: Math.round(rect.left), viewport };
+      })
+      .filter((box) => box.right > box.viewport + 1 || box.left < -1);
+  });
+
+  expect(overflowing).toEqual([]);
+});
