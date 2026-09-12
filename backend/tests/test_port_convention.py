@@ -33,4 +33,10 @@ def test_frontend_mac_dinh_dung_cong_chuan():
 
 def test_docker_expose_cong_chuan():
     dv = yaml.safe_load((GOC / "docker-compose.yml").read_text(encoding="utf-8"))["services"]
-    assert any(str(p).startswith(f"{CONG}:") for p in dv["backend"].get("ports", []))
+    # Compose cho phép thêm địa chỉ bind ở đầu, ví dụ
+    # 127.0.0.1:8000:8000. Phần quan trọng của quy ước là host port và
+    # container port đều là 8000; bind loopback còn tránh mở DB/API ra LAN.
+    assert any(
+        re.search(rf"(?:^|:){CONG}:{CONG}$", str(port))
+        for port in dv["backend"].get("ports", [])
+    )
