@@ -1,0 +1,21 @@
+# Năm nhãn triage chuẩn của dự án.
+# Nguồn sự thật cho `scripts/sync-github-labels.sh`; xem docs/agents/triage-labels.md.
+- name: needs-triage
+  color: "D93F0B"
+  description: Cần maintainer đánh giá trước khi ai đó bắt tay vào làm
+
+- name: needs-info
+  color: "FBCA04"
+  description: Đang chờ người báo cáo bổ sung thông tin
+
+- name: ready-for-agent
+  color: "0E8A16"
+  description: Đã đặc tả đủ để một agent tự thực hiện
+
+- name: ready-for-human
+  color: "1D76DB"
+  description: Cần người thực hiện, không giao cho agent
+
+- name: wontfix
+  color: "6E7781"
+  description: Sẽ không xử lý

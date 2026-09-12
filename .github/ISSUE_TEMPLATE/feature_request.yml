@@ -1,0 +1,37 @@
+name: Đề xuất tính năng
+description: Một khả năng mới hoặc thay đổi hành vi hiện tại.
+labels: ["needs-triage"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Vấn đề cần giải quyết
+      description: Mô tả tình huống thực tế, không mô tả sẵn giải pháp.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Đề xuất
+    validations:
+      required: true
+
+  - type: textarea
+    id: data
+    attributes:
+      label: Nguồn dữ liệu
+      description: >
+        Tính năng cần số liệu nào và lấy từ đâu? Dự án không hiển thị số liệu
+        không có nguồn, nên phần này quyết định tính năng có làm được hay không.
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Tiêu chí nghiệm thu
+      placeholder: |
+        - [ ] Không có dữ liệu mẫu trình bày như dữ liệu thật
+        - [ ] Không tràn ngang ở cả bốn khung hình
+        - [ ] Có test cho trạng thái loading, rỗng và lỗi
+    validations:
+      required: true

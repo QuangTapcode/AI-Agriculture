@@ -1,0 +1,62 @@
+name: Báo lỗi
+description: Một hành vi sai, dữ liệu hiển thị không đúng, hoặc trang bị hỏng.
+labels: ["needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Nếu lỗi liên quan đến **số liệu hiển thị**, hãy nêu rõ backend trả về gì
+        và giao diện hiển thị gì. Quy tắc của dự án: thiếu dữ liệu phải hiện "—",
+        không được thay bằng 0 hay một giá trị mặc định.
+
+  - type: input
+    id: route
+    attributes:
+      label: Route
+      description: Đường dẫn xảy ra lỗi.
+      placeholder: /dashboard
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Mong đợi điều gì
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Thực tế xảy ra gì
+      description: Kèm ảnh chụp nếu có.
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Các bước tái hiện
+      placeholder: |
+        1. Mở /dashboard
+        2. ...
+    validations:
+      required: true
+
+  - type: dropdown
+    id: viewport
+    attributes:
+      label: Khung hình
+      multiple: true
+      options:
+        - 390×844 (điện thoại)
+        - 768×1024 (máy tính bảng dọc)
+        - 1024×768 (máy tính bảng ngang)
+        - 1440×900 (máy tính)
+
+  - type: textarea
+    id: response
+    attributes:
+      label: Phản hồi API liên quan
+      description: Dán JSON nếu lỗi nằm ở dữ liệu.
+      render: json
