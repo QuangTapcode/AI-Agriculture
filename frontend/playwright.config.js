@@ -2,6 +2,9 @@ import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({
   testDir: './tests/e2e',
+  // Bộ sinh ảnh/video nghiệm thu chỉ chạy khi được gọi tên bằng EVIDENCE_GROUP.
+  // Nó quay video và ghi file ra ngoài thư mục build, nên không thuộc cổng e2e.
+  testIgnore: process.env.EVIDENCE_GROUP ? [] : ['**/capture-evidence.spec.js'],
   fullyParallel: true,
   forbidOnly: Boolean(process.env.CI),
   retries: process.env.CI ? 1 : 0,

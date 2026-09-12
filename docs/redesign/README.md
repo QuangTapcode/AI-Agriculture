@@ -16,8 +16,8 @@ Nhánh `feat/ui-field-command`. Toàn bộ sáu nhóm page đã hoàn thành.
 ## Kết quả cuối
 
 ```
-Frontend unit (Vitest)   26 file, 104 test — pass
-Frontend e2e (Playwright) 142 test trên 4 khung hình, 2 skip — pass
+Frontend unit (Vitest)    28 file, 111 test — pass
+Frontend e2e (Playwright) 164 test trên 4 khung hình — pass
 Frontend build            pass
 Backend (pytest)          478 pass, 7 skip, 1 fail có sẵn
 ```
@@ -74,10 +74,10 @@ không làm gì. Nay nút cảnh báo dẫn sang `/alerts`, nút chia sẻ dùng
 ```bash
 cd frontend
 npm run check          # unit + build
-npx playwright test    # e2e trên cả bốn khung hình
+npm run test:e2e       # e2e trên cả bốn khung hình
 
 # Ảnh và video nghiệm thu cho một nhóm
-EVIDENCE_GROUP=group-5-operations npx playwright test tests/e2e/capture-evidence.spec.js
+EVIDENCE_GROUP=group-5-operations npm run evidence
 cd ../docs/redesign/evidence/group-5-operations
 for f in *.webm; do ffmpeg -y -i "$f" -c:v libx264 -preset slow -crf 23 \
   -pix_fmt yuv420p -movflags +faststart \
@@ -85,6 +85,22 @@ for f in *.webm; do ffmpeg -y -i "$f" -c:v libx264 -preset slow -crf 23 \
 ```
 
 Ảnh/video nằm trong `docs/redesign/evidence/<nhóm>/`, không commit vào repo.
+
+CI chạy `npm run check` và `npm run test:e2e` trên mỗi push và pull request. Bộ
+sinh ảnh/video chỉ chạy khi có biến `EVIDENCE_GROUP`, nên không làm chậm CI.
+
+## Nhãn triage và mẫu issue
+
+Năm nhãn chuẩn nằm trong [`.github/labels.yml`](../../.github/labels.yml). Tạo
+chúng trên GitHub sau khi đăng nhập một lần:
+
+```bash
+gh auth login
+bash scripts/sync-github-labels.sh
+```
+
+Mẫu issue ở `.github/ISSUE_TEMPLATE/` đã bật (báo lỗi và đề xuất tính năng, cả
+hai tự gắn `needs-triage`); issue trống bị tắt.
 
 ## Còn mở
 

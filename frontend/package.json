@@ -11,6 +11,7 @@
     "test:watch": "vitest",
     "test:e2e": "npm run build && playwright test",
     "test:e2e:update": "npm run build && playwright test --update-snapshots",
+    "evidence": "npm run build && playwright test tests/e2e/capture-evidence.spec.js --reporter=line",
     "check": "npm run test && npm run build"
   },
   "dependencies": {
