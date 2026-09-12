@@ -1,4 +1,4 @@
-const ORIGIN_URL = "https://work-developing-developers-occupation.trycloudflare.com";
+const ORIGIN_URL = "https://warcraft-exemption-cheers-dash.trycloudflare.com";
 
 export default {
   async fetch(request) {
