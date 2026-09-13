@@ -16,16 +16,15 @@ Nhánh `feat/ui-field-command`. Toàn bộ sáu nhóm page đã hoàn thành.
 ## Kết quả cuối
 
 ```
-Frontend unit (Vitest)    28 file, 111 test — pass
+Frontend unit (Vitest)    30 file, 122 test — pass
 Frontend e2e (Playwright) 164 test trên 4 khung hình — pass
 Frontend build            pass
-Backend (pytest)          478 pass, 7 skip, 1 fail có sẵn
+Backend (pytest)          479 pass, 7 skip — pass
 ```
 
-Một test backend hỏng từ trước đợt này và không liên quan:
-`test_port_convention.py::test_docker_expose_cong_chuan` đọc `docker-compose.yml`,
-file mà toàn bộ đợt redesign không chạm tới (`git diff 0d3da45..HEAD` trên các
-file docker cho kết quả rỗng).
+Kết quả trên được chạy lại ngày 13/09/2026 sau đợt rà soát cuối. Test quy ước
+cổng chấp nhận cả ánh xạ Docker trực tiếp (`8000:8000`) và ánh xạ an toàn chỉ
+trên loopback (`127.0.0.1:8000:8000`).
 
 Bốn khung hình nghiệm thu: 390×844, 768×1024, 1024×768, 1440×900.
 
@@ -89,6 +88,20 @@ for f in *.webm; do ffmpeg -y -i "$f" -c:v libx264 -preset slow -crf 23 \
 CI chạy `npm run check` và `npm run test:e2e` trên mỗi push và pull request. Bộ
 sinh ảnh/video chỉ chạy khi có biến `EVIDENCE_GROUP`, nên không làm chậm CI.
 
+## Production
+
+Trang public đang hoạt động tại `https://agriai-demo.pages.dev`. Bản production:
+
+- dùng Manrope và DM Sans WOFF2 đóng gói trong bundle, không phụ thuộc Google Fonts;
+- dùng favicon AgriAI thay cho favicon Vite;
+- proxy API qua Nginx với Docker DNS động, nên backend đổi IP khi recreate không
+  làm proxy giữ địa chỉ cũ;
+- có scheduled task `AgriAI Public Web Watchdog` kiểm tra mỗi giờ và tự nối lại
+  Cloudflare Quick Tunnel khi URL tạm hết hạn.
+
+Chi tiết nguyên nhân, cách phục hồi và lệnh xác minh nằm tại
+[production-runtime-report.md](production-runtime-report.md).
+
 ## Nhãn triage và mẫu issue
 
 Năm nhãn chuẩn nằm trong [`.github/labels.yml`](../../.github/labels.yml). Tạo
@@ -102,12 +115,11 @@ bash scripts/sync-github-labels.sh
 Mẫu issue ở `.github/ISSUE_TEMPLATE/` đã bật (báo lỗi và đề xuất tính năng, cả
 hai tự gắn `needs-triage`); issue trống bị tắt.
 
-## Còn mở
+## Ngoài phạm vi đợt này
 
-- Chưa có test render riêng cho trạng thái `cached` và `live` trên từng trang;
-  hợp đồng metadata đã được phủ ở `normalizeDataMeta` và tầng service.
+- Trạng thái `live`, `cached` và `unavailable` được kiểm thử tại hợp đồng dùng
+  chung `normalizeDataMeta`; test từng page kiểm tra loading, empty/error và chống
+  số bịa theo dữ liệu mà page sử dụng.
 - `unwrapApiResponse` trả về cả phong bì lẫn payload phẳng vì backend spread
   `dict(data)`. Đang chạy đúng nhưng dễ gây nhầm, nên tách ở một đợt riêng.
-- Tiêu đề trang Thời tiết vẫn ghi "Theo dõi thời gian thực" — mô tả tính năng,
-  không phải nhãn gắn lên một con số cụ thể.
 - Chưa triển khai billing hoặc CMS: `/pricing-plans` và `/articles` giữ empty state.

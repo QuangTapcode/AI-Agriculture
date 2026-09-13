@@ -1,5 +1,11 @@
 # TODO — Thiết kế lại giao diện AgriAI
 
+> **Trạng thái 13/09/2026:** Prototype A và sáu nhóm page trong kế hoạch đã được
+> triển khai, kiểm thử và đưa lên production. Kết quả hiện hành nằm tại
+> [`docs/redesign/README.md`](../docs/redesign/README.md). File này được giữ làm
+> backlog chi tiết cho các vòng tinh chỉnh tiếp theo; ô chưa đánh dấu không có
+> nghĩa là kế hoạch Prototype A còn chưa triển khai.
+
 > Mục tiêu: ít chữ, số liệu có nguồn, hình ảnh hiện đại, chuyển động rõ nhưng nhẹ, dùng tốt trên desktop và điện thoại.
 >
 > Tham chiếu chuyển động: [video 1](https://www.tiktok.com/@tvcdevcntt/video/7649237352526662933) · [video 2](https://www.tiktok.com/@tvcdevcntt/video/7677468850878778644).
