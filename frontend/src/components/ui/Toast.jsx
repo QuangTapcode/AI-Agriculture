@@ -3,7 +3,7 @@ import { CheckCircle2, TriangleAlert, X } from 'lucide-react';
 export function Toast({ open, tone = 'success', title, message, onClose }) {
   const Icon = tone === 'success' ? CheckCircle2 : TriangleAlert;
   return (
-    <div role="status" aria-live="polite" className={`fixed bottom-5 right-5 z-[80] w-[calc(100%-2.5rem)] max-w-sm transition-all duration-300 ${open ? 'translate-y-0 opacity-100' : 'pointer-events-none translate-y-4 opacity-0'}`}>
+    <div role="status" aria-live="polite" className={`fixed bottom-5 right-5 z-[80] w-[calc(100%-2.5rem)] max-w-sm transition-[transform,opacity] duration-300 motion-reduce:transition-none ${open ? 'translate-y-0 opacity-100' : 'pointer-events-none translate-y-4 opacity-0'}`}>
       <div className="rounded-2xl border border-white/10 bg-[#0b1d16] p-4 text-white shadow-2xl shadow-black/30">
         <div className="flex items-start gap-3">
           <Icon className={`mt-0.5 h-5 w-5 shrink-0 ${tone === 'success' ? 'text-lime-300' : 'text-rose-300'}`} />

@@ -633,7 +633,7 @@ const VideoQualityPanel = ({ region, onResult, onError, onLoadingChange }) => {
                       if (a.result) onResult(a.result, 'video');
                     }
                   }}
-                  className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg border text-left transition-all ${
+                  className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg border text-left transition-colors ${
                     isSelected
                       ? 'border-2 bg-white shadow-sm'
                       : 'border-gray-100 bg-white hover:bg-gray-50 hover:border-gray-200'
@@ -888,7 +888,7 @@ const QualityPage = () => {
                   <button
                     onClick={handleImageSubmit}
                     disabled={!selectedFile || imageLoading}
-                    className="w-full bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 text-white py-3 px-4 rounded-xl text-sm font-semibold disabled:from-gray-200 disabled:to-gray-200 disabled:text-gray-500 disabled:cursor-not-allowed transition-all shadow-sm"
+                    className="w-full bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 text-white py-3 px-4 rounded-xl text-sm font-semibold disabled:from-gray-200 disabled:to-gray-200 disabled:text-gray-500 disabled:cursor-not-allowed transition-colors shadow-sm"
                   >
                     {imageLoading ? (
                       <span className="flex items-center justify-center gap-2">
@@ -1042,7 +1042,7 @@ const QualityPage = () => {
                     {hasValue(result.confidence) && (
                       <div className="h-2 w-full overflow-hidden rounded-full bg-white/20">
                         <div
-                          className="h-full rounded-full bg-white transition-all duration-700 motion-reduce:transition-none"
+                          className="h-full rounded-full bg-white motion-reduce:transition-none"
                           style={{ width: `${Math.round(Number(result.confidence) * 100)}%` }}
                         />
                       </div>
@@ -1162,7 +1162,7 @@ const QualityPage = () => {
                           key={i}
                           onMouseEnter={() => setHoveredIdx(i)}
                           onMouseLeave={() => setHoveredIdx(-1)}
-                          className={`flex items-center gap-3 px-3 py-2.5 rounded-xl border cursor-pointer transition-all duration-150
+                          className={`flex items-center gap-3 px-3 py-2.5 rounded-xl border cursor-pointer transition-[transform,box-shadow,background-color,border-color] duration-150
                             ${isHovered
                               ? 'shadow-md scale-[1.01]'
                               : 'hover:shadow-sm hover:scale-[1.005]'}

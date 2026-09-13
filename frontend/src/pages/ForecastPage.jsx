@@ -235,7 +235,7 @@ const UVBar = ({ value }) => {
         <span className={`text-xs font-semibold px-2 py-0.5 rounded-full text-white ${color}`}>{label}</span>
       </div>
       <div className="w-full h-2 rounded-full bg-gray-100 overflow-hidden mb-2">
-        <div className={`h-full rounded-full ${color} transition-all`} style={{ width: `${pct}%` }} />
+        <div className={`h-full rounded-full ${color}`} style={{ width: `${pct}%` }} />
       </div>
       <p className="text-xs text-gray-500">{advice}</p>
     </div>

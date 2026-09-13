@@ -64,6 +64,29 @@ describe('reports real-data contract', () => {
     expect(screen.getByTestId('report-total-quantity')).toHaveTextContent('4.200');
   });
 
+  it('keeps real zero row values and does not render a dead action menu', async () => {
+    getSummary.mockResolvedValue({
+      region: 'Dak Lak',
+      market: [{
+        suggestion_id: 1,
+        created_at: '2026-09-13T08:00:00Z',
+        crop_name: 'Cà phê',
+        quality_grade: 'grade_1',
+        estimated_profit: 0,
+        quantity: 0,
+        recommended_channel: 'Chợ đầu mối',
+      }],
+      harvest: [],
+      quality: [],
+    });
+
+    renderReports();
+
+    expect(await screen.findByText('0 đ')).toBeInTheDocument();
+    expect(screen.getByRole('cell', { name: '0' })).toBeInTheDocument();
+    expect(screen.queryByRole('columnheader', { name: 'Hành động' })).not.toBeInTheDocument();
+  });
+
   it('surfaces a failed request instead of rendering an empty report', async () => {
     getSummary.mockRejectedValue(new Error('Không thể tải báo cáo của tài khoản'));
 

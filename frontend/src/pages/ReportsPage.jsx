@@ -13,7 +13,6 @@ import {
   Download,
   FileText,
   Filter,
-  MoreVertical,
   Package,
   TrendingUp,
 } from 'lucide-react';
@@ -128,11 +127,11 @@ const ReportsPage = () => {
       crop: item.crop_name || 'Nông sản',
       grade: gradeLabel(item.quality_grade),
       gradeColor: 'bg-green-100 text-green-700',
-      price: Number(item.estimated_profit || 0),
-      quantity: Number(item.quantity || 0),
+      price: hasValue(item.estimated_profit) ? Number(item.estimated_profit) : null,
+      quantity: hasValue(item.quantity) ? Number(item.quantity) : null,
       status: item.recommended_channel || 'Gợi ý thị trường',
       statusColor: 'text-green-600',
-      statusIcon: <CheckCircle className="h-4 w-4" />,
+      statusIcon: <CheckCircle aria-hidden="true" className="h-4 w-4" />,
     }));
 
     const qualityRows = reportData.quality.map((item) => ({
@@ -141,11 +140,11 @@ const ReportsPage = () => {
       crop: item.crop_name || 'Nông sản',
       grade: gradeLabel(item.quality_grade),
       gradeColor: item.quality_grade === 'grade_1' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700',
-      price: Number(item.suggested_price || 0),
-      quantity: 0,
+      price: hasValue(item.suggested_price) ? Number(item.suggested_price) : null,
+      quantity: null,
       status: 'Kiểm định chất lượng',
       statusColor: 'text-yellow-600',
-      statusIcon: <Clock className="h-4 w-4" />,
+      statusIcon: <Clock aria-hidden="true" className="h-4 w-4" />,
     }));
 
     const harvestRows = reportData.harvest.map((item) => ({
@@ -154,11 +153,11 @@ const ReportsPage = () => {
       crop: item.crop_name || 'Nông sản',
       grade: 'Dự báo',
       gradeColor: 'bg-blue-100 text-blue-700',
-      price: 0,
-      quantity: 0,
+      price: null,
+      quantity: null,
       status: `Thu hoạch ${formatDate(item.expected_harvest_date)}`,
       statusColor: 'text-blue-600',
-      statusIcon: <Clock className="h-4 w-4" />,
+      statusIcon: <Clock aria-hidden="true" className="h-4 w-4" />,
     }));
 
     return [...marketRows, ...qualityRows, ...harvestRows];
@@ -344,7 +343,6 @@ const ReportsPage = () => {
                           <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">Giá trị</th>
                           <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">Số lượng</th>
                           <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Trạng thái</th>
-                          <th className="px-4 py-3 text-center text-xs font-medium uppercase text-gray-500">Hành động</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -358,21 +356,16 @@ const ReportsPage = () => {
                               </span>
                             </td>
                             <td className="px-4 py-4 text-right text-sm font-semibold text-gray-900">
-                              {record.price ? formatCurrency(record.price) : '-'}
+                              {formatCurrency(record.price)}
                             </td>
                             <td className="px-4 py-4 text-right text-sm text-gray-900">
-                              {record.quantity ? record.quantity.toLocaleString('vi-VN') : '-'}
+                              {hasValue(record.quantity) ? record.quantity.toLocaleString('vi-VN') : MISSING}
                             </td>
                             <td className="px-4 py-4">
                               <div className={`flex items-center gap-2 ${record.statusColor}`}>
                                 {record.statusIcon}
                                 <span className="text-sm font-medium">{record.status}</span>
                               </div>
-                            </td>
-                            <td className="px-4 py-4 text-center">
-                              <button className="text-gray-400 hover:text-gray-600" type="button">
-                                <MoreVertical className="h-5 w-5" />
-                              </button>
                             </td>
                           </tr>
                         ))}
