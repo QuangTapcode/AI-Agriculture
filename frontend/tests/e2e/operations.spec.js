@@ -4,7 +4,6 @@ import { expectNoHorizontalOverflow, installSession } from './helpers/session.js
 
 const routes = [
   { path: '/quality', name: 'Kiểm định chất lượng' },
-  { path: '/harvest', name: 'Dự báo thu hoạch' },
   { path: '/season-management', name: 'Quản lý mùa vụ' },
   { path: '/alerts', name: 'Cảnh báo' },
   { path: '/notifications', name: 'Thông báo' },

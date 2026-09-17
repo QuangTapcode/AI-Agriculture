@@ -10,8 +10,10 @@ describe('route resolution', () => {
     ['/dashboard-new', '/dashboard'],
     ['/pricing-dashboard', '/pricing'],
     ['/quality-check', '/quality'],
-    ['/harvest-forecast', '/harvest'],
-    ['/market-strategy', '/market'],
+    ['/harvest', '/season-management'],
+    ['/harvest-forecast', '/season-management'],
+    ['/market', '/dashboard'],
+    ['/market-strategy', '/dashboard'],
     ['/alerts-management', '/alerts'],
   ])('redirects the retired route %s to %s', (legacy, canonical) => {
     expect(resolveRoute(legacy)).toMatchObject({ kind: 'redirect', to: canonical });
@@ -20,7 +22,7 @@ describe('route resolution', () => {
 
 describe('locale prefixes', () => {
   it('keeps the locale segment when redirecting a retired route', () => {
-    expect(resolveRoute('/en/harvest-forecast')).toMatchObject({ kind: 'redirect', to: '/en/harvest' });
+    expect(resolveRoute('/en/harvest-forecast')).toMatchObject({ kind: 'redirect', to: '/en/season-management' });
   });
 
   it('resolves a localized app route to the same app page', () => {
@@ -40,6 +42,11 @@ describe('nested app routes', () => {
   it('resolves detail and conversation sub-paths to the app shell', () => {
     expect(resolveRoute('/crop/robusta')).toMatchObject({ kind: 'app' });
     expect(resolveRoute('/ai-chat/2024-06-01')).toMatchObject({ kind: 'app' });
+  });
+
+  it('does not expose removed forecast or market analysis pages as app routes', () => {
+    expect(resolveRoute('/market')).toMatchObject({ kind: 'redirect', to: '/dashboard' });
+    expect(resolveRoute('/harvest')).toMatchObject({ kind: 'redirect', to: '/season-management' });
   });
 
   it('still rejects an unknown path', () => {

@@ -1,7 +1,12 @@
 import axios from 'axios';
 import { normalizeApiError } from '../utils/apiResponse';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
+// Production builds are served behind the same reverse proxy as the API.
+// Falling back to the current origin prevents a missed VITE_API_URL build arg
+// from sending a deployed browser to a private localhost address.
+export const API_URL = import.meta.env.VITE_API_URL || (
+  import.meta.env.PROD ? '/' : 'http://127.0.0.1:8000'
+);
 
 export const API_TIMEOUTS = {
   default: Number(import.meta.env.VITE_API_TIMEOUT_MS || 18000),

@@ -6,7 +6,6 @@ const routes = [
   { path: '/weather', name: 'Thời tiết' },
   { path: '/pricing', name: 'Định giá' },
   { path: '/crop/ca-phe', name: 'Chi tiết cây trồng' },
-  { path: '/market', name: 'Phân tích thị trường' },
 ];
 
 /**

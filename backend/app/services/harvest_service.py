@@ -1,4 +1,4 @@
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from typing import Dict, Optional
 from unicodedata import category, normalize
 
@@ -6,7 +6,6 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.repositories.harvest_repository import (
-    create_harvest_forecast,
     get_harvest_forecast_history,
     get_harvest_schedules_by_user,
 )
@@ -213,17 +212,7 @@ class HarvestService:
         weather_risk = self._weather_risk_label(db, region)
         market_condition = self._market_condition(db, crop_name, region)
         preparation_tasks = self._preparation_tasks(crop_name, expected_date)
-        record = create_harvest_forecast(
-            db,
-            crop_name=crop_name,
-            region=region,
-            planting_date=planting_date,
-            expected_harvest_date=expected_date,
-            confidence=confidence,
-            warning=warning,
-            recommendation=recommendation,
-            user_id=user_id,
-        )
+        computed_at = datetime.now(timezone.utc)
 
         return {
             "crop_name": crop_name,
@@ -249,7 +238,7 @@ class HarvestService:
             "source_name": "Harvest optimizer AI/rule engine",
             "is_mock": not bool(predictor),
             "cache_status": "computed",
-            "created_at": getattr(record, "created_at", None),
+            "created_at": computed_at,
         }
 
     def predict_harvest_date(

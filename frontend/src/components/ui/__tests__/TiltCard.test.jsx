@@ -1,17 +1,22 @@
 import { fireEvent, render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { TiltCard } from '../TiltCard';
 
 describe('TiltCard', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
   it('tilts towards the pointer for a mouse', () => {
+    vi.stubGlobal('requestAnimationFrame', (callback) => { callback(); return 1; });
     render(<TiltCard>Nội dung</TiltCard>);
     const card = screen.getByText('Nội dung');
     card.getBoundingClientRect = () => ({ top: 0, left: 0, width: 200, height: 100 });
 
     fireEvent.pointerMove(card, { pointerType: 'mouse', clientX: 200, clientY: 100 });
 
-    expect(card.style.getPropertyValue('--tilt-y')).toBe('2.5deg');
-    expect(card.style.getPropertyValue('--tilt-x')).toBe('-2.5deg');
+    expect(card.style.getPropertyValue('--tilt-y')).toBe('2deg');
+    expect(card.style.getPropertyValue('--tilt-x')).toBe('-2deg');
   });
 
   it('never tilts for a touch pointer', () => {
@@ -35,6 +40,16 @@ describe('TiltCard', () => {
 
     expect(card.style.getPropertyValue('--tilt-x')).toBe('0deg');
     expect(card.style.getPropertyValue('--tilt-y')).toBe('0deg');
+  });
+
+  it('does not schedule tilt on a coarse pointer', () => {
+    const raf = vi.fn();
+    vi.stubGlobal('requestAnimationFrame', raf);
+    vi.stubGlobal('matchMedia', () => ({ matches: false, addEventListener() {}, removeEventListener() {} }));
+    render(<TiltCard>Nội dung</TiltCard>);
+    const card = screen.getByText('Nội dung');
+    fireEvent.pointerMove(card, { pointerType: 'mouse', clientX: 200, clientY: 100 });
+    expect(raf).not.toHaveBeenCalled();
   });
 });
 

@@ -1,11 +1,19 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const getKnowledgeDocuments = vi.fn();
+const getKnowledgeStatus = vi.fn();
+const getKnowledgeSourceCandidates = vi.fn();
+const startKnowledgeDiscovery = vi.fn();
 
 vi.mock('../../services/aiApi', () => ({
-  aiApi: { getKnowledgeDocuments: (...a) => getKnowledgeDocuments(...a) },
+  aiApi: {
+    getKnowledgeDocuments: (...a) => getKnowledgeDocuments(...a),
+    getKnowledgeStatus: (...a) => getKnowledgeStatus(...a),
+    getKnowledgeSourceCandidates: (...a) => getKnowledgeSourceCandidates(...a),
+    startKnowledgeDiscovery: (...a) => startKnowledgeDiscovery(...a),
+  },
 }));
 
 import KnowledgeDocumentsPage from '../KnowledgeDocumentsPage';
@@ -20,6 +28,8 @@ const renderPage = () =>
 describe('knowledge catalogue resilience', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    getKnowledgeStatus.mockResolvedValue({});
+    getKnowledgeSourceCandidates.mockResolvedValue({ candidates: [] });
   });
 
   it('survives a catalogue response that omits the document list', async () => {

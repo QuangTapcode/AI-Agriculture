@@ -26,6 +26,7 @@ describe('data trust contract', () => {
     { source: 'mock' },
     { source: 'sample' },
     { cache_status: 'demo' },
+    { is_estimated: true, source: 'database' },
   ])('blocks fabricated metadata %#', (metadata) => {
     expect(getTrustedMetric(100, metadata)).toMatchObject({
       value: null,

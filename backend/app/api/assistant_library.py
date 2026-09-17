@@ -4,6 +4,7 @@ import logging
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
+from pydantic import BaseModel, Field
 from sqlalchemy import String, case, cast, func, or_
 from sqlalchemy.orm import Session
 
@@ -12,13 +13,29 @@ from app.core.config import settings
 from app.core.database import get_db
 from app.models.conversation import AIConversation as Conversation
 from app.models.ingestion import DataIngestionLog
-from app.models.knowledge import KnowledgeDocument
+from app.models.knowledge import KnowledgeDiscoveryJob, KnowledgeDocument, KnowledgeSourceCandidate
 from app.models.user import User
 from app.services.knowledge_ingestion_service import configured_sources
 from app.services.rag_service import MAX_UPLOAD_BYTES, rag_service
+from app.services.source_discovery_service import source_discovery_service
+from app.services.knowledge_discovery_service import knowledge_discovery_service
+from app.services.ai_intent_service import (
+    classify_user_intent,
+    extract_crop_from_message,
+    extract_region_from_message,
+)
 
 router = APIRouter(prefix="/api/ai-chat", tags=["ai-chat"])
 logger = logging.getLogger(__name__)
+
+
+class KnowledgeDiscoveryRequest(BaseModel):
+    """Topic submitted from the document library's immediate search control."""
+
+    question: str = Field(..., min_length=3, max_length=8000)
+    crop: str | None = Field(default=None, max_length=100)
+    region: str | None = Field(default=None, max_length=100)
+    intent: str | None = Field(default=None, max_length=50)
 
 
 def visible_rows(db, user_id):
@@ -48,11 +65,46 @@ def utc_iso(value):
     return value.isoformat()
 
 
+def parse_quality_report(value):
+    """Decode the persisted ingestion report without hiding malformed data."""
+    if isinstance(value, dict):
+        return value
+    if not value:
+        return {}
+    try:
+        report = json.loads(value)
+    except (TypeError, ValueError):
+        return {"error": "Không đọc được báo cáo kiểm tra chất lượng."}
+    return report if isinstance(report, dict) else {"error": "Báo cáo kiểm tra chất lượng không hợp lệ."}
+
+
+def quality_rejection_details(value):
+    """Return human-readable reasons derived only from the stored quality report."""
+    report = parse_quality_report(value)
+    reasons = []
+    if report.get("error"):
+        reasons.append(str(report["error"]))
+    if report.get("minimum_length") is False:
+        reasons.append("Nội dung chưa đạt độ dài tối thiểu")
+    if report.get("agriculture_relevant") is False:
+        reasons.append("Không đủ dấu hiệu nội dung nông nghiệp")
+    coverage = report.get("question_coverage")
+    if isinstance(coverage, dict) and coverage.get("total", 0) and coverage.get("passed", 0) == 0:
+        reasons.append("Không vượt kiểm tra độ phù hợp với bộ câu hỏi")
+    if not reasons:
+        reasons.append(
+            "Không có báo cáo kiểm tra chất lượng để xác định lý do."
+            if not report else "Không đạt tiêu chuẩn kiểm tra chất lượng"
+        )
+    return reasons
+
+
 def serialize_turn(row):
     context = snapshot(row)
     return {"id": row.ConvID, "user_message": row.UserMessage, "ai_response": row.AIResponse,
             "topic": row.Topic, "created_at": row.CreatedAt.replace(tzinfo=timezone.utc).isoformat(),
-            "model": row.ModelName, "rag": context.get("rag", {"status": "not_used", "sources": []})}
+            "model": row.ModelName, "rag": context.get("rag", {"status": "not_used", "sources": []}),
+            "knowledge_update": context.get("knowledge_update", {"status": "not_needed"})}
 
 
 def load_memory(db, user_id, session_id):
@@ -153,16 +205,51 @@ def knowledge_status(db: Session = Depends(get_db), _user: User = Depends(get_cu
         "has_error": bool(latest.ErrorMessage),
         "error": latest.ErrorMessage[:1000] if latest.ErrorMessage else None,
     }
+
+    latest_job = db.query(KnowledgeDiscoveryJob).filter(
+        KnowledgeDiscoveryJob.UserID == _user.UserID
+    ).order_by(KnowledgeDiscoveryJob.CreatedAt.desc(), KnowledgeDiscoveryJob.JobID.desc()).first()
+    latest_query_discovery = knowledge_discovery_service.get(
+        db, latest_job.JobID, user_id=_user.UserID
+    ) if latest_job else None
     return {
         "enabled": settings.KNOWLEDGE_AGENT_ENABLED,
         "schedule_hour": settings.KNOWLEDGE_AGENT_HOUR,
-        "configured_sources": len(configured_sources()),
+        "configured_sources": len(configured_sources()) + db.query(KnowledgeSourceCandidate).filter(
+            KnowledgeSourceCandidate.Status == "approved"
+        ).count(),
         "approved_documents": approved,
         "indexed_documents": indexed_documents,
         "indexed_chunks": indexed_chunks,
         "index_status": index_status,
         "last_run": last_run,
+        "latest_query_discovery": latest_query_discovery,
     }
+
+
+@router.post("/knowledge-discovery")
+def start_knowledge_discovery(
+    request: KnowledgeDiscoveryRequest,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Start a query-triggered source search immediately, without the nightly schedule."""
+    question = request.question.strip()
+    if not question:
+        raise HTTPException(422, "Chủ đề tìm kiếm không được để trống.")
+
+    crop = (request.crop or extract_crop_from_message(question) or "").strip() or None
+    region = (request.region or extract_region_from_message(question) or "").strip() or None
+    intent = (request.intent or classify_user_intent(question) or "general_question").strip()
+    return knowledge_discovery_service.enqueue(
+        db,
+        question=question,
+        user_id=user.UserID,
+        intent=intent,
+        crop=crop,
+        region=region,
+        force=True,
+    )
 
 
 @router.get("/knowledge-documents")
@@ -212,6 +299,8 @@ def knowledge_documents(
     documents = []
     for row in rows:
         indexed = indexed_by_id.get(row.RagDocumentID)
+        quality_report = parse_quality_report(row.QualityReport)
+        quality_checks = quality_rejection_details(row.QualityReport) if row.Status in {"rejected", "failed"} else []
         documents.append({
             "id": row.DocumentKey,
             "title": row.Title or "Tài liệu chưa có tiêu đề",
@@ -225,6 +314,9 @@ def knowledge_documents(
             "version": row.Version,
             "status": row.Status,
             "quality_score": row.QualityScore,
+            "quality_report": quality_report or None,
+            "quality_checks": quality_checks,
+            "rejection_reason": "; ".join(quality_checks) if quality_checks else None,
             "indexed": indexed is not None,
             "chunks": indexed["chunks"] if indexed else 0,
             "is_new": bool(latest and row.FetchedAt and row.FetchedAt >= latest.StartedAt),
@@ -242,6 +334,30 @@ def knowledge_documents(
             "last_run_status": latest.Status if latest else None,
         },
     }
+
+
+@router.get("/knowledge-source-candidates")
+def knowledge_source_candidates(
+    status: str = Query("pending", pattern="^(pending|approved|rejected|all)$"),
+    limit: int = Query(50, ge=1, le=200),
+    db: Session = Depends(get_db),
+    _user: User = Depends(get_current_user),
+):
+    """Show discovered sources; only administrators can approve them."""
+    return {"candidates": source_discovery_service.list_candidates(db, status=status, limit=limit)}
+
+
+@router.get("/knowledge-discovery/{job_id}")
+def knowledge_discovery_status(
+    job_id: int,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Return progress for a discovery job created by this user."""
+    job = knowledge_discovery_service.get(db, job_id, user_id=user.UserID)
+    if not job:
+        raise HTTPException(404, "Không tìm thấy tác vụ tìm nguồn.")
+    return {"job": job}
 
 
 @router.post("/documents")

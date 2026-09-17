@@ -67,15 +67,19 @@ class AIContextService:
         crop: str | None = None,
         intent: str | None = None,
     ) -> dict:
-        selected_region = (region or "Ha Noi").strip() or "Ha Noi"
-        selected_crop = (crop or "lua").strip().lower() or "lua"
+        # A missing scope is meaningful. Never turn it into an invented
+        # location/crop because that would make real measurements look like
+        # they belong to the user.
+        selected_region = region.strip() if isinstance(region, str) and region.strip() else None
+        selected_crop = crop.strip().lower() if isinstance(crop, str) and crop.strip() else None
         selected_intent = normalize_intent(intent)
 
         needs_all = selected_intent == "full_farm_analysis"
-        needs_weather = selected_intent in {"weather_analysis", "alert_analysis"} or needs_all
-        needs_pricing = selected_intent == "price_analysis" or needs_all
-        needs_market = selected_intent == "price_analysis" or needs_all
-        needs_alerts = selected_intent == "alert_analysis" or needs_all
+        has_scope = bool(selected_region and selected_crop)
+        needs_weather = has_scope and (selected_intent in {"weather_analysis", "alert_analysis"} or needs_all)
+        needs_pricing = has_scope and (selected_intent == "price_analysis" or needs_all)
+        needs_market = has_scope and (selected_intent == "price_analysis" or needs_all)
+        needs_alerts = has_scope and (selected_intent == "alert_analysis" or needs_all)
         needs_quality = selected_intent == "quality_analysis" or needs_all
         needs_harvest = selected_intent == "harvest_analysis" or needs_all
         needs_settings = needs_all

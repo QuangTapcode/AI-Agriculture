@@ -42,6 +42,8 @@ const analyze = async (user) => {
   await user.type(screen.getByLabelText('Nông sản'), 'Cà phê');
   await user.clear(screen.getByLabelText('Khu vực'));
   await user.type(screen.getByLabelText('Khu vực'), 'Đắk Lắk');
+  await user.clear(screen.getByLabelText('Số lượng (kg)'));
+  await user.type(screen.getByLabelText('Số lượng (kg)'), '1000');
   await user.click(screen.getByRole('button', { name: /Phân tích thị trường/i }));
 };
 
@@ -64,6 +66,7 @@ describe('market analysis real-data contract', () => {
     const trend = await screen.findByTestId('market-trend-30d');
     expect(trend).not.toHaveTextContent('Ổn định');
     expect(trend).toHaveTextContent('—');
+    expect(screen.getByTestId('market-trend-7d')).toHaveTextContent('—');
   });
 
   it('does not report zero confidence when the analysis carried none', async () => {
@@ -76,6 +79,61 @@ describe('market analysis real-data contract', () => {
     const confidence = await screen.findByTestId('market-confidence');
     expect(confidence).toHaveTextContent('—');
     expect(confidence).not.toHaveTextContent('0%');
+  });
+
+  it('does not present mock analysis price as a real market price', async () => {
+    const user = userEvent.setup();
+    analyzeMarket.mockResolvedValue({
+      crop_name: 'Cà phê',
+      current_price: 123000,
+      source: 'mock',
+      source_name: 'Demo price',
+      is_mock: true,
+      warning: 'Chưa có giá thị trường thật.',
+    });
+
+    renderMarket();
+    await analyze(user);
+
+    expect(await screen.findByTestId('market-current-price')).toHaveTextContent('—');
+    expect(screen.getByText('Chưa có giá thị trường thật.')).toBeInTheDocument();
+    expect(screen.queryByText('123.000 đ/kg')).not.toBeInTheDocument();
+  });
+
+  it('shows the analysis source and update time when backend provides it', async () => {
+    const user = userEvent.setup();
+    analyzeMarket.mockResolvedValue({
+      crop_name: 'Cà phê',
+      current_price: 123000,
+      source: 'database',
+      source_name: 'Thị trường nông sản',
+      last_updated: '2026-08-04T07:00:00Z',
+    });
+
+    renderMarket();
+    await analyze(user);
+
+    expect(await screen.findByTestId('market-current-price')).toHaveTextContent('123.000 đ/kg');
+    expect(screen.getAllByText('Thị trường nông sản').length).toBeGreaterThan(0);
+  });
+
+  it('lists every source returned for the analysis', async () => {
+    const user = userEvent.setup();
+    analyzeMarket.mockResolvedValue({
+      crop_name: 'Cà phê',
+      current_price: 123000,
+      source: 'database',
+      data_sources: [
+        { source: 'database', source_name: 'MarketPrices DB', source_url: 'https://example.org/prices', fetched_at: '2026-09-14T07:00:00Z' },
+        { source: 'rss', source_name: 'Khuyến nông Quốc gia', source_url: 'https://example.org/news', fetched_at: '2026-09-14T06:00:00Z' },
+      ],
+    });
+
+    renderMarket();
+    await analyze(user);
+
+    expect((await screen.findAllByText('MarketPrices DB')).length).toBeGreaterThan(0);
+    expect(screen.getByText('Khuyến nông Quốc gia')).toBeInTheDocument();
   });
 
   it('shows the trend and confidence the backend reported', async () => {

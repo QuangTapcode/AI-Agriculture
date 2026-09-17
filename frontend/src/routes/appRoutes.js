@@ -14,9 +14,7 @@ export const APP_ROUTES = [
   '/weather',
   '/pricing',
   '/crop',
-  '/market',
   '/quality',
-  '/harvest',
   '/season-management',
   '/alerts',
   '/notifications',
@@ -30,8 +28,10 @@ export const LEGACY_ROUTE_REDIRECTS = {
   '/dashboard-new': '/dashboard',
   '/pricing-dashboard': '/pricing',
   '/quality-check': '/quality',
-  '/harvest-forecast': '/harvest',
-  '/market-strategy': '/market',
+  '/harvest': '/season-management',
+  '/harvest-forecast': '/season-management',
+  '/market': '/dashboard',
+  '/market-strategy': '/dashboard',
   '/alerts-management': '/alerts',
 };
 

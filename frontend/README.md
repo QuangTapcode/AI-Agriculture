@@ -115,23 +115,20 @@ frontend/
 |-------|-------|
 | `/dashboard` | Tổng quan |
 | `/pricing` | Giá cả hiện tại |
-| `/pricing-dashboard` | Phân tích giá |
 | `/crop/:cropId` | Chi tiết loại cây |
 | `/quality` | Kết quả kiểm tra chất lượng |
-| `/quality-check` | Kiểm tra chất lượng (upload ảnh) |
-| `/harvest` | Quản lý thu hoạch |
-| `/harvest-forecast` | Dự báo thu hoạch |
 | `/weather` | Thời tiết & Dự báo |
 | `/season-management` | Quản lý mùa vụ |
-| `/market` | Phân tích thị trường |
-| `/market-strategy` | Chiến lược thị trường |
 | `/alerts` | Cảnh báo giá |
-| `/alerts-management` | Quản lý cảnh báo |
 | `/reports` | Báo cáo |
 | `/ai-chat` | Tư vấn AI |
 | `/notifications` | Thông báo |
 | `/settings` | Cài đặt |
 | `/profile` | Hồ sơ cá nhân |
+
+Các URL cũ `/pricing-dashboard`, `/quality-check`, `/harvest`, `/harvest-forecast`,
+`/market`, `/market-strategy` và `/alerts-management` được redirect về route chuẩn
+tương ứng để giữ liên kết cũ hoạt động.
 
 ## Kết nối Backend
 

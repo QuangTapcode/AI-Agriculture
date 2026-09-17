@@ -88,6 +88,7 @@ KNOWN_CROP_KEYS = (
     "ho tieu",
     "tieu",
     "sau rieng",
+    "cam",
     "xoai",
     "thanh long",
     "chuoi",

@@ -32,6 +32,7 @@ INTENT_ALIASES = {
     "harvest": "harvest_analysis",
     "harvest_advice": "harvest_analysis",
     "cultivation": "cultivation_advice",
+    "livestock": "livestock_advice",
     "quality": "quality_analysis",
     "quality_check": "quality_analysis",
     "alert": "alert_analysis",
@@ -52,6 +53,7 @@ DB_TOPIC_BY_INTENT = {
     "harvest_advice": "Thu hoach",
     "harvest": "Thu hoach",
     "cultivation_advice": "Ky thuat canh tac",
+    "livestock_advice": "Chan nuoi",
     "quality_analysis": "Chat luong",
     "quality_check": "Chat luong",
     "quality": "Chat luong",
@@ -281,6 +283,26 @@ def _is_greeting_only(text: str) -> bool:
     return False
 
 
+def _mentions_watering(message: str, normalized_text: str) -> bool:
+    """Distinguish Vietnamese ``tưới`` (watering) from ``tuổi`` (age).
+
+    Both words become ``tuoi`` after accent folding.  Prefer the original
+    Unicode spelling and keep a guarded fallback for users typing without
+    accents.
+    """
+    original = unicodedata.normalize("NFC", message).casefold()
+    if re.search(r"(?<!\w)tưới(?!\w)", original):
+        return True
+    if not _has_word(normalized_text, "tuoi"):
+        return False
+    age_phrases = ("muc tuoi", "do tuoi", "tung tuoi", "tu tuoi", "thang tuoi", "nam tuoi")
+    if any(phrase in normalized_text for phrase in age_phrases):
+        return False
+    return any(phrase in normalized_text for phrase in (
+        "tuoi cay", "tuoi lua", "tuoi ruong", "tuoi vuon", "tuoi nuoc", "lich tuoi",
+    ))
+
+
 def classify_user_intent(message: str) -> str:
     """Rule-based classifier for the AI Chat router.
 
@@ -379,6 +401,18 @@ def classify_user_intent(message: str) -> str:
         "giong cay",
         "giong nao",
     )
+    livestock_keywords = (
+        "chan nuoi",
+        "nuoi lon",
+        "nuoi heo",
+        "nuoi ga",
+        "nuoi vit",
+        "nuoi bo",
+        "nuoi de",
+        "thuc an chan nuoi",
+        "khau phan an",
+        "cho an theo",
+    )
     quality_keywords = (
         "chat luong",
         "loai may",
@@ -426,10 +460,16 @@ def classify_user_intent(message: str) -> str:
         return "full_farm_analysis"
     if _contains_any(text, price_keywords) or _has_word(text, "gia"):
         return "price_analysis"
-    if _contains_any(text, weather_keywords) or _has_word(text, "gio"):
-        return "weather_analysis"
+    # A cultivation request can mention a location such as "Đà Nẵng";
+    # matching the substring "nắng" must not turn it into a weather query.
+    # Prefer the explicit action the farmer asked for over incidental location
+    # words. Weather remains the default when no cultivation action is present.
     if _contains_any(text, cultivation_keywords):
         return "cultivation_advice"
+    if _contains_any(text, livestock_keywords):
+        return "livestock_advice"
+    if _contains_any(text, tuple(item for item in weather_keywords if item != "tuoi")) or _mentions_watering(message, text) or _has_word(text, "gio"):
+        return "weather_analysis"
     if _contains_any(text, harvest_keywords):
         return "harvest_analysis"
     if _contains_any(text, quality_keywords):
@@ -491,6 +531,22 @@ def extract_crop_from_message(message: str) -> str | None:
             "chuoi",
         )
     for crop in sorted(crops, key=len, reverse=True):
-        if normalize_user_text(crop) in text:
+        normalized_crop = normalize_user_text(crop)
+        # Substring matching makes the short crop "ngô" match the first
+        # three letters of "ngón". Word boundaries keep crop extraction
+        # aligned with the farmer's actual wording.
+        if normalized_crop != "nho" and _has_word(text, normalized_crop):
             return crop
+    # Grapes are not in the market-price registry, but they are a supported
+    # agronomy topic. Resolve the crop whenever the user names it, including
+    # short topics entered from the knowledge-store search box ("Nho") and
+    # variety-only topics ("Nho ngón tay tại Đà Nẵng"). Requiring a cultivation
+    # verb here used to leave Crop=NULL, sending the worker down the generic
+    # registry path and ingesting unrelated documents.
+    # Vietnamese diacritic folding turns "nhỏ" (small/young) into "nho".
+    # Check the original text so a livestock age question cannot inherit the
+    # grape scope merely because it contains "từ nhỏ".
+    original = unicodedata.normalize("NFC", message).casefold()
+    if re.search(r"(?<!\w)nho(?!\w)", original):
+        return "nho"
     return None

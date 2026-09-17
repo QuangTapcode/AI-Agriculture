@@ -1,5 +1,4 @@
 import {
-  BarChart3,
   Bell,
   BookOpen,
   Bot,
@@ -9,7 +8,6 @@ import {
   FileText,
   LayoutDashboard,
   Settings,
-  Sprout,
   TrendingUp,
   X,
 } from 'lucide-react';
@@ -55,25 +53,11 @@ export const navigation = [
     match: ['/quality'],
   },
   {
-    key: 'harvest',
-    name: { vi: 'Dự báo thu hoạch', en: 'Harvest Forecast' },
-    href: '/harvest',
-    icon: Sprout,
-    match: ['/harvest'],
-  },
-  {
     key: 'seasonManagement',
     name: { vi: 'Quản lý mùa vụ', en: 'Season Management' },
     href: '/season-management',
     icon: CalendarDays,
     match: ['/season-management'],
-  },
-  {
-    key: 'market',
-    name: { vi: 'Phân tích thị trường', en: 'Market Analysis' },
-    href: '/market',
-    icon: BarChart3,
-    match: ['/market'],
   },
   {
     key: 'alerts',

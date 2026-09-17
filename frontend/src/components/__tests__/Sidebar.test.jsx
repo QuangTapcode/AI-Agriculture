@@ -10,4 +10,27 @@ describe('sidebar navigation', () => {
       }),
     ]));
   });
+
+  it('keeps harvest forecasting inside season management', () => {
+    expect(navigation).not.toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        key: 'harvest',
+      }),
+    ]));
+    expect(navigation).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        key: 'seasonManagement',
+        href: '/season-management',
+      }),
+    ]));
+  });
+
+  it('does not expose the removed market analysis page', () => {
+    expect(navigation).not.toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        key: 'market',
+        href: '/market',
+      }),
+    ]));
+  });
 });

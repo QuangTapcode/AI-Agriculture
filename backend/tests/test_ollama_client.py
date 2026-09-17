@@ -134,3 +134,17 @@ def test_qwen_hides_reasoning_and_requests_direct_answer():
     assert captured["keep_alive"] == "15m"
     assert captured["messages"][-1]["content"].endswith("/no_think")
     assert original[0]["content"] == "Câu hỏi"
+
+@pytest.mark.asyncio
+async def test_stream_complete_yields_visible_deltas():
+    def handler(request: httpx.Request) -> httpx.Response:
+        body = b'{"message":{"content":"Xin "}}\n{"message":{"content":"chao"},"done":true}\n'
+        return httpx.Response(200, content=body)
+
+    client = OllamaClient(model="qwen3:4b", transport=httpx.MockTransport(handler))
+    events = [event async for event in client.stream_complete(
+        [{"role": "user", "content": "CÃ¢u há»i"}], max_tokens=32
+    )]
+
+    assert [event["text"] for event in events if event["type"] == "delta"] == ["Xin ", "chao"]
+    assert events[-1]["type"] == "done"

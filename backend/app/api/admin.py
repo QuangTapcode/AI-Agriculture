@@ -14,6 +14,7 @@ from app.models.knowledge import KnowledgeDocument
 from app.models.user import User
 from app.services.knowledge_ingestion_service import configured_sources, knowledge_ingestion_service
 from app.services.market_news_service import market_news_service
+from app.services.source_discovery_service import source_discovery_service
 from app.tasks.alert_tasks import check_price_alerts_task
 from app.tasks.crawler_tasks import run_price_crawler as crawl_sources_task
 from app.tasks.forecast_tasks import refresh_harvest_forecasts_task
@@ -192,3 +193,42 @@ def knowledge_documents(status: str | None = None, limit: int = Query(100, ge=1,
 @router.post("/knowledge/run")
 def run_knowledge_agent(db: Session = Depends(get_db), _user: User = Depends(require_admin)):
     return knowledge_ingestion_service.run(db, force=True)
+
+
+@router.get("/knowledge/source-candidates")
+def knowledge_source_candidates(
+    status: str | None = Query("pending", pattern="^(pending|approved|rejected|all)$"),
+    limit: int = Query(100, ge=1, le=500),
+    db: Session = Depends(get_db),
+    _user: User = Depends(require_admin),
+):
+    """List URLs found by the bounded source discovery job."""
+    return {"candidates": source_discovery_service.list_candidates(db, status=status, limit=limit)}
+
+
+@router.post("/knowledge/source-discovery/run")
+def run_knowledge_source_discovery(
+    db: Session = Depends(get_db),
+    _user: User = Depends(require_admin),
+):
+    return source_discovery_service.run(db)
+
+
+@router.post("/knowledge/source-candidates/{candidate_id}/{decision}")
+def decide_knowledge_source_candidate(
+    candidate_id: int,
+    decision: str,
+    db: Session = Depends(get_db),
+    _user: User = Depends(require_admin),
+):
+    if decision not in {"approve", "reject"}:
+        raise HTTPException(400, "Quyết định phải là approve hoặc reject.")
+    try:
+        candidate = source_discovery_service.set_status(
+            db, candidate_id, "approved" if decision == "approve" else "rejected"
+        )
+    except LookupError as exc:
+        raise HTTPException(404, str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
+    return {"candidate": candidate, "next_ingestion_uses_candidate": candidate["status"] == "approved"}

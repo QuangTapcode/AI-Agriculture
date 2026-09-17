@@ -9,20 +9,20 @@ Nhánh `feat/ui-field-command`. Toàn bộ sáu nhóm page đã hoàn thành.
 | 1 | Header/Footer, Trang chủ, Tính năng, Đăng nhập/Đăng ký | trong lịch sử commit |
 | 2 | Bài viết, Gói dịch vụ, Liên hệ, 404 | trong lịch sử commit |
 | 3 | Sidebar/Navbar/app shell, Dashboard, Báo cáo | [group-3](group-3-app-shell-report.md) |
-| 4 | Thời tiết, Định giá, Chi tiết cây trồng, Phân tích thị trường | [group-4](group-4-market-data-report.md) |
-| 5 | Chất lượng, Thu hoạch, Mùa vụ, Cảnh báo, Thông báo | [group-5](group-5-operations-report.md) |
+| 4 | Thời tiết, Định giá, Chi tiết cây trồng | [group-4](group-4-market-data-report.md) |
+| 5 | Chất lượng, Mùa vụ, Cảnh báo, Thông báo | [group-5](group-5-operations-report.md) |
 | 6 | Trợ lý AI, Kho tài liệu, Cài đặt, Hồ sơ | [group-6](group-6-ai-account-report.md) |
 
 ## Kết quả cuối
 
 ```
-Frontend unit (Vitest)    30 file, 122 test — pass
+Frontend unit (Vitest)    31 file, 133 test — pass
 Frontend e2e (Playwright) 164 test trên 4 khung hình — pass
 Frontend build            pass
-Backend (pytest)          479 pass, 7 skip — pass
+Backend (pytest)          483 pass, 2 skip; 9 lỗi weights YOLO/EfficientNet đang thiếu
 ```
 
-Kết quả trên được chạy lại ngày 13/09/2026 sau đợt rà soát cuối. Test quy ước
+Kết quả trên được chạy lại ngày 14/09/2026 sau đợt rà soát cuối. Test quy ước
 cổng chấp nhận cả ánh xạ Docker trực tiếp (`8000:8000`) và ánh xạ an toàn chỉ
 trên loopback (`127.0.0.1:8000:8000`).
 

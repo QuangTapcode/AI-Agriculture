@@ -18,6 +18,8 @@ celery_app = Celery(
         "app.tasks.alert_tasks",
         "app.tasks.cleanup_tasks",
         "app.tasks.knowledge_tasks",
+        "app.tasks.source_discovery_tasks",
+        "app.tasks.knowledge_discovery_tasks",
     ],
 )
 
@@ -74,5 +76,9 @@ celery_app.conf.beat_schedule = {
     "ingest-knowledge-nightly": {
         "task": "app.tasks.knowledge_tasks.ingest_knowledge_sources",
         "schedule": crontab(hour=int(os.getenv("KNOWLEDGE_AGENT_HOUR", "2")), minute=0),
+    },
+    "discover-knowledge-sources-nightly": {
+        "task": "app.tasks.source_discovery_tasks.discover_knowledge_sources",
+        "schedule": crontab(hour=int(os.getenv("SOURCE_DISCOVERY_HOUR", "3")), minute=0),
     },
 }

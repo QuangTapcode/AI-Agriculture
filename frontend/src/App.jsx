@@ -5,6 +5,7 @@ import LoadingSpinner from './components/LoadingSpinner';
 import Navbar from './components/Navbar';
 import ProtectedRoute from './components/ProtectedRoute';
 import Sidebar from './components/Sidebar';
+import PageTransition from './components/ui/PageTransition';
 import { AuthProvider } from './contexts/AuthContext';
 import { useLanguage } from './contexts/LanguageContext';
 import { resolveRoute } from './routes/appRoutes';
@@ -17,11 +18,9 @@ const CropDetailPage = lazy(() => import('./pages/CropDetailPage'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const FeaturesPage = lazy(() => import('./pages/FeaturesPage'));
 const ForecastPage = lazy(() => import('./pages/ForecastPage'));
-const HarvestPage = lazy(() => import('./pages/HarvestPage'));
 const KnowledgeDocumentsPage = lazy(() => import('./pages/KnowledgeDocumentsPage'));
 const LandingPage = lazy(() => import('./pages/LandingPage'));
 const LoginPage = lazy(() => import('./pages/LoginPage'));
-const MarketPage = lazy(() => import('./pages/MarketPage'));
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage'));
 const NotificationsPage = lazy(() => import('./pages/NotificationsPage'));
 const PricingPage = lazy(() => import('./pages/PricingPage'));
@@ -48,9 +47,7 @@ const appRouteConfigs = [
   { path: '/weather', element: <ForecastPage /> },
   { path: '/pricing', element: <PricingPage /> },
   { path: '/crop/:cropId', element: <CropDetailPage /> },
-  { path: '/market', element: <MarketPage /> },
   { path: '/quality', element: <QualityPage /> },
-  { path: '/harvest', element: <HarvestPage /> },
   { path: '/season-management', element: <SeasonManagementPage /> },
   { path: '/alerts', element: <AlertPage /> },
   { path: '/notifications', element: <NotificationsPage /> },
@@ -69,7 +66,7 @@ const renderLocalizedRoutes = (routeConfigs) =>
     ];
   });
 
-const PublicRoutes = () => <Routes>{renderLocalizedRoutes(publicRouteConfigs)}</Routes>;
+const PublicRoutes = () => <PageTransition><Routes>{renderLocalizedRoutes(publicRouteConfigs)}</Routes></PageTransition>;
 
 const AppShell = ({ sidebarOpen, setSidebarOpen }) => {
   const { t } = useLanguage();
@@ -93,10 +90,12 @@ const AppShell = ({ sidebarOpen, setSidebarOpen }) => {
             className="min-w-0 flex-1 overflow-x-hidden overflow-y-auto p-4 md:p-6 lg:p-8"
           >
             <Suspense fallback={<LoadingSpinner text={t('loadingPage')} />}>
-              <Routes>
-                {renderLocalizedRoutes(appRouteConfigs)}
-                <Route path="*" element={<NotFoundPage publicLayout={false} />} />
-              </Routes>
+              <PageTransition>
+                <Routes>
+                  {renderLocalizedRoutes(appRouteConfigs)}
+                  <Route path="*" element={<NotFoundPage publicLayout={false} />} />
+                </Routes>
+              </PageTransition>
             </Suspense>
           </main>
         </div>

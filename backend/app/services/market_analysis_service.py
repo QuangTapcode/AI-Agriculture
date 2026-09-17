@@ -69,13 +69,14 @@ class MarketAnalysisService:
         if computed.get("_api_error"):
             return computed
         row = self._save_analysis(db, crop, reg, computed)
+        primary_source = (computed.get("sources") or [{}])[0]
         computed.update(
             {
-                "source_name": row.SourceName if row else "Market analysis cache",
-                "source_url": row.SourceURL if row else OFFICIAL_PRICE_URL,
+                "source_name": primary_source.get("source_name") if primary_source else None,
+                "source_url": primary_source.get("source_url") if primary_source else None,
                 "is_realtime": False,
                 "is_mock": False,
-                "cache_status": "live",
+                "cache_status": "database",
                 "fetched_at": row.FetchedAt if row else datetime.utcnow(),
                 "last_updated": row.FetchedAt if row else datetime.utcnow(),
                 "data_age_minutes": 0,
@@ -104,13 +105,14 @@ class MarketAnalysisService:
         if computed.get("_api_error"):
             return computed
         row = self._save_analysis(db, crop, reg, computed)
+        primary_source = (computed.get("sources") or [{}])[0]
         computed.update(
             {
-                "source_name": row.SourceName if row else "Market analysis cache",
-                "source_url": row.SourceURL if row else OFFICIAL_PRICE_URL,
+                "source_name": primary_source.get("source_name") if primary_source else None,
+                "source_url": primary_source.get("source_url") if primary_source else None,
                 "is_realtime": False,
                 "is_mock": False,
-                "cache_status": "live",
+                "cache_status": "database",
                 "fetched_at": row.FetchedAt if row else datetime.utcnow(),
                 "last_updated": row.FetchedAt if row else datetime.utcnow(),
                 "data_age_minutes": 0,
@@ -221,6 +223,9 @@ class MarketAnalysisService:
     @staticmethod
     def _format_output(payload: dict) -> dict:
         official_price = payload.get("official_market_price")
+        has_price = official_price is not None
+        source_name = payload.get("source_name") if has_price else None
+        source_url = payload.get("source_url") if has_price else None
         # Enforce exact spec shape
         return {
             "crop_name": payload.get("crop_name"),
@@ -235,16 +240,17 @@ class MarketAnalysisService:
             "market_signal": payload.get("market_signal"),
             "recommendations": payload.get("recommendations"),
             "sources": payload.get("sources", []),
-            "source_name": payload.get("source_name") or "Market analysis cache",
-            "source_url": payload.get("source_url") or OFFICIAL_PRICE_URL,
+            "source_name": source_name,
+            "source_url": source_url,
             "is_realtime": bool(payload.get("is_realtime", False)),
             "is_mock": False,
-            "cache_status": payload.get("cache_status", "fresh_cache"),
+            "cache_status": payload.get("cache_status", "fresh_cache") if has_price else "miss",
             "fetched_at": payload.get("fetched_at"),
             "last_updated": payload.get("last_updated") or payload.get("fetched_at"),
             "data_age_minutes": payload.get("data_age_minutes"),
             "confidence_score": 0.72 if official_price else 0.0,
             "confidence": 0.72 if official_price else 0.0,
+            "warning": payload.get("warning") or ("Chưa có giá thị trường đã kiểm chứng cho lựa chọn này." if not has_price else None),
         }
 
     def _is_cache_valid(self, cached: dict[str, Any]) -> bool:
@@ -304,6 +310,7 @@ class MarketAnalysisService:
                 {
                     "source_name": current.get("source_name") or OFFICIAL_AGRI_SOURCE_NAME,
                     "source_url": current.get("source_url") or OFFICIAL_PRICE_URL,
+                    "fetched_at": current.get("fetched_at") or current.get("last_updated"),
                 }
             )
 
@@ -312,6 +319,7 @@ class MarketAnalysisService:
                 {
                     "source_name": news_bundle.get("source_name") or "Thông tin thị trường nông sản",
                     "source_url": news_bundle.get("source_url"),
+                    "fetched_at": news_bundle.get("fetched_at") or news_bundle.get("last_updated"),
                 }
             )
 
@@ -320,6 +328,7 @@ class MarketAnalysisService:
                 {
                     "source_name": retail_bundle.get("source_name") or "Vietnam retail websites",
                     "source_url": retail_bundle.get("source_url"),
+                    "fetched_at": retail_bundle.get("fetched_at") or retail_bundle.get("last_updated"),
                 }
             )
 
@@ -328,6 +337,7 @@ class MarketAnalysisService:
                 {
                     "source_name": weather.get("source_name") or "Open-Meteo",
                     "source_url": weather.get("source_url"),
+                    "fetched_at": weather.get("fetched_at") or weather.get("last_updated"),
                 }
             )
 

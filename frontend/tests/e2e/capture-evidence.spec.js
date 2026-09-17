@@ -35,11 +35,9 @@ const GROUPS = {
     { path: '/weather', slug: 'weather' },
     { path: '/pricing', slug: 'pricing' },
     { path: '/crop/ca-phe', slug: 'crop-detail' },
-    { path: '/market', slug: 'market' },
   ],
   'group-5-operations': [
     { path: '/quality', slug: 'quality' },
-    { path: '/harvest', slug: 'harvest' },
     { path: '/season-management', slug: 'season' },
     { path: '/alerts', slug: 'alerts' },
     { path: '/notifications', slug: 'notifications' },

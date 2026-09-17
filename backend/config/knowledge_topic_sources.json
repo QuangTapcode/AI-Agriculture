@@ -1,0 +1,118 @@
+{
+  "nho": [
+    {
+      "name": "Ban Quản lý rừng và Khuyến nông - Hướng dẫn trồng nho Hạ Đen",
+      "url": "https://banquanlyrungvakhuyennong.gov.vn/huong-dan-ky-thuat-trong-nho-ha-den-tt14993.html",
+      "allowed_domain": "banquanlyrungvakhuyennong.gov.vn",
+      "region": "Việt Nam",
+      "crop": "Nho",
+      "include_start_page": true,
+      "max_documents": 8
+    },
+    {
+      "name": "Nông thôn mới - Phát triển bền vững Nho Ninh Thuận",
+      "url": "https://nongthonmoi.gov.vn/Pages/Phat-trien-ben-vung-Nho-Ninh-Thuan-046134.aspx",
+      "allowed_domain": "nongthonmoi.gov.vn",
+      "region": "Ninh Thuận",
+      "crop": "Nho",
+      "include_start_page": true,
+      "max_documents": 8
+    },
+    {
+      "name": "Khuyến nông Quốc gia - Tập huấn kỹ thuật trồng nho",
+      "url": "https://khuyennongvn.gov.vn/hoat-dong-khuyen-nong/thong-tin-huan-luyen/ninh-thuan-tap-huan-ky-thuat-trong-nho-cong-nghe-cao-trong-nha-mang-24974.html",
+      "allowed_domain": "khuyennongvn.gov.vn",
+      "region": "Ninh Thuận",
+      "crop": "Nho",
+      "include_start_page": true,
+      "max_documents": 8
+    },
+    {
+      "name": "Khuyến nông Quốc gia - Triển vọng nghề trồng nho",
+      "url": "https://khuyennongvn.gov.vn/chuong-trinh-nganh-nong-nghiep/tai-co-cau-nganh-nong-nghiep/trien-vong-phat-trien-nghe-trong-nho-tai-vinh-phuc-19914.html",
+      "allowed_domain": "khuyennongvn.gov.vn",
+      "region": "Việt Nam",
+      "crop": "Nho",
+      "include_start_page": true,
+      "max_documents": 8
+    }
+  ],
+  "cam": [
+    {
+      "name": "Khuyến nông Quốc gia - Kỹ thuật chăm sóc cây cam sau thu hoạch",
+      "url": "https://khuyennongvn.gov.vn/khoa-hoc-cong-nghe/khcn-trong-nuoc/ky-thuat-cham-soc-cay-cam-sau-thu-hoach-11534.html",
+      "allowed_domain": "khuyennongvn.gov.vn",
+      "region": "Việt Nam",
+      "crop": "Cam",
+      "include_start_page": true,
+      "max_documents": 8
+    },
+    {
+      "name": "Khuyến nông Quốc gia - Hướng dẫn kỹ thuật chăm sóc cam sau trồng",
+      "url": "https://khuyennongvn.gov.vn/hoat-dong-khuyen-nong/chuyen-giao-tbkt/ha-tinh-huong-dan-ky-thuat-cham-soc-cam-sau-trong-16641.html",
+      "allowed_domain": "khuyennongvn.gov.vn",
+      "region": "Việt Nam",
+      "crop": "Cam",
+      "include_start_page": true,
+      "max_documents": 8
+    },
+    {
+      "name": "Khuyến nông Quốc gia - Kỹ thuật trồng và chăm sóc cây cam ngọt",
+      "url": "https://khuyennongvn.gov.vn/chuong-trinh-nganh-nong-nghiep/tai-co-cau-nganh-nong-nghiep/cam-ngot-tren-nhung-go-doi-20685.html",
+      "allowed_domain": "khuyennongvn.gov.vn",
+      "region": "Việt Nam",
+      "crop": "Cam",
+      "include_start_page": true,
+      "max_documents": 8
+    }
+  ],
+  "dua hau": [
+    {
+      "name": "Khuyến nông Quốc gia - Kỹ thuật trồng và chăm sóc cây dưa hấu",
+      "url": "https://khuyennongvn.gov.vn/khoa-hoc-cong-nghe/khcn-trong-nuoc/ky-thuat-trong-va-cham-soc-cay-dua-hau-20894.html",
+      "allowed_domain": "khuyennongvn.gov.vn",
+      "region": "Việt Nam",
+      "crop": "Dưa hấu",
+      "include_start_page": true,
+      "max_documents": 8
+    },
+    {
+      "name": "Khuyến nông Quốc gia - Thư viện kỹ thuật trồng và chăm sóc dưa hấu",
+      "url": "https://khuyennongvn.gov.vn/thu-vien-khuyen-nong/thu-vien-sach-kn/ky-thuat-trong-va-cham-soc-cay-dua-hau-16872.html",
+      "allowed_domain": "khuyennongvn.gov.vn",
+      "region": "Việt Nam",
+      "crop": "Dưa hấu",
+      "include_start_page": true,
+      "max_documents": 8
+    }
+  ],
+  "xoai": [
+    {
+      "name": "Bộ Khoa học và Công nghệ - Chuyển giao kỹ thuật thâm canh xoài VietGAP",
+      "url": "https://mst.gov.vn/chuyen-giao-ky-thuat-tham-canh-xoai-vietgap-cho-nong-dan-son-la-197260903225853804.htm",
+      "allowed_domain": "mst.gov.vn",
+      "region": "Sơn La",
+      "crop": "Xoài",
+      "include_start_page": true,
+      "max_documents": 8
+    },
+    {
+      "name": "Công báo Sơn La - Quy trình kỹ thuật sản xuất cây xoài",
+      "url": "https://congbao.sonla.gov.vn/congbao.nsf/B8069928DFCCF55447258BCD00314B4A/%24file/QD%202306.F4_signed.pdf",
+      "allowed_domain": "congbao.sonla.gov.vn",
+      "region": "Sơn La",
+      "crop": "Xoài",
+      "include_start_page": true,
+      "max_documents": 8
+    },
+    {
+      "name": "Điện Biên - Quy trình sản xuất cây xoài",
+      "url": "https://qppl.dienbien.gov.vn/qlvb/vbpq.nsf/3d0f058120469ad34725726600365420/4C6659461B62F3AE47258C810010000D/%24file/845%20t5.pdf",
+      "allowed_domain": "qppl.dienbien.gov.vn",
+      "region": "Điện Biên",
+      "crop": "Xoài",
+      "include_start_page": true,
+      "max_documents": 8
+    }
+  ]
+}

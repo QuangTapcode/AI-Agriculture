@@ -112,6 +112,15 @@ def test_moi_nguon_dung_session_rieng(db):
         "Nguồn chạy trên luồng phụ đang dùng CHUNG session của request — "
         "Session không thread-safe, sẽ hỏng dữ liệu và cạn kết nối"
     )
+
+
+def test_missing_scope_does_not_invent_region_or_crop(db):
+    ctx = ai_context_service.build_ai_context(db, intent="price_analysis")
+
+    assert ctx["region"] is None
+    assert ctx["crop_name"] is None
+    assert ctx["pricing"] == {}
+    assert ctx["market"]["news"] == []
     # Không kiểm tính duy nhất của id(session): CPython tái dùng địa chỉ sau
     # khi session đóng, nên hai luồng chạy nối tiếp có thể trùng id một cách
     # hợp lệ. Điều thực sự quan trọng là không đụng vào session của request.

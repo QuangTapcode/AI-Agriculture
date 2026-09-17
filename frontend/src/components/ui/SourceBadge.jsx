@@ -1,18 +1,18 @@
-import { Clock3, Database, Radio, TriangleAlert } from 'lucide-react';
+import { AlertTriangle, Clock3, Database, Radio } from 'lucide-react';
 import { normalizeDataMeta } from '../../utils/dataTrust';
 
 const STYLE = {
-  live: 'border-lime-300/30 bg-lime-300/10 text-lime-100',
-  cached: 'border-amber-300/30 bg-amber-300/10 text-amber-100',
-  database: 'border-sky-300/30 bg-sky-300/10 text-sky-100',
-  unavailable: 'border-slate-400/30 bg-slate-400/10 text-slate-300',
+  live: 'border-emerald-200 bg-emerald-50 text-emerald-700',
+  cached: 'border-amber-200 bg-amber-50 text-amber-700',
+  database: 'border-sky-200 bg-sky-50 text-sky-700',
+  unavailable: 'border-slate-200 bg-slate-100 text-slate-700',
 };
 
 const ICON = {
   live: Radio,
   cached: Clock3,
   database: Database,
-  unavailable: TriangleAlert,
+  unavailable: AlertTriangle,
 };
 
 const STATUS_LABEL = {

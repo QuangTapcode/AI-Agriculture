@@ -6,8 +6,9 @@ describe('legacy route redirects', () => {
     ['/dashboard-new', '/dashboard'],
     ['/pricing-dashboard', '/pricing'],
     ['/quality-check', '/quality'],
-    ['/harvest-forecast', '/harvest'],
-    ['/market-strategy', '/market'],
+    ['/harvest-forecast', '/season-management'],
+    ['/market', '/dashboard'],
+    ['/market-strategy', '/dashboard'],
     ['/alerts-management', '/alerts'],
   ])('maps %s to %s', (legacy, canonical) => {
     expect(resolveRoute(legacy)).toMatchObject({ kind: 'redirect', to: canonical });

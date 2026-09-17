@@ -27,6 +27,9 @@ COPY requirements.txt .
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
+# TÃ¬m kiáº¿m truy váº¥n dÃ¹ng Chromium headless trong context táº¡m, khÃ´ng dÃ¹ng profile ngÆ°á»i dÃ¹ng.
+RUN python -m playwright install --with-deps chromium && rm -rf /var/lib/apt/lists/*
+
 # Copy application code
 COPY . .
 

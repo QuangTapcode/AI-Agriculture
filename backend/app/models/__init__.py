@@ -5,7 +5,7 @@ from .dashboard import AirQualityObservation, DashboardCache, DataSource, Region
 from .harvest import HarvestForecast, HarvestSchedule
 from .market import MarketChannel, MarketSuggestion
 from .ingestion import DataIngestionLog
-from .knowledge import KnowledgeDocument
+from .knowledge import KnowledgeDiscoveryJob, KnowledgeDocument, KnowledgeSourceCandidate
 from .market_news import MarketNews
 from .notification import Notification, NotificationDelivery
 from .price import MarketPrice, PriceForecastResult, PriceHistory, PricingRequest
@@ -36,6 +36,8 @@ __all__ = [
     "DashboardCache",
     "DataIngestionLog",
     "KnowledgeDocument",
+    "KnowledgeSourceCandidate",
+    "KnowledgeDiscoveryJob",
     "DataSource",
     "HarvestForecast",
     "HarvestSchedule",

@@ -113,3 +113,31 @@ def test_api_chat_dung_provider_local(monkeypatch):
     assert r.status_code == 200
     answer = r.json().get("answer", "")
     assert "tơi xốp" in answer, f"Không dùng model local: {answer[:100]!r}"
+
+@pytest.mark.asyncio
+async def test_local_stream_forwards_model_deltas(monkeypatch):
+    import asyncio
+    import app.api.ai_chat as module
+
+    class StreamingClient:
+        model = "qwen3:4b"
+
+        async def stream_complete(self, *args, **kwargs):
+            yield {"type": "delta", "text": "Bám "}
+            yield {"type": "delta", "text": "nguồn"}
+            yield {"type": "done", "model": self.model}
+
+    monkeypatch.setattr(module, "get_ai_client", lambda: StreamingClient())
+    sink = asyncio.Queue()
+    token = module._ai_stream_sink.set(sink)
+    try:
+        reply, model = await module._call_local_ai(
+            AIChatMessageRequest(message="Câu hỏi"), {"history": []}
+        )
+    finally:
+        module._ai_stream_sink.reset(token)
+
+    events = [sink.get_nowait() for _ in range(sink.qsize())]
+    assert reply == "Bám nguồn"
+    assert model == "qwen3:4b"
+    assert [event["type"] for event in events] == ["status", "delta", "delta"]

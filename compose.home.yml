@@ -42,7 +42,7 @@ services:
       AI_BASE_URL: "http://host.docker.internal:11434"
       AI_MODEL_NAME: "${AI_MODEL_NAME:-qwen3:4b-instruct}"
       RAG_STORAGE_PATH: "/app/storage/rag"
-      BACKEND_CORS_ORIGINS: '["https://agriai.vn","https://app.agriai.vn"]'
+      BACKEND_CORS_ORIGINS: '["https://agriai.vn","https://app.agriai.vn","https://agriai-demo.pages.dev"]'
       ALLOW_MOCK_DATA: "false"
       ALLOW_SAMPLE_DATA: "false"
       USE_REALTIME_ONLY: "true"

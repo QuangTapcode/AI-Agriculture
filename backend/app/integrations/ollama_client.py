@@ -10,6 +10,7 @@ qua settings.AI_PROVIDER.
 
 from __future__ import annotations
 
+import json
 import logging
 
 import httpx
@@ -52,6 +53,15 @@ class OllamaClient:
                 return ""
         return content.strip()
 
+    def _visible_stream_answer(self, content: str) -> str:
+        """Same filter as _visible_answer, retaining token boundary spaces."""
+        if self.model.startswith("qwen3"):
+            if "</think>" in content:
+                content = content.rsplit("</think>", 1)[-1]
+            elif "<think>" in content:
+                return ""
+        return content
+
     # Số lượt hội thoại gần nhất gửi kèm. Model 3B có context 4096 token —
     # nhồi cả trăm lượt sẽ tràn và đẩy mất chính câu hỏi hiện tại. Vài lượt
     # gần nhất đủ để hiểu đại từ ("còn ... thì sao", "loại đó").
@@ -92,7 +102,7 @@ class OllamaClient:
                         {"role": "user", "content": prompt},
                     ],
                     "stream": False,
-                    "keep_alive": "15m",
+                    "keep_alive": settings.AI_KEEP_ALIVE,
                     **({"think": False} if self.model.startswith("qwen3") else {}),
                     "options": {"num_ctx": settings.AI_CONTEXT_TOKENS, "temperature": 0.2},
                 })
@@ -126,7 +136,7 @@ class OllamaClient:
             "messages": ([{"role": "system", "content": system_prompt}] if system_prompt else [])
                         + list(messages),
             "stream": False,
-            "keep_alive": "15m",
+            "keep_alive": settings.AI_KEEP_ALIVE,
             **({"think": False} if self.model.startswith("qwen3") else {}),
             "options": {"num_predict": max_tokens, "num_ctx": settings.AI_CONTEXT_TOKENS, "temperature": 0.2},
         }
@@ -160,6 +170,59 @@ class OllamaClient:
         except Exception as exc:
             logger.warning("[Ollama] complete that bai: %s", exc)
             return self._error_completion(LOI_KHONG_KET_NOI)
+
+    async def stream_complete(self, messages: list[dict], system_prompt: str = "",
+                              max_tokens: int = 1024):
+        """Yield visible Ollama tokens as they arrive over NDJSON."""
+        payload = {
+            "model": self.model,
+            "messages": ([{"role": "system", "content": system_prompt}] if system_prompt else [])
+                        + list(messages),
+            "stream": True,
+            "keep_alive": settings.AI_KEEP_ALIVE,
+            **({"think": False} if self.model.startswith("qwen3") else {}),
+            "options": {
+                "num_predict": max_tokens,
+                "num_ctx": settings.AI_CONTEXT_TOKENS,
+                "temperature": 0.2,
+            },
+        }
+        if self.model.startswith("qwen3"):
+            payload["messages"] = [dict(message) for message in payload["messages"]]
+            for message in reversed(payload["messages"]):
+                if message["role"] == "user":
+                    message["content"] += "\n/no_think"
+                    break
+
+        visible = ""
+        raw_content = ""
+        async with self._client() as client:
+            async with client.stream("POST", "/api/chat", json=payload) as response:
+                response.raise_for_status()
+                async for line in response.aiter_lines():
+                    if not line.strip():
+                        continue
+                    data = json.loads(line)
+                    piece = (data.get("message") or {}).get("content") or ""
+                    if piece:
+                        raw_content += piece
+                        current = self._visible_stream_answer(raw_content)
+                        if current.startswith(visible):
+                            delta = current[len(visible):]
+                        else:
+                            delta = current
+                        if delta:
+                            visible = current
+                            yield {"type": "delta", "text": delta}
+                    if data.get("done"):
+                        break
+        if not visible:
+            raise RuntimeError("empty_ollama_answer")
+        yield {
+            "type": "done",
+            "answer": visible,
+            "model": self.model,
+        }
 
     def _error_completion(self, reason: str) -> dict:
         """Lỗi là lỗi — is_mock=False, tránh lẫn với dữ liệu giả (TOD0 §1)."""

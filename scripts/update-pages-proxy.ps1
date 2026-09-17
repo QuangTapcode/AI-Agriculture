@@ -81,9 +81,25 @@ try {
         Write-UpdateLog "Pages da dung URL hien tai: $quickTunnelUrl"
     }
 
-    $pagesHealth = Invoke-RestMethod "$pagesUrl/health" -TimeoutSec 30
+    # Pages deployment can return Cloudflare 530 briefly while the new
+    # Worker version propagates. Retry the public health check instead of
+    # reporting a false failure immediately after a successful deploy.
+    $pagesDeadline = (Get-Date).AddMinutes(3)
+    $pagesHealth = $null
+    do {
+        try {
+            $pagesHealth = Invoke-RestMethod "$pagesUrl/health" -TimeoutSec 30
+            if ($pagesHealth.status -eq "healthy") {
+                break
+            }
+        } catch {
+            $pagesHealth = $null
+        }
+        Start-Sleep -Seconds 5
+    } while ((Get-Date) -lt $pagesDeadline)
+
     if ($pagesHealth.status -ne "healthy") {
-        throw "Pages da cap nhat nhung health check khong dat."
+        throw "Pages da cap nhat nhung health check khong dat sau khi cho propagation."
     }
 
     Write-UpdateLog "Kiem tra thanh cong: $pagesUrl"

@@ -28,8 +28,10 @@ test('retired routes land on their canonical page', async ({ page }) => {
     ['/dashboard-new', '/dashboard'],
     ['/pricing-dashboard', '/pricing'],
     ['/quality-check', '/quality'],
-    ['/harvest-forecast', '/harvest'],
-    ['/market-strategy', '/market'],
+    ['/harvest', '/season-management'],
+    ['/harvest-forecast', '/season-management'],
+    ['/market', '/dashboard'],
+    ['/market-strategy', '/dashboard'],
     ['/alerts-management', '/alerts'],
   ]) {
     await page.goto(legacy);

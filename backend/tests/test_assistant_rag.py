@@ -49,6 +49,23 @@ def api(monkeypatch, rag):
     engine.dispose()
 
 
+def test_stream_endpoint_emits_progress_before_final_payload(api, monkeypatch):
+    client, _db, _user = api
+
+    async def fake_message(request, db, current_user):
+        return {"success": True, "reply": "Đã xong", "data": {"reply": "Đã xong"}}
+
+    monkeypatch.setattr("app.api.ai_chat.ai_chat_message", fake_message)
+
+    response = client.post("/api/ai-chat/message/stream", json={"message": "Xin chào"})
+
+    assert response.status_code == 200
+    events = [json.loads(line) for line in response.text.splitlines() if line.strip()]
+    assert events[0] == {"type": "status", "stage": "retrieving"}
+    assert events[-1]["type"] == "complete"
+    assert events[-1]["payload"]["data"]["reply"] == "Đã xong"
+
+
 def add_turn(db, owner, session, question="Chăm sóc lúa?", answer="Theo dõi ruộng.", context=None):
     row = AIConversation(UserID=owner, SessionID=session, UserMessage=question, AIResponse=answer,
                          ContextSnapshot=json.dumps(context or {}, ensure_ascii=False))
@@ -116,6 +133,16 @@ def test_retrieval_excludes_arabica_document_for_robusta_question(rag):
 
     assert result["status"] == "no_match"
     assert result["sources"] == []
+
+
+def test_crop_scoped_retrieval_prefers_matching_document_metadata(rag):
+    rag.ingest(0, "nho.md", "Tài liệu kỹ thuật trồng nho.".encode("utf-8"), metadata={"crop": "Nho"})
+    rag.ingest(0, "lua.md", "Tài liệu kỹ thuật trồng lúa.".encode("utf-8"), metadata={"crop": "Lúa"})
+
+    result = rag.retrieve("Kỹ thuật trồng nho", None, crop="nho")
+
+    assert result["status"] == "ready"
+    assert {source["name"] for source in result["sources"]} == {"nho.md"}
 
 
 def test_shared_knowledge_is_visible_without_leaking_another_users_documents(rag):
@@ -241,6 +268,41 @@ def test_knowledge_status_reports_latest_nightly_run(api, rag):
     assert data['approved_documents'] == 1
     assert data['indexed_documents'] == 1
     assert data['indexed_chunks'] == 1
+
+
+def test_knowledge_document_library_exposes_rejection_reason_and_source(api, monkeypatch):
+    client, db, _ = api
+    db.add(KnowledgeDocument(
+        SourceName='Cổng khuyến nông Đà Nẵng',
+        CanonicalURL='https://khuyen-nong.example/rejected',
+        URLHash='rejected-url-hash',
+        ContentHash='rejected-content-hash',
+        Title='Tài liệu kiểm tra chất lượng',
+        Version=1,
+        Status='rejected',
+        QualityScore=0.2,
+        QualityReport=json.dumps({
+            'minimum_length': False,
+            'agriculture_relevant': False,
+            'question_coverage': {'passed': 0, 'total': 3, 'scores': []},
+        }, ensure_ascii=False),
+    ))
+    db.commit()
+
+    monkeypatch.setattr(rag_service, 'documents', lambda _owner: [])
+    monkeypatch.setattr(rag_service, 'collection', lambda _owner: type('Collection', (), {'count': lambda _self: 0})())
+
+    response = client.get('/api/ai-chat/knowledge-documents?status=all')
+
+    assert response.status_code == 200, response.text
+    document = response.json()['documents'][0]
+    assert document['source_name'] == 'Cổng khuyến nông Đà Nẵng'
+    assert document['quality_checks'] == [
+        'Nội dung chưa đạt độ dài tối thiểu',
+        'Không đủ dấu hiệu nội dung nông nghiệp',
+        'Không vượt kiểm tra độ phù hợp với bộ câu hỏi',
+    ]
+    assert document['rejection_reason'] == '; '.join(document['quality_checks'])
 
 
 def test_knowledge_documents_lists_new_and_indexed_shared_documents(api, rag):

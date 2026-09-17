@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useEffect, useRef } from 'react';
 
 /**
  * Nghiêng nhẹ theo con trỏ chuột.
@@ -13,17 +13,35 @@ import { useRef } from 'react';
  */
 export function TiltCard({ children, className = '', as: Component = 'div' }) {
   const ref = useRef(null);
+  const frame = useRef(null);
+  const pointerFine = useRef(true);
+
+  useEffect(() => {
+    pointerFine.current = window.matchMedia?.('(pointer: fine)').matches ?? true;
+    return () => {
+      if (frame.current != null) window.cancelAnimationFrame?.(frame.current);
+    };
+  }, []);
 
   const onPointerMove = (event) => {
-    if (event.pointerType === 'touch') return;
+    if (event.pointerType === 'touch' || !pointerFine.current || window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
     const node = ref.current;
     if (!node) return;
     const rect = node.getBoundingClientRect();
-    node.style.setProperty('--tilt-x', `${((event.clientY - rect.top) / rect.height - 0.5) * -5}deg`);
-    node.style.setProperty('--tilt-y', `${((event.clientX - rect.left) / rect.width - 0.5) * 5}deg`);
+    const x = `${Math.max(-4, Math.min(4, ((event.clientY - rect.top) / rect.height - 0.5) * -4))}deg`;
+    const y = `${Math.max(-4, Math.min(4, ((event.clientX - rect.left) / rect.width - 0.5) * 4))}deg`;
+    if (frame.current != null) window.cancelAnimationFrame?.(frame.current);
+    const apply = () => {
+      node.style.setProperty('--tilt-x', x);
+      node.style.setProperty('--tilt-y', y);
+      frame.current = null;
+    };
+    frame.current = window.requestAnimationFrame?.(apply) ?? (apply(), null);
   };
 
   const reset = () => {
+    if (frame.current != null) window.cancelAnimationFrame?.(frame.current);
+    frame.current = null;
     ref.current?.style.setProperty('--tilt-x', '0deg');
     ref.current?.style.setProperty('--tilt-y', '0deg');
   };

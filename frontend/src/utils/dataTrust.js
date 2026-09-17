@@ -1,4 +1,4 @@
-const FABRICATED_MARKERS = new Set(['mock', 'sample', 'demo']);
+const FABRICATED_MARKERS = new Set(['mock', 'sample', 'demo', 'estimated', 'estimate', 'sample_data', 'demo_data']);
 const CACHED_MARKERS = new Set(['cache', 'cached', 'hit', 'from_cache', 'fresh_cache', 'stale_cache', 'stale']);
 const DATABASE_MARKERS = new Set(['database', 'db', 'from_db', 'market_db']);
 const LIVE_MARKERS = new Set(['live', 'realtime', 'realtime_api', 'refreshed', 'open-meteo', 'rss']);
@@ -9,7 +9,8 @@ export function normalizeDataMeta(payload = {}) {
   const nested = payload?.meta && typeof payload.meta === 'object' ? payload.meta : {};
   const source = lower(payload.source ?? nested.source);
   const cacheStatus = lower(payload.cache_status ?? nested.cache_status);
-  const isMock = Boolean(payload.is_mock ?? nested.is_mock)
+  const isMock = Boolean(payload.is_mock ?? nested.is_mock ?? payload.mock ?? payload.sample ?? payload.demo)
+    || Boolean(payload.is_estimated ?? nested.is_estimated ?? payload.estimated ?? nested.estimated)
     || FABRICATED_MARKERS.has(source)
     || FABRICATED_MARKERS.has(cacheStatus);
 

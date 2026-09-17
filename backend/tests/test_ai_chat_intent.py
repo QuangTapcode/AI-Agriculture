@@ -3,7 +3,7 @@ from fastapi.testclient import TestClient
 from app.api.ai_chat import AIChatMessageRequest, _build_gemini_prompt
 from app.main import app
 from app.services.ai_context_service import AIContextService
-from app.services.ai_intent_service import classify_user_intent
+from app.services.ai_intent_service import classify_user_intent, extract_crop_from_message
 
 
 client = TestClient(app)
@@ -25,6 +25,34 @@ def test_classify_analysis_intents():
 def test_cultivation_question_is_not_misrouted_to_harvest_analysis():
     assert classify_user_intent("Kỹ thuật trồng cà phê vụ mới") == "cultivation_advice"
     assert classify_user_intent("Cà phê Robusta cần chuẩn bị đất như thế nào?") == "cultivation_advice"
+
+
+def test_grape_cultivation_in_da_nang_is_not_misrouted_to_weather_or_corn():
+    question = "Kỹ thuật trồng nho ngón tay tại Đà Nẵng"
+
+    assert classify_user_intent(question) == "cultivation_advice"
+    assert extract_crop_from_message(question) == "nho"
+
+
+def test_short_grape_topic_is_resolved_without_cultivation_context():
+    assert extract_crop_from_message("Nho") == "nho"
+    assert extract_crop_from_message("Nho ngón tay tại Đà Nẵng") == "nho"
+
+
+def test_livestock_age_question_is_not_misread_as_grape_or_watering():
+    question = "hướng dẫn nuôi lợn từ nhỏ, cách cho ăn theo từng mức tuổi"
+
+    assert extract_crop_from_message(question) is None
+    assert classify_user_intent(question) == "livestock_advice"
+
+
+def test_common_orchard_crop_cam_is_resolved_for_source_discovery():
+    assert extract_crop_from_message("Kỹ thuật trồng cam") == "cam"
+
+
+def test_common_orchard_crops_keep_their_scope_for_source_discovery():
+    assert extract_crop_from_message("Kỹ thuật trồng dưa hấu") == "dua hau"
+    assert extract_crop_from_message("Kỹ thuật trồng xoài") == "xoai"
 
 
 def test_cultivation_prompt_excludes_unrelated_national_season_calendar():

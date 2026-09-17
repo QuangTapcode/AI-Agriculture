@@ -1,14 +1,19 @@
 import asyncio
+from contextvars import ContextVar
 import json
 import logging
 import os
+import re
+import uuid
+from time import perf_counter
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
 from dotenv import load_dotenv
 from fastapi import APIRouter, Depends, HTTPException, Query
-from fastapi.responses import JSONResponse
+from fastapi.encoders import jsonable_encoder
+from fastapi.responses import JSONResponse, StreamingResponse
 import google.generativeai as genai
 from google.generativeai import types
 from pydantic import BaseModel, Field
@@ -18,6 +23,7 @@ from app.api.auth import get_current_user, get_optional_current_user
 from app.api.response import api_response
 from app.api.assistant_library import load_memory
 from app.services.rag_service import rag_service
+from app.services.knowledge_discovery_service import knowledge_discovery_service
 from app.core.config import settings
 from app.integrations.ai_provider import get_ai_client
 from app.core.database import get_db
@@ -38,6 +44,21 @@ from app.services.ai_intent_service import (
 
 router = APIRouter(prefix="/api/ai-chat", tags=["ai-chat"])
 _log = logging.getLogger(__name__)
+_ai_stream_sink: ContextVar[asyncio.Queue | None] = ContextVar("ai_stream_sink", default=None)
+
+
+def _log_ai_timing(timing: dict, *, intent: str | None, provider: str | None = None,
+                   model: str | None = None) -> None:
+    """Log stage timings without question text or personal data."""
+    timing = dict(timing or {})
+    elapsed_ms = round((perf_counter() - timing.pop("started", perf_counter())) * 1000, 1)
+    _log.info(
+        "[ai-chat] request_id=%s intent=%s provider=%s model=%s elapsed_ms=%.1f "
+        "context_ms=%s retrieval_ms=%s generation_ms=%s",
+        timing.get("request_id"), intent or "unknown", provider or "unknown",
+        model or "unknown", elapsed_ms, timing.get("context_ms"),
+        timing.get("retrieval_ms"), timing.get("generation_ms"),
+    )
 
 CULTIVATION_CLARIFICATION_REPLY = """Để hướng dẫn đúng kỹ thuật, bạn cho tôi thêm 3 thông tin:
 
@@ -46,6 +67,14 @@ CULTIVATION_CLARIFICATION_REPLY = """Để hướng dẫn đúng kỹ thuật, b
 - Bạn đang trồng mới, tái canh hay chăm sóc vườn đang cho quả.
 
 Các bước làm đất, thời vụ, mật độ và chăm sóc khác nhau đáng kể theo ba yếu tố này. Khi có thông tin, tôi sẽ tra đúng tài liệu và trả lời theo từng bước."""
+
+LIVESTOCK_NO_SOURCE_REPLY = """Kho hiện chưa có đoạn tài liệu đủ để xác nhận cách cho ăn theo đúng vật nuôi và giai đoạn tuổi bạn hỏi.
+
+- Hệ thống đã đưa chủ đề này vào hàng chờ tìm nguồn uy tín.
+- Chưa nên áp dụng lượng thức ăn, thuốc hoặc lịch chăm sóc cụ thể khi nguồn chưa vượt kiểm tra chất lượng.
+- Bạn có thể bổ sung giống lợn, tuổi hoặc khối lượng hiện tại và mục đích nuôi để lần tra cứu tiếp theo chính xác hơn.
+
+Khi tài liệu đạt yêu cầu được nạp vào kho, hãy hỏi lại để trợ lý trả lời kèm trích dẫn."""
 
 env_path = Path(__file__).resolve().parents[2] / ".env"
 if env_path.exists():
@@ -117,8 +146,8 @@ def _build_recommendations(context: dict, result: dict) -> list[str]:
 
 def _default_context(db: Session, user: User | None, request: AIChatMessageRequest) -> dict:
     intent = _detect_intent(request.message)
-    region = request.region or extract_region_from_message(request.message) or (user.Region if user and user.Region else "Ha Noi")
-    crop = request.resolved_crop or extract_crop_from_message(request.message) or "lua"
+    region = request.region or extract_region_from_message(request.message) or (user.Region if user and user.Region else None)
+    crop = request.resolved_crop or extract_crop_from_message(request.message) or None
     return ai_context_service.build_ai_context(
         db,
         user_id=user.UserID if user else None,
@@ -553,6 +582,11 @@ def _intent_format_instruction(intent: str) -> str:
             "- Lưu ý rủi ro; không tự nêu liều lượng khi tài liệu không có\n"
             "Chỉ nói về cây trồng được hỏi, tối đa 6 gạch đầu dòng và 140 từ."
         ),
+        "livestock_advice": (
+            "- Trả lời đúng vật nuôi và giai đoạn tuổi được hỏi\n"
+            "- Chỉ nêu khẩu phần, lượng ăn hoặc thuốc khi tài liệu nguồn có bằng chứng\n"
+            "- Nêu rõ thông tin còn thiếu và việc cần hỏi cán bộ thú y"
+        ),
         "quality_analysis": (
             "- Sâu bệnh/vấn đề chất lượng phổ biến với cây trồng đó tại khu vực và thời điểm hỏi\n"
             "- Triệu chứng nhận biết\n"
@@ -595,12 +629,78 @@ def _format_rag_evidence(rag: dict) -> str:
     return "\n\n".join(evidence)
 
 
+def _livestock_terms(question: str) -> tuple[str, ...]:
+    text = normalize_user_text(question)
+    groups = (
+        (("nuoi lon", "lon", "heo"), ("lon", "heo")),
+        (("nuoi ga", "ga"), ("ga",)),
+        (("nuoi vit", "vit"), ("vit",)),
+        (("nuoi bo", "bo"), ("bo",)),
+        (("nuoi de", "de"), ("de",)),
+    )
+    for triggers, terms in groups:
+        if any(_has_normalized_term(text, trigger) for trigger in triggers):
+            return terms
+    return ("chan nuoi", "vat nuoi")
+
+
+def _has_normalized_term(text: str, term: str) -> bool:
+    return re.search(rf"(?<![a-z0-9]){re.escape(term)}(?![a-z0-9])", text) is not None
+
+
+def _livestock_evidence_matches(question: str, evidence: str) -> bool:
+    if not any(_has_normalized_term(evidence, term) for term in _livestock_terms(question)):
+        return False
+    normalized_question = normalize_user_text(question)
+    required_groups: list[tuple[str, ...]] = []
+    if any(term in normalized_question for term in ("cho an", "thuc an", "khau phan", "dinh duong")):
+        required_groups.append(("cho an", "thuc an", "khau phan", "dinh duong"))
+    if any(term in normalized_question for term in ("tuoi", "lon con", "cai sua", "so sinh")):
+        required_groups.append(("tuoi", "giai doan", "lon con", "cai sua", "so sinh"))
+    return all(any(_has_normalized_term(evidence, term) for term in group) for group in required_groups)
+
+
+def _rag_needs_query_discovery(
+    rag: dict, *, question: str, crop: str | None, intent: str | None = None,
+) -> bool:
+    """Return whether the retrieved evidence is missing the asked crop/topic.
+
+    A non-empty vector result can still be irrelevant (for example, a generic
+    rice document returned for a finger-grape question). In that case the
+    nightly crawler should not be the only way to fill the gap.
+    """
+    if not isinstance(rag, dict):
+        return True
+    if rag.get("status") in {"empty", "no_match", "unavailable"}:
+        return True
+    sources = rag.get("sources") or []
+    if not sources:
+        return False
+    evidence = " ".join(
+        str(source.get(field) or "")
+        for source in sources
+        for field in ("name", "source_name", "excerpt")
+    )
+    evidence = normalize_user_text(evidence)
+    if intent == "livestock_advice":
+        return not _livestock_evidence_matches(question, evidence)
+    if not crop:
+        return False
+    normalized_question = normalize_user_text(question)
+    # Preserve the named variety as a single topic when it is present.
+    for phrase in ("nho ngon tay", "ca phe robusta", "ca phe arabica"):
+        if phrase in normalized_question and phrase not in evidence:
+            return True
+    return normalize_user_text(crop) not in evidence
+
+
 def _intent_label(intent: str) -> str:
     return {
         "price_analysis": "Phân tích giá",
         "weather_analysis": "Tư vấn thời tiết",
         "harvest_analysis": "Mùa vụ và thu hoạch",
         "cultivation_advice": "Hướng dẫn kỹ thuật canh tác",
+        "livestock_advice": "Hướng dẫn chăn nuôi",
         "quality_analysis": "Chất lượng và sâu bệnh",
         "alert_analysis": "Cảnh báo rủi ro",
         "full_farm_analysis": "Tổng quan nông trại",
@@ -615,7 +715,7 @@ def _build_gemini_prompt(request: AIChatMessageRequest, context: dict) -> tuple[
     region_zone = _classify_region_zone(region)
     user_context = _safe_json(request.context)
     sanitized_context = _sanitize_context_for_prompt(
-        {k: v for k, v in context.items() if k not in {"history", "intent", "rag"}}
+        {k: v for k, v in context.items() if k not in {"history", "intent", "rag", "_timings"}}
     )
     backend_context = json.dumps(sanitized_context, ensure_ascii=False, default=str)
     season_section = ""
@@ -628,6 +728,7 @@ PHẠM VI HỖ TRỢ:
 - Giá nông sản, xu hướng thị trường, khuyến nghị mua/bán
 - Thời tiết, dự báo, rủi ro thiên tai, khuyến cáo canh tác
 - Mùa vụ, lịch gieo trồng, thu hoạch theo vùng và tháng
+- Chăn nuôi, khẩu phần và chăm sóc vật nuôi theo giai đoạn
 - Sâu bệnh, cách nhận biết, phòng trừ, thuốc bảo vệ thực vật
 - Kỹ thuật canh tác: đất, phân bón, tưới tiêu, cải tạo đất mặn/phèn
 - Chất lượng nông sản, bảo quản sau thu hoạch
@@ -695,7 +796,7 @@ Bạn có thể chuẩn bị an toàn theo các bước sau:
 - Lấy mẫu phân tích đất để biết độ chua, dinh dưỡng và chất hữu cơ.
 - Kiểm tra lịch sử cây trồng, sâu bệnh rễ và khả năng thoát nước của lô đất.
 - Xác nhận giống, nguồn cây con và tình trạng đất là trồng mới hay tái canh.
-- Xin quy trình kỹ thuật của cơ quan khuyến nông địa phương hoặc nạp tài liệu Robusta phù hợp vào kho.
+- Xin quy trình kỹ thuật của cơ quan khuyến nông địa phương hoặc nạp tài liệu phù hợp cho {subject} vào kho.
 
 Khi có nguồn đúng giống và khu vực, tôi sẽ đối chiếu rồi lập các bước làm đất có trích dẫn."""
 
@@ -705,20 +806,30 @@ async def _call_local_ai(request: AIChatMessageRequest, context: dict) -> tuple[
     system_instruction, prompt = _build_gemini_prompt(request, context)
 
     client = get_ai_client()
-    ket_qua = await asyncio.to_thread(
-        client.complete,
-        [*context.get("history", []), {"role": "user", "content": prompt}],
-        system_instruction,
-        settings.AI_MAX_OUTPUT_TOKENS,
-    )
-
-    if ket_qua.get("error"):
-        raise RuntimeError(f"local_ai_failed: {ket_qua['error']}")
-
-    reply = (ket_qua.get("answer") or "").strip()
+    messages = [*context.get("history", []), {"role": "user", "content": prompt}]
+    sink = _ai_stream_sink.get()
+    model_name = ""
+    if sink is not None and hasattr(client, "stream_complete"):
+        await sink.put({"type": "status", "stage": "generating"})
+        parts: list[str] = []
+        async for event in client.stream_complete(messages, system_instruction, settings.AI_MAX_OUTPUT_TOKENS):
+            if event.get("type") == "delta" and event.get("text"):
+                parts.append(event["text"])
+                await sink.put({"type": "delta", "text": event["text"]})
+            elif event.get("type") == "done":
+                model_name = event.get("model") or getattr(client, "model", "")
+        reply = "".join(parts).strip()
+    else:
+        ket_qua = await asyncio.to_thread(
+            client.complete, messages, system_instruction, settings.AI_MAX_OUTPUT_TOKENS,
+        )
+        if ket_qua.get("error"):
+            raise RuntimeError(f"local_ai_failed: {ket_qua['error']}")
+        reply = (ket_qua.get("answer") or "").strip()
+        model_name = ket_qua.get("model") or ""
     if not reply:
         raise RuntimeError("empty_local_ai_response")
-    return reply, ket_qua.get("model") or ""
+    return reply, model_name
 
 
 async def _call_claude(request: AIChatMessageRequest, context: dict) -> tuple[str, str]:
@@ -827,7 +938,7 @@ def _save_gemini_conversation(
             AIResponse=reply,
             Topic=db_topic_for_intent(topic),
             RelatedCropID=related_crop_id,
-            ContextSnapshot=json.dumps({k: v for k, v in context.items() if k != "history"}, ensure_ascii=False, default=str),
+            ContextSnapshot=json.dumps({k: v for k, v in context.items() if k not in {"history", "_timings"}}, ensure_ascii=False, default=str),
             Provider=provider,
             ModelName=model_name,
             TokenUsage=None,
@@ -852,6 +963,8 @@ def _success_payload(
 ) -> dict:
     created_at = datetime.now(timezone.utc)
     context = context or {}
+    if context.get("_timings"):
+        _log_ai_timing(context["_timings"], intent=intent, provider=provider, model=model_name)
     data = {
         "reply": reply,
         "response": reply,
@@ -866,6 +979,7 @@ def _success_payload(
         "region": region,
         "data_sources": context.get("data_sources", []),
         "rag": context.get("rag", {"status": "not_used", "sources": []}),
+        "knowledge_update": context.get("knowledge_update", {"status": "not_needed"}),
         "history_saved": context.get("history_saved", False),
         "reasons": [],
         "recommendations": [],
@@ -892,6 +1006,7 @@ async def ai_chat_message(
     db: Session = Depends(get_db),
     current_user: User | None = Depends(get_optional_current_user),
 ):
+    timing = {"request_id": uuid.uuid4().hex[:16], "started": perf_counter()}
     history, previous_context = load_memory(db, current_user.UserID if current_user else None, request.session_id)
     intent = classify_user_intent(request.message)
     region = request.region or extract_region_from_message(request.message) or (
@@ -1003,6 +1118,8 @@ async def ai_chat_message(
     context["history"] = history
     context["crop_name"] = crop
     context["region"] = region
+    timing["context_ms"] = round((perf_counter() - timing["started"]) * 1000, 1)
+    context["_timings"] = timing
     _pricing = (context.get("pricing") or {})
     _has_real_price = bool(_pricing) and not _pricing.get("is_mock") and _pricing.get("source_type") != "mock"
     if _should_answer_market_locally(request.message, intent) and _has_real_price:
@@ -1036,8 +1153,84 @@ async def ai_chat_message(
 
     retrieval_query = "\n".join([*[m["content"] for m in history[-4:] if m["role"] == "user"],
                                  f"Cây trồng: {crop or ''}. Khu vực: {region or ''}.", request.message])
-    context["rag"] = await asyncio.to_thread(rag_service.retrieve, retrieval_query,
-                                              current_user.UserID if current_user else None)
+    retrieval_started = perf_counter()
+    context["rag"] = await asyncio.to_thread(
+        rag_service.retrieve,
+        retrieval_query,
+        current_user.UserID if current_user else None,
+        crop,
+    )
+    timing["retrieval_ms"] = round((perf_counter() - retrieval_started) * 1000, 1)
+    needs_query_discovery = _rag_needs_query_discovery(
+        context["rag"], question=request.message, crop=crop, intent=intent,
+    )
+    if needs_query_discovery and isinstance(context["rag"], dict) and context["rag"].get("sources"):
+        # Keep evidence for the requested crop even when the exact variety is
+        # missing. The discovery job will look for the variety, while the
+        # model can answer from the broader crop guidance with an explicit
+        # caveat. Clear only genuinely unrelated hits (for example, rice for
+        # a grape question).
+        evidence = " ".join(
+            str(source.get(field) or "")
+            for source in context["rag"]["sources"]
+            for field in ("name", "source_name", "excerpt", "crop")
+        )
+        normalized_evidence = normalize_user_text(evidence)
+        crop_mismatch = bool(crop) and normalize_user_text(crop) not in normalized_evidence
+        livestock_mismatch = (
+            intent == "livestock_advice"
+            and not _livestock_evidence_matches(request.message, normalized_evidence)
+        )
+        if crop_mismatch or livestock_mismatch:
+            context["rag"] = {**context["rag"], "status": "no_match", "sources": []}
+    # A short topic such as "Nho" is classified as a general question, but it
+    # still carries a concrete crop. When RAG has no matching evidence, queue
+    # discovery for that crop as well; otherwise the knowledge-store search
+    # and the chat path behave differently and the worker receives no scope.
+    should_discover = needs_query_discovery and intent != "greeting" and (
+        intent != "general_question" or bool(crop)
+    )
+    if should_discover:
+        try:
+            context["knowledge_update"] = knowledge_discovery_service.enqueue(
+                db,
+                question=request.message,
+                user_id=current_user.UserID if current_user else None,
+                intent=intent,
+                crop=crop,
+                region=region,
+            )
+        except Exception:
+            _log.exception("Could not queue query-triggered knowledge discovery")
+            context["knowledge_update"] = {
+                "status": "unavailable",
+                "job_id": None,
+                "message": "Chưa thể khởi động tác vụ tìm nguồn.",
+            }
+    if intent == "livestock_advice" and not context["rag"].get("sources"):
+        reply = LIVESTOCK_NO_SOURCE_REPLY
+        _save_gemini_conversation(
+            db,
+            user_id=current_user.UserID if current_user else None,
+            session_id=request.session_id,
+            question=request.message,
+            reply=reply,
+            topic=intent,
+            crop_name=None,
+            context=context,
+            model_name="rag-safety-livestock-v1",
+            provider="local",
+        )
+        return _success_payload(
+            reply=reply,
+            intent=intent,
+            crop=None,
+            region=region,
+            model_name="rag-safety-livestock-v1",
+            provider="local",
+            context=context,
+            confidence=0.9,
+        )
     if intent == "cultivation_advice" and not context["rag"].get("sources"):
         reply = _cultivation_no_source_reply(crop, region)
         _save_gemini_conversation(
@@ -1067,7 +1260,9 @@ async def ai_chat_message(
     final_exc: Exception | None = None
 
     try:
+        generation_started = perf_counter()
         reply, model_name = await _goi_ai(request, context)
+        timing["generation_ms"] = round((perf_counter() - generation_started) * 1000, 1)
     except (RuntimeError, asyncio.TimeoutError, Exception) as gemini_exc:
         gemini_str = str(gemini_exc)
         gemini_quota_fail = (
@@ -1159,6 +1354,58 @@ async def ai_chat_message(
     )
     response_payload["data"]["history_saved"] = context.get("history_saved", False)
     return response_payload
+
+
+@router.post("/message/stream")
+async def ai_chat_message_stream(
+    request: AIChatMessageRequest,
+    db: Session = Depends(get_db),
+    current_user: User | None = Depends(get_optional_current_user),
+):
+    """Return progress as NDJSON while the local assistant is working.
+
+    The existing JSON endpoint remains available for integrations. NDJSON is
+    deliberately used here because it works through the current reverse proxy
+    and lets the UI render a state before the model finishes.
+    """
+    async def events():
+        yield json.dumps({"type": "status", "stage": "retrieving"}, ensure_ascii=False) + "\n"
+        sink = asyncio.Queue()
+        token = _ai_stream_sink.set(sink)
+        task = asyncio.create_task(ai_chat_message(request, db, current_user))
+        try:
+            while not task.done() or not sink.empty():
+                try:
+                    event = await asyncio.wait_for(sink.get(), timeout=0.1)
+                    yield json.dumps(event, ensure_ascii=False) + "\n"
+                except asyncio.TimeoutError:
+                    continue
+            result = await task
+            if isinstance(result, JSONResponse):
+                payload = json.loads(result.body.decode("utf-8"))
+                yield json.dumps({"type": "error", "payload": payload}, ensure_ascii=False) + "\n"
+            else:
+                # The normal response contains datetime metadata (created_at,
+                # source freshness, ...); encode it before emitting NDJSON.
+                yield json.dumps({"type": "complete", "payload": jsonable_encoder(result)}, ensure_ascii=False) + "\n"
+        except Exception as exc:
+            if not task.done():
+                task.cancel()
+            _log.exception("[ai-chat] stream failed")
+            payload = {"success": False, "data": None, "error": {
+                "code": "AI_UNAVAILABLE",
+                "message": "Trợ lý AI đang gặp sự cố tạm thời. Vui lòng thử lại sau.",
+            }}
+            _log.debug("[ai-chat] stream internal error: %s", exc)
+            yield json.dumps({"type": "error", "payload": payload}, ensure_ascii=False) + "\n"
+        finally:
+            _ai_stream_sink.reset(token)
+
+    return StreamingResponse(
+        events(),
+        media_type="application/x-ndjson; charset=utf-8",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
 
 
 @router.post("/message-with-context")

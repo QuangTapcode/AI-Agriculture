@@ -8,7 +8,7 @@ from sqlalchemy.pool import StaticPool
 
 from app.core.config import settings
 from app.core.database import Base
-from app.models.knowledge import KnowledgeDocument
+from app.models.knowledge import KnowledgeDocument, KnowledgeSourceCandidate
 from app.services.knowledge_ingestion_service import KnowledgeIngestionService, configured_sources
 from app.services.rag_service import RagService, extract_pages, rag_service
 from app.tasks.celery_app import celery_app
@@ -65,6 +65,16 @@ def test_source_configuration_reads_json_file(monkeypatch, tmp_path):
     assert configured_sources()[0]["name"] == "Official file"
 
 
+def test_source_configuration_uses_repository_registry_when_environment_is_empty(monkeypatch):
+    monkeypatch.setattr(settings, "KNOWLEDGE_AGENT_SOURCES_FILE", "")
+    monkeypatch.setattr(settings, "KNOWLEDGE_AGENT_SOURCES_JSON", "[]")
+
+    sources = configured_sources()
+
+    assert len(sources) >= 8
+    assert all(source["allowed_domain"] for source in sources)
+
+
 def test_discovery_filters_navigation_and_duplicate_article_links(agent, monkeypatch):
     listing = response("https://example.org/library", """
         <a href="/library">Trang hiện tại</a>
@@ -95,6 +105,19 @@ def test_discovery_can_ingest_a_static_source_page(agent, monkeypatch):
     source = {"name": "Official", "url": str(listing.url), "allowed_domain": "example.org",
               "include_start_page": True, "max_documents": 1}
     assert agent.discover(source) == ["https://example.org/technical-guide"]
+
+
+def test_discovery_can_scan_beyond_processing_quota(agent, monkeypatch):
+    listing = response("https://example.org/library", """
+        <a href="/guide/1">Ká»¹ thuáº­t 1</a>
+        <a href="/guide/2">Ká»¹ thuáº­t 2</a>
+        <a href="/guide/3">Ká»¹ thuáº­t 3</a>
+    """)
+    monkeypatch.setattr(agent, "fetch", lambda candidate, domain: listing)
+    source = {"name": "Official", "url": str(listing.url), "allowed_domain": "example.org",
+              "include_patterns": ["/guide/"], "max_documents": 1}
+
+    assert len(agent.discover(source, scan_limit=3)) == 3
 
 
 def test_fetch_retries_temporary_server_error(agent, monkeypatch):
@@ -130,7 +153,7 @@ def test_run_reports_partial_success_when_duplicates_exist(agent, db, monkeypatc
               "allowed_domain": "example.org"}
     monkeypatch.setattr("app.services.knowledge_ingestion_service.configured_sources",
                         lambda: [source])
-    monkeypatch.setattr(agent, "discover", lambda item: ["https://example.org/one", "https://example.org/two"])
+    monkeypatch.setattr(agent, "discover", lambda item, **kwargs: ["https://example.org/one", "https://example.org/two"])
     monkeypatch.setattr(agent, "process",
                         lambda session, item, url: "duplicate" if url.endswith("one") else (_ for _ in ()).throw(httpx.ReadError("temporary")))
 
@@ -139,6 +162,15 @@ def test_run_reports_partial_success_when_duplicates_exist(agent, db, monkeypatc
     assert result["status"] == "partial_success"
     assert result["duplicate"] == 1
     assert result["failed"] == 1
+    assert result["source_results"] == [{
+        "source_name": "Official",
+        "discovered": 2,
+        "approved": 0,
+        "rejected": 0,
+        "duplicate": 1,
+        "failed": 1,
+        "errors": ["https://example.org/two: temporary"],
+    }]
 
 
 def test_approved_duplicate_and_updated_document_lifecycle(agent, db, monkeypatch):
@@ -233,3 +265,22 @@ def test_html_extraction_hash_is_not_changed_by_dynamic_page_chrome(agent):
 def test_nightly_task_is_registered():
     schedule = celery_app.conf.beat_schedule["ingest-knowledge-nightly"]
     assert schedule["task"] == "app.tasks.knowledge_tasks.ingest_knowledge_sources"
+
+
+def test_approved_discovered_source_is_added_to_next_ingestion_run(agent, db, monkeypatch):
+    from app.services import knowledge_ingestion_service as module
+
+    candidate = KnowledgeSourceCandidate(
+        Name="Nguồn được duyệt", URL="https://new.gov.vn/library", URLHash="a" * 64,
+        Domain="new.gov.vn", Status="approved", IsOfficialDomain=True,
+    )
+    db.add(candidate)
+    db.commit()
+    monkeypatch.setattr(module, "configured_sources", lambda: [])
+    seen = []
+    monkeypatch.setattr(agent, "discover", lambda source, **kwargs: seen.append(source) or [])
+
+    result = agent.run(db, force=True)
+
+    assert result["sources"] == 1
+    assert seen[0]["url"] == "https://new.gov.vn/library"

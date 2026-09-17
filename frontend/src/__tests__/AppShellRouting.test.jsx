@@ -43,9 +43,9 @@ describe('app shell routing', () => {
     expect(await screen.findByRole('heading', { name: /Báo cáo/i, level: 1 })).toBeInTheDocument();
   });
 
-  it('sends the retired harvest mockup route to the canonical harvest page', async () => {
+  it('sends the retired harvest mockup route to season management', async () => {
     renderAt('/harvest-forecast');
-    expect(await screen.findByRole('heading', { name: /Dự báo thu hoạch/i, level: 1 })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: /Quản lý mùa vụ/i, level: 1 })).toBeInTheDocument();
     expect(screen.queryByText(FABRICATED_YIELD)).not.toBeInTheDocument();
   });
 

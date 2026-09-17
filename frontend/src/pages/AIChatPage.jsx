@@ -28,7 +28,7 @@ const dateLabel = (value) => {
 const timeLabel = (value) => new Date(value).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
 const fromTurns = (turns) => turns.flatMap((turn) => [
   { id: `${turn.id}-user`, role: 'user', content: turn.user_message, createdAt: turn.created_at },
-  { id: `${turn.id}-bot`, role: 'assistant', content: turn.ai_response, createdAt: turn.created_at, rag: turn.rag },
+  { id: `${turn.id}-bot`, role: 'assistant', content: turn.ai_response, createdAt: turn.created_at, rag: turn.rag, knowledgeUpdate: turn.knowledge_update },
 ]);
 
 export function Sources({ rag }) {
@@ -43,12 +43,36 @@ export function Sources({ rag }) {
   </div>;
 }
 
+const discoveryLabels = {
+  queued: 'Đã xếp hàng tìm tài liệu từ nguồn uy tín.',
+  running: 'Đang tìm trên nguồn đã cấu hình và web…',
+  indexed: 'Đã nạp tài liệu mới vào kho RAG.',
+  completed: 'Đã kiểm tra nguồn nhưng chưa có tài liệu đạt.',
+  no_match: 'Chưa tìm thấy tài liệu từ nguồn đã duyệt.',
+  unavailable: 'Tác vụ tìm nguồn chưa khởi động được.',
+  failed: 'Tác vụ tìm nguồn gặp lỗi.',
+};
+
+export function KnowledgeUpdate({ update }) {
+  if (!update || update.status === 'not_needed') return null;
+  return <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-2 text-xs text-amber-900" role="status">
+    <p>{update.status === 'no_match' && update.error ? update.error : update.message || discoveryLabels[update.status] || 'Đang cập nhật kho tài liệu.'}</p>
+    {['queued', 'running'].includes(update.status) && <p className="mt-1 text-amber-800">Nếu cần tìm rộng hơn, Bing nhận từ khóa, cây trồng và khu vực đã trích xuất; không gửi nguyên câu hỏi.</p>}
+    {update.keywords?.length > 0 && <div className="mt-2 flex flex-wrap items-center gap-1.5">
+      <span className="font-semibold text-amber-900">Chủ đề sẽ tìm:</span>
+      {update.keywords.map((keyword) => <span key={keyword} className="rounded-full border border-amber-200 bg-white px-2 py-0.5">{keyword}</span>)}
+    </div>}
+    {update.job_id && <p className="mt-1 text-amber-800">Mã tác vụ: {update.job_id}</p>}
+  </div>;
+}
+
 export default function AIChatPage() {
   const { isAuthenticated, user } = useAuth();
   const [messages, setMessages] = useState([]);
   const [sessionId, setSessionId] = useState(() => crypto.randomUUID());
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
+  const [streamStage, setStreamStage] = useState('retrieving');
   const [opening, setOpening] = useState(false);
   const [history, setHistory] = useState([]);
   const [query, setQuery] = useState('');
@@ -70,6 +94,29 @@ export default function AIChatPage() {
   const epoch = useRef(0);
   const historyRequest = useRef(0);
   const locked = busy || opening || deleting || uploading || Boolean(confirmDelete);
+
+  const watchDiscovery = useCallback(async (jobId, version) => {
+    if (!isAuthenticated || !jobId) return;
+    let delay = 1500;
+    for (let attempt = 0; attempt < 20 && epoch.current === version; attempt += 1) {
+      await new Promise((resolve) => setTimeout(resolve, delay));
+      if (epoch.current !== version) return;
+      try {
+        const result = await aiApi.getKnowledgeDiscovery(jobId);
+        const job = result?.job || result;
+        if (!job) return;
+        setMessages((previous) => previous.map((message) => message.knowledgeUpdate?.job_id === jobId ? {
+          ...message,
+          knowledgeUpdate: job,
+        } : message));
+        if (['indexed', 'completed', 'no_match', 'failed', 'unavailable'].includes(job.status)) {
+          if (job.status === 'indexed') await refreshLibrary();
+          return;
+        }
+      } catch { return; }
+      delay = Math.min(delay * 1.4, 6000);
+    }
+  }, [isAuthenticated]);
 
   const loadHistory = useCallback(async (offset = 0) => {
     if (!isAuthenticated) return;
@@ -98,7 +145,7 @@ export default function AIChatPage() {
     epoch.current += 1;
     historyRequest.current += 1;
     setHistory([]); setMessages([]); setDocuments([]); setKnowledgeStatus(null); setQuery(''); setInput('');
-    setSessionId(crypto.randomUUID()); setError(''); setNotice(''); setBusy(false); setOpening(false);
+    setSessionId(crypto.randomUUID()); setError(''); setNotice(''); setBusy(false); setStreamStage('retrieving'); setOpening(false);
     setUploading(false); setDeleting(false); setConfirmDelete(null); setHasMore(false); setHistoryLoading(false); setKnowledgeLoading(false);
     return () => { epoch.current += 1; };
   }, [user?.id]);
@@ -113,7 +160,7 @@ export default function AIChatPage() {
 
   const newConversation = () => {
     if (locked) return;
-    setMessages([]); setSessionId(crypto.randomUUID()); setInput(''); setHistoryOpen(false); setError('');
+    setMessages([]); setSessionId(crypto.randomUUID()); setInput(''); setHistoryOpen(false); setError(''); setStreamStage('retrieving');
   };
 
   const openConversation = async (item) => {
@@ -142,20 +189,50 @@ export default function AIChatPage() {
     if (!question || locked) return;
     const version = epoch.current;
     setInput(''); setBusy(true); setError('');
-    setMessages((previous) => [...previous, { id: crypto.randomUUID(), role: 'user', content: question, createdAt: new Date().toISOString() }]);
+    const assistantId = crypto.randomUUID();
+    setStreamStage('retrieving');
+    setMessages((previous) => [...previous,
+      { id: crypto.randomUUID(), role: 'user', content: question, createdAt: new Date().toISOString() },
+      { id: assistantId, role: 'assistant', content: '', streaming: true, createdAt: new Date().toISOString() },
+    ]);
     try {
-      const data = await aiApi.chat({ question, sessionId });
+      const data = aiApi.chatStream
+        ? await aiApi.chatStream({
+          question,
+          sessionId,
+          onEvent: (event) => {
+            if (event.type === 'status' && event.stage) setStreamStage(event.stage);
+            if (event.type === 'delta' && event.text) {
+              setMessages((previous) => previous.map((message) => message.id === assistantId ? {
+                ...message,
+                content: `${message.content || ''}${event.text}`,
+              } : message));
+            }
+          },
+        })
+        : await aiApi.chat({ question, sessionId });
       if (version !== epoch.current) return;
-      setMessages((previous) => [...previous, {
-        id: crypto.randomUUID(), role: 'assistant', content: data.reply || data.answer,
-        createdAt: data.created_at || new Date().toISOString(), rag: data.rag,
-      }]);
+      setMessages((previous) => previous.map((message) => message.id === assistantId ? {
+        ...message,
+        content: data.reply || data.answer,
+        streaming: false,
+        createdAt: data.created_at || new Date().toISOString(),
+        rag: data.rag,
+        knowledgeUpdate: data.knowledge_update,
+      } : message));
+      if (data.knowledge_update?.job_id) watchDiscovery(data.knowledge_update.job_id, version);
       if (isAuthenticated && data.history_saved === false) setError('Đã nhận câu trả lời nhưng chưa lưu được lịch sử. Hãy sao chép nội dung cần giữ.');
       loadHistory();
     } catch (err) {
       if (version !== epoch.current) return;
-      setMessages((previous) => [...previous, { id: crypto.randomUUID(), role: 'assistant', isError: true,
-        content: err.message || 'Trợ lý chưa phản hồi. Hãy thử lại.', retry: question, createdAt: new Date().toISOString() }]);
+      setMessages((previous) => previous.map((message) => message.id === assistantId ? {
+        ...message,
+        isError: true,
+        streaming: false,
+        content: err.message || 'Trợ lý chưa phản hồi. Hãy thử lại.',
+        retry: question,
+        createdAt: new Date().toISOString(),
+      } : message));
     } finally { if (version === epoch.current) setBusy(false); }
   };
 
@@ -307,15 +384,16 @@ export default function AIChatPage() {
         {!messages.length && <div className="mx-auto max-w-xl py-10 text-center"><Bot size={44} className="mx-auto mb-4 text-green-700" /><h2 className="text-xl font-bold">Hôm nay bạn cần hỗ trợ gì?</h2><p className="mt-3 text-sm leading-6 text-gray-600">Hãy cho biết cây trồng, khu vực và tình trạng thực tế. Bạn có thể nạp tài liệu để câu trả lời có nguồn tham khảo rõ ràng.</p><div className="mt-6 grid gap-2 sm:grid-cols-2">{suggestions.map((text) => <button key={text} onClick={() => setInput(text)} className="rounded-xl border bg-white p-3 text-left text-sm hover:border-green-500">{text}</button>)}</div></div>}
         {messages.map((message) => <article key={message.id} className={`mb-5 flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
           <div className={`min-w-0 max-w-[95%] rounded-2xl p-4 sm:max-w-[85%] ${message.role === 'user' ? 'bg-green-700 text-white' : message.isError ? 'border border-red-200 bg-red-50' : 'border bg-white'}`}>
-            {message.role === 'user' ? <p className="whitespace-pre-wrap break-words text-sm [overflow-wrap:anywhere]">{message.content}</p> : <div className="prose prose-sm max-w-none break-words [overflow-wrap:anywhere] prose-a:break-all prose-pre:max-w-full prose-pre:overflow-x-auto"><ReactMarkdown>{message.content}</ReactMarkdown></div>}
+            {message.role === 'user' ? <p className="whitespace-pre-wrap break-words text-sm [overflow-wrap:anywhere]">{message.content}</p> : message.streaming && !message.content ? <p role="status" className="text-sm text-green-800">{streamStage === 'retrieving' ? 'Đang tìm tài liệu liên quan…' : 'Đang soạn câu trả lời…'}</p> : <div className="prose prose-sm max-w-none break-words [overflow-wrap:anywhere] prose-a:break-all prose-pre:max-w-full prose-pre:overflow-x-auto"><ReactMarkdown>{message.content}</ReactMarkdown></div>}
             <Sources rag={message.rag} />
+            <KnowledgeUpdate update={message.knowledgeUpdate} />
             <div className={`mt-2 flex items-center gap-3 text-xs ${message.role === 'user' ? 'text-green-100' : 'text-gray-600'}`}><span>{timeLabel(message.createdAt)}</span>
               {message.role === 'assistant' && <button aria-label="Sao chép câu trả lời" onClick={async () => { try { await navigator.clipboard.writeText(message.content); setCopied(message.id); } catch { setError('Không sao chép được. Hãy chọn văn bản để sao chép.'); } }}>{copied === message.id ? <Check size={14} /> : <Copy size={14} />}</button>}
               {message.isError && <button disabled={locked} onClick={() => setInput(message.retry)} className="text-red-700 underline">Soạn lại câu hỏi</button>}
             </div>
           </div>
         </article>)}
-        {(busy || opening) && <div role="status" className="flex items-center gap-2 text-sm text-green-800"><Loader2 size={18} className="animate-spin" />{opening ? 'Đang mở hội thoại…' : 'Đang tra cứu tài liệu và soạn câu trả lời…'}</div>}
+        {(busy || opening) && <div role="status" className="flex items-center gap-2 text-sm text-green-800"><Loader2 size={18} className="animate-spin" />{opening ? 'Đang mở hội thoại…' : streamStage === 'retrieving' ? 'Đang tìm tài liệu liên quan…' : 'Đang soạn câu trả lời…'}</div>}
         <div ref={endRef} />
       </div>
       <form onSubmit={send} className="border-t p-4"><div className="flex items-end gap-2"><textarea value={input} onChange={(event) => setInput(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); send(); } }} disabled={locked} maxLength={8000} rows={2} placeholder="Nhập câu hỏi…" aria-label="Câu hỏi cho trợ lý" className="min-w-0 flex-1 resize-none rounded-xl border p-3 text-sm outline-none focus:border-green-600" /><button type="submit" disabled={!input.trim() || locked} aria-label="Gửi câu hỏi" className="rounded-xl bg-green-700 p-3 text-white disabled:opacity-40"><Send size={20} /></button></div><p className="mt-2 text-xs text-gray-600">Enter để gửi · Shift+Enter để xuống dòng. Hãy kiểm tra nguồn trước khi áp dụng.</p></form>

@@ -18,7 +18,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.models.ingestion import DataIngestionLog
-from app.models.knowledge import KnowledgeDocument
+from app.models.knowledge import KnowledgeDocument, KnowledgeSourceCandidate
 from app.services.rag_service import extract_pages, rag_service
 
 logger = logging.getLogger(__name__)
@@ -46,7 +46,12 @@ def configured_sources() -> list[dict]:
                 path = Path(__file__).resolve().parents[2] / path
             sources = json.loads(path.read_text(encoding="utf-8"))
         else:
-            sources = json.loads(settings.KNOWLEDGE_AGENT_SOURCES_JSON or "[]")
+            raw_sources = (settings.KNOWLEDGE_AGENT_SOURCES_JSON or "").strip()
+            if raw_sources and raw_sources != "[]":
+                sources = json.loads(raw_sources)
+            else:
+                registry = Path(__file__).resolve().parents[2] / "config" / "knowledge_sources.json"
+                sources = json.loads(registry.read_text(encoding="utf-8")) if registry.exists() else []
     except (OSError, TypeError, json.JSONDecodeError) as exc:
         raise ValueError("Cấu hình nguồn Knowledge Agent không phải JSON hợp lệ hoặc không đọc được.") from exc
     if not isinstance(sources, list):
@@ -146,7 +151,7 @@ class KnowledgeIngestionService:
                     time.sleep(min(2 ** attempt, 4))
         raise RuntimeError("Không thể tải tài liệu sau các lần thử lại.")
 
-    def discover(self, source: dict) -> list[str]:
+    def discover(self, source: dict, *, scan_limit: int | None = None) -> list[str]:
         start_url = _canonical_url(source["url"])
         if Path(urlparse(start_url).path).suffix.lower() in {".pdf", ".txt", ".md"}:
             return [start_url]
@@ -165,8 +170,9 @@ class KnowledgeIngestionService:
         found = [start_url] if source.get("include_start_page") else []
         seen = {start_url} if found else set()
         max_documents = int(source.get("max_documents", settings.KNOWLEDGE_AGENT_MAX_DOCUMENTS))
+        result_limit = max(1, int(scan_limit or max_documents))
         for anchor in soup.select("a[href]"):
-            if len(found) >= max_documents:
+            if len(found) >= result_limit:
                 break
             url = _canonical_url(urljoin(str(response.url), anchor.get("href", "")))
             lowered_url = url.lower()
@@ -355,27 +361,65 @@ class KnowledgeIngestionService:
         if not settings.KNOWLEDGE_AGENT_ENABLED and not force:
             return {"status": "disabled", "sources": 0, "discovered": 0}
         sources = configured_sources()
+        # Approved discoveries become active on the next ingestion run. The
+        # JSON registry remains the source of truth for reviewed seed streams;
+        # pending and rejected candidates never reach the RAG index.
+        configured_urls = {_canonical_url(source["url"]) for source in sources}
+        approved_candidates = db.query(KnowledgeSourceCandidate).filter(
+            KnowledgeSourceCandidate.Status == "approved"
+        ).all()
+        for candidate in approved_candidates:
+            url = _canonical_url(candidate.URL)
+            if url in configured_urls:
+                continue
+            sources.append({
+                "name": candidate.Name,
+                "url": url,
+                "allowed_domain": candidate.Domain,
+                "max_documents": 8,
+                "include_start_page": True,
+            })
+            configured_urls.add(url)
         log = DataIngestionLog(SourceName="configured_sources", JobName="knowledge_agent", Status="running")
         db.add(log)
         db.commit()
         counts = {"approved": 0, "rejected": 0, "duplicate": 0, "failed": 0}
         discovered = 0
         errors = []
+        source_results = []
         for source in sources:
+            source_result = {"source_name": source["name"], "discovered": 0,
+                             "approved": 0, "rejected": 0, "duplicate": 0,
+                             "failed": 0, "errors": []}
             try:
-                urls = self.discover(source)
+                quota = max(1, int(source.get("max_documents", settings.KNOWLEDGE_AGENT_MAX_DOCUMENTS)))
+                urls = self.discover(source, scan_limit=quota * 20)
             except Exception as exc:
                 counts["failed"] += 1
                 errors.append(f"{source['name']}: {exc}")
+                source_result["failed"] = 1
+                source_result["errors"].append(str(exc))
+                source_results.append(source_result)
                 continue
             discovered += len(urls)
+            source_result["discovered"] = len(urls)
+            accepted = 0
             for url in urls:
                 try:
-                    counts[self.process(db, source, url)] += 1
+                    outcome = self.process(db, source, url)
+                    counts[outcome] += 1
+                    source_result[outcome] += 1
+                    if outcome != "duplicate":
+                        accepted += 1
+                    if accepted >= quota:
+                        break
                 except Exception as exc:
                     counts["failed"] += 1
+                    source_result["failed"] += 1
                     errors.append(f"{url}: {exc}")
+                    source_result["errors"].append(f"{url}: {exc}")
                     logger.exception("Knowledge ingestion failed for %s", url)
+            source_results.append(source_result)
         log.FinishedAt = datetime.utcnow()
         processed = counts["approved"] + counts["rejected"] + counts["duplicate"]
         log.Status = "success" if not errors else ("partial_success" if processed else "failed")
@@ -384,7 +428,7 @@ class KnowledgeIngestionService:
         log.ErrorMessage = "\n".join(errors)[:4000] or None
         db.commit()
         return {"status": log.Status, "sources": len(sources), "discovered": discovered, **counts,
-                "errors": errors}
+                "errors": errors, "source_results": source_results}
 
 
 knowledge_ingestion_service = KnowledgeIngestionService()

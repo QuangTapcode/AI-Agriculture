@@ -2,23 +2,20 @@ import {
   AlertTriangle,
   CalendarDays,
   CheckCircle2,
-  CloudSun,
   Clock,
   Edit,
   Leaf,
   MapPin,
   Plus,
-  RefreshCw,
   Search,
   Sprout,
   Trash2,
   X,
 } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { EmptyState, InlineLoading, PageError } from '../components/StatusState';
 import { getApiErrorMessage, settledValue } from '../services/api';
 import { seasonApi } from '../services/seasonApi';
-import { formatConfidence } from '../utils/format';
 
 const statusMeta = {
   planned: { label: 'Đã lên kế hoạch', className: 'border-sky-200 bg-sky-50 text-sky-700' },
@@ -122,9 +119,6 @@ const SeasonManagementPage = () => {
   const [modalMode, setModalMode] = useState(null);
   const [editingSeason, setEditingSeason] = useState(null);
   const [formData, setFormData] = useState(initialForm);
-  const [forecasting, setForecasting] = useState(false);
-  const [forecastInfo, setForecastInfo] = useState(null);
-  const [forecastError, setForecastError] = useState(null);
 
   const loadSeasons = async () => {
     setLoading(true);
@@ -180,8 +174,6 @@ const SeasonManagementPage = () => {
     setEditingSeason(null);
     setFormData(initialForm);
     setFormError(null);
-    setForecastInfo(null);
-    setForecastError(null);
     setModalMode('create');
   };
 
@@ -200,8 +192,6 @@ const SeasonManagementPage = () => {
       note: season.note || '',
     });
     setFormError(null);
-    setForecastInfo(null);
-    setForecastError(null);
     setModalMode('edit');
   };
 
@@ -210,8 +200,6 @@ const SeasonManagementPage = () => {
     setModalMode(null);
     setEditingSeason(null);
     setFormError(null);
-    setForecastInfo(null);
-    setForecastError(null);
   };
 
   const buildPayload = () => ({
@@ -226,66 +214,6 @@ const SeasonManagementPage = () => {
     health_status: formData.health_status,
     note: formData.note.trim() || null,
   });
-
-  const canPredictHarvestDate = Boolean(
-    formData.crop_name.trim() &&
-    formData.region.trim() &&
-    formData.start_date
-  );
-
-  const predictExpectedHarvestDate = useCallback(async ({ showError = true } = {}) => {
-    const cropName = formData.crop_name.trim();
-    const region = formData.region.trim();
-    const startDate = formData.start_date;
-    if (!cropName || !region || !startDate) {
-      if (showError) setForecastError('Nhập tên cây trồng, khu vực và ngày bắt đầu để tính ngày thu hoạch');
-      return;
-    }
-
-    setForecasting(true);
-    setForecastError(null);
-    try {
-      const estimate = await seasonApi.predictHarvestDate({
-        crop_name: cropName,
-        region,
-        start_date: startDate,
-      });
-      setForecastInfo(estimate);
-      setFormData((current) => {
-        if (
-          current.crop_name.trim() !== cropName ||
-          current.region.trim() !== region ||
-          current.start_date !== startDate
-        ) {
-          return current;
-        }
-        return {
-          ...current,
-          expected_harvest_date: toDateInput(estimate.expected_harvest_date),
-        };
-      });
-    } catch (err) {
-      const message = getApiErrorMessage(err, 'Không thể tính ngày thu hoạch dự kiến');
-      if (showError) setForecastError(message);
-    } finally {
-      setForecasting(false);
-    }
-  }, [formData.crop_name, formData.region, formData.start_date]);
-
-  useEffect(() => {
-    if (modalMode && !canPredictHarvestDate) {
-      setForecastInfo(null);
-      setForecastError(null);
-    }
-  }, [canPredictHarvestDate, modalMode]);
-
-  useEffect(() => {
-    if (modalMode !== 'create' || !canPredictHarvestDate) return undefined;
-    const timer = window.setTimeout(() => {
-      predictExpectedHarvestDate({ showError: false });
-    }, 500);
-    return () => window.clearTimeout(timer);
-  }, [canPredictHarvestDate, modalMode, predictExpectedHarvestDate]);
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -579,42 +507,15 @@ const SeasonManagementPage = () => {
                   className="w-full rounded-lg border border-slate-300 px-4 py-3 outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100"
                 />
               </label>
-              <div className="block">
-                <div className="mb-2 flex items-center justify-between gap-3">
-                  <span className="block text-sm font-medium text-slate-700">Ngày dự kiến thu hoạch</span>
-                  <button
-                    type="button"
-                    onClick={() => predictExpectedHarvestDate()}
-                    disabled={!canPredictHarvestDate || forecasting}
-                    className="inline-flex items-center gap-1.5 rounded-md border border-emerald-200 px-2.5 py-1 text-xs font-semibold text-emerald-700 hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    <RefreshCw className={`h-3.5 w-3.5 ${forecasting ? 'animate-spin' : ''}`} />
-                    Tính lại
-                  </button>
-                </div>
+              <label className="block">
+                <span className="block text-sm font-medium text-slate-700">Ngày dự kiến thu hoạch (nhập thủ công)</span>
                 <input
                   type="date"
                   value={formData.expected_harvest_date}
                   onChange={(event) => setFormData((current) => ({ ...current, expected_harvest_date: event.target.value }))}
                   className="w-full rounded-lg border border-slate-300 px-4 py-3 outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100"
                 />
-                {forecasting && (
-                  <p className="mt-2 flex items-center gap-2 text-xs font-medium text-emerald-700">
-                    <CloudSun className="h-4 w-4" />
-                    Đang tính theo thời tiết và thời gian sinh trưởng...
-                  </p>
-                )}
-                {!forecasting && forecastInfo && (
-                  <div className="mt-2 rounded-md border border-emerald-100 bg-emerald-50 px-3 py-2 text-xs leading-5 text-emerald-800">
-                    <div className="font-semibold">
-                      Độ tin cậy {formatConfidence(forecastInfo.confidence)}
-                      {forecastInfo.weather_risk ? ` · Rủi ro thời tiết ${forecastInfo.weather_risk}` : ''}
-                    </div>
-                    {forecastInfo.warning && <div className="mt-1">{forecastInfo.warning}</div>}
-                  </div>
-                )}
-                {forecastError && <p className="mt-2 text-xs font-medium text-rose-600">{forecastError}</p>}
-              </div>
+              </label>
               <label className="block">
                 <span className="mb-2 block text-sm font-medium text-slate-700">Trạng thái</span>
                 <select

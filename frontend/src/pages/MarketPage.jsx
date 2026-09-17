@@ -1,31 +1,35 @@
 import { Globe, RefreshCw, Search, ShoppingCart, Store, TrendingUp, AlertTriangle } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { MISSING, formatConfidence, hasValue } from '../utils/format';
-import DataSourceBadge from '../components/DataSourceBadge';
+import SourceBadge from '../components/ui/SourceBadge';
 import { getApiErrorMessage } from '../services/api';
 import { marketApi } from '../services/marketApi';
-import { marketNewsApi } from '../services/marketNewsApi';
 import { pricingApi } from '../services/pricingApi';
+import { getTrustedMetric } from '../utils/dataTrust';
 import { CROP_SUGGESTIONS, REGION_SUGGESTIONS, normalizePriceInput } from '../utils/priceInputs';
 import { translateUiText } from '../utils/vietnameseText';
-
-const fallbackChannels = [
-  { id: 'wholesale', name: 'Chợ đầu mối', commission: '5-10%' },
-  { id: 'retail', name: 'Chợ bán lẻ', commission: '0%' },
-  { id: 'supermarket', name: 'Siêu thị/cửa hàng sạch', commission: '10-15%' },
-];
 
 const channelIcons = [ShoppingCart, TrendingUp, Globe];
 
 const initialFormData = {
-  cropName: 'Cà phê',
-  region: 'Đắk Lắk',
-  quantity: 1000,
+  cropName: '',
+  region: '',
+  quantity: '',
   qualityGrade: 'grade_1',
 };
 
 const formatMoney = (value) =>
   hasValue(value) ? `${Number(value).toLocaleString('vi-VN')} đ/kg` : MISSING;
+
+const formatTrustedMoney = (value, metadata) => {
+  const metric = getTrustedMetric(value, metadata);
+  return metric.available ? formatMoney(metric.value) : MISSING;
+};
+
+const formatTrustedNumber = (value, metadata) => {
+  const metric = getTrustedMetric(value, metadata);
+  return metric.available ? Number(metric.value).toLocaleString('vi-VN') : MISSING;
+};
 
 /** Chỉ gọi tên xu hướng khi backend thật sự trả direction. */
 const TREND_LABELS = { up: 'Tăng', down: 'Giảm', stable: 'Ổn định', flat: 'Ổn định' };
@@ -173,15 +177,22 @@ const MarketPage = () => {
   const longTrend = analysis?.trend_30d || {};
   const volatility = analysis?.volatility || {};
   const regionalComparison = analysis?.regional_comparison || [];
-  const recommendation = analysis?.recommendation || {};
-  const dataSources = analysis?.data_sources || [];
+  const dataSources = analysis?.data_sources || analysis?.sources || [];
+  const currentPriceMetric = analysis ? getTrustedMetric(analysis.current_price, analysis) : null;
+  const confidenceMetric = analysis
+    ? getTrustedMetric(
+      analysis.confidence_score === 0 && !hasValue(analysis.current_price) ? null : analysis.confidence_score,
+      analysis,
+    )
+    : null;
+  const trustedStorePrices = (storePrices?.stores || []).filter((store) => getTrustedMetric(store.price, store).available);
 
   return (
     <div className="space-y-6 px-4 py-6">
       <div>
         <div className="flex flex-wrap items-center gap-3">
           <h1 className="text-3xl font-bold text-gray-900">Phân tích thị trường</h1>
-          <DataSourceBadge data={channelSource} />
+          <SourceBadge metadata={analysis || channelSource} showTime />
         </div>
         <p className="mt-2 text-gray-600">
           Nhập nông sản, khu vực rồi bấm nút để xem giá hiện tại, xu hướng 7 ngày, xu hướng 30 ngày và khuyến nghị.
@@ -292,27 +303,34 @@ const MarketPage = () => {
         <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
           <div className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
             <p className="text-sm text-gray-600">Giá hiện tại</p>
-            <p className="mt-2 text-3xl font-bold text-gray-900">{formatMoney(analysis.current_price)}</p>
+            <p data-testid="market-current-price" className="mt-2 text-3xl font-bold text-gray-900">
+              {formatTrustedMoney(analysis.current_price, analysis)}
+            </p>
             <p className="mt-2 text-xs text-gray-500">{analysis.region}</p>
+            {!currentPriceMetric?.available && (analysis.warning || currentPriceMetric?.reason) ? (
+              <p className="mt-2 text-xs font-medium text-amber-700">
+                {analysis.warning || currentPriceMetric.reason}
+              </p>
+            ) : null}
           </div>
           <div className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
             <p className="text-sm text-gray-600">Xu hướng 7 ngày</p>
-            <p className="mt-2 text-2xl font-bold text-gray-900">{currentTrend.direction === 'up' ? 'Tăng' : currentTrend.direction === 'down' ? 'Giảm' : 'Ổn định'}</p>
-            <p className="mt-2 text-sm text-gray-600">{currentTrend.summary}</p>
+            <p data-testid="market-trend-7d" className="mt-2 text-2xl font-bold text-gray-900">{trendLabel(currentTrend.direction)}</p>
+            <p className="mt-2 text-sm text-gray-600">{currentTrend.summary || MISSING}</p>
           </div>
           <div className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
             <p className="text-sm text-gray-600">Xu hướng 30 ngày</p>
             <p data-testid="market-trend-30d" className="mt-2 text-2xl font-bold text-gray-900">
               {trendLabel(longTrend.direction)}
             </p>
-            <p className="mt-2 text-sm text-gray-600">{longTrend.summary}</p>
+            <p className="mt-2 text-sm text-gray-600">{longTrend.summary || MISSING}</p>
           </div>
           <div className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
             <p className="text-sm text-gray-600">Độ tin cậy</p>
             <p data-testid="market-confidence" className="mt-2 text-2xl font-bold text-gray-900">
-              {formatConfidence(analysis.confidence_score)}
+              {confidenceMetric?.available ? formatConfidence(confidenceMetric.value) : MISSING}
             </p>
-            <p className="mt-2 text-sm text-gray-600">{volatility.summary}</p>
+            <p className="mt-2 text-sm text-gray-600">{volatility.summary || MISSING}</p>
           </div>
         </section>
       )}
@@ -322,16 +340,16 @@ const MarketPage = () => {
           <div className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
             <p className="text-sm text-gray-600">Giá nội địa</p>
             <p className="mt-2 text-2xl font-bold text-gray-900">
-              {formatMoney(analysis.local_price?.price ?? analysis.current_price)}
+              {formatTrustedMoney(analysis.local_price?.price ?? analysis.current_price, analysis.local_price || analysis)}
             </p>
-            <p className="mt-1 text-xs text-gray-500">{analysis.local_price?.source_name || analysis.source_name || 'MarketPrices DB'}</p>
+            <p className="mt-1 text-xs text-gray-500">{analysis.local_price?.source_name || analysis.source_name || MISSING}</p>
           </div>
           <div className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
             <p className="text-sm text-gray-600">Giá quốc tế tham chiếu</p>
             {analysis.global_reference ? (
               <>
                 <p className="mt-2 text-2xl font-bold text-gray-900">
-                  {Number(analysis.global_reference.price || 0).toLocaleString('vi-VN')} {analysis.global_reference.unit || 'USD/ton'}
+                  {formatTrustedNumber(analysis.global_reference.price, analysis.global_reference)} {analysis.global_reference.unit || 'USD/ton'}
                 </p>
                 <p className="mt-1 text-xs text-gray-500">{analysis.global_reference.source_name || 'Nguồn tham chiếu quốc tế'}</p>
               </>
@@ -349,9 +367,9 @@ const MarketPage = () => {
 
       {marketPrice && (
         <div className="flex flex-wrap items-center gap-3 rounded-lg border border-gray-200 bg-white p-4 text-sm text-gray-700 shadow-sm">
-          <DataSourceBadge data={marketPrice} />
-          <span>Nguồn dữ liệu: {marketPrice.source_name || marketPrice.source || 'Database'}</span>
-          <span>Loại nguồn: {marketPrice.source_type || marketPrice.source || 'database'}</span>
+          <SourceBadge metadata={marketPrice} showTime />
+          <span>Nguồn dữ liệu: {marketPrice.source_name || marketPrice.source || MISSING}</span>
+          <span>Loại nguồn: {marketPrice.source_type || marketPrice.source || MISSING}</span>
           {marketPrice.last_updated && <span>Cập nhật: {new Date(marketPrice.last_updated).toLocaleString('vi-VN')}</span>}
           {marketPrice._api_error ? (
             <span className="font-medium text-amber-700">Không thể tải dữ liệu thực tế hiện tại. Vui lòng thử lại sau.</span>
@@ -377,7 +395,7 @@ const MarketPage = () => {
               <h2 className="text-lg font-semibold text-gray-900">Khuyến nghị phân tích</h2>
               <p className="text-sm text-gray-500">Kết quả dựa trên giá hiện tại, xu hướng và biến động thị trường.</p>
             </div>
-            {dataSources[0] && <DataSourceBadge data={dataSources[0]} />}
+            {dataSources[0] && <SourceBadge metadata={dataSources[0]} showTime />}
           </div>
 
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -403,6 +421,20 @@ const MarketPage = () => {
             </div>
           )}
 
+          {dataSources.length > 0 && (
+            <div className="mt-5 border-t border-gray-100 pt-4">
+              <h3 className="text-sm font-semibold text-gray-900">Nguồn dữ liệu</h3>
+              <ul className="mt-3 grid gap-2 md:grid-cols-2">
+                {dataSources.map((source, index) => (
+                  <li key={`${source.source_url || source.source_name || 'source'}-${index}`} className="flex min-w-0 items-center justify-between gap-3 rounded-lg bg-slate-50 px-3 py-2 text-sm">
+                    <SourceBadge metadata={source} showTime />
+                    {source.source_url ? <a href={source.source_url} target="_blank" rel="noreferrer" className="shrink-0 text-xs font-semibold text-emerald-700 hover:underline">Mở nguồn</a> : null}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
           {regionalComparison.length > 0 && (
             <div className="mt-5">
               <h3 className="text-sm font-semibold text-gray-900">So sánh vùng miền</h3>
@@ -415,7 +447,7 @@ const MarketPage = () => {
                   >
                     <div className="font-semibold text-gray-900">{item.region}</div>
                     <div data-testid="regional-price" className="mt-2 text-lg font-bold text-gray-900">
-                      {formatMoney(item.price)}
+                      {formatTrustedMoney(item.price, item)}
                     </div>
                     <div data-testid="regional-difference" className="mt-1 text-sm text-gray-600">
                       {hasValue(item.difference_percent)
@@ -467,8 +499,8 @@ const MarketPage = () => {
             <h2 className="text-lg font-semibold text-gray-900">Giá tại chuỗi cửa hàng lớn</h2>
             {/* Không bịa nguồn và độ tin cậy: chỉ chuyển tiếp đúng thứ backend trả. */}
             {storePrices && !storePricesLoading && (
-              <DataSourceBadge
-                data={{
+              <SourceBadge
+                metadata={{
                   source: storePrices.source,
                   source_name: storePrices.source_name,
                   confidence: storePrices.confidence ?? null,
@@ -491,7 +523,7 @@ const MarketPage = () => {
             </div>
           )}
 
-          {!storePricesLoading && storePrices?.stores?.length > 0 && (
+          {!storePricesLoading && trustedStorePrices.length > 0 && (
             <>
               {storePrices.warning && (
                 <div className="mb-3 flex items-center gap-2 rounded-lg bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-800">
@@ -520,7 +552,7 @@ const MarketPage = () => {
                         <td className="py-3 text-right text-xs text-gray-400">— cơ sở</td>
                       </tr>
                     )}
-                    {(storePrices.stores || []).map((store) => {
+                    {trustedStorePrices.map((store) => {
                       const diffPct = analysis?.current_price > 0
                         ? (((store.price - analysis.current_price) / analysis.current_price) * 100).toFixed(0)
                         : null;
@@ -550,14 +582,12 @@ const MarketPage = () => {
                 </table>
               </div>
               <p className="mt-3 text-xs text-gray-400">
-                {storePrices.is_estimated
-                  ? `* Giá ước tính dựa trên giá sỉ + markup thông thường — ${storePrices.fetched_at}. Có thể dao động theo chuỗi và thời điểm.`
-                  : `* Giá tìm kiếm realtime qua Gemini Google Search — ${storePrices.fetched_at}. Có thể dao động theo chi nhánh và thời điểm.`}
+                {storePrices.fetched_at ? `Cập nhật: ${new Date(storePrices.fetched_at).toLocaleString('vi-VN')}` : 'Thời điểm cập nhật chưa được cung cấp.'}
               </p>
             </>
           )}
 
-          {!storePricesLoading && storePrices?.stores?.length === 0 && !storePrices?.error && (
+          {!storePricesLoading && trustedStorePrices.length === 0 && !storePrices?.error && (
             <p className="text-sm text-gray-500 py-4">
               Chưa tìm thấy giá tại các chuỗi cửa hàng cho <strong>{normalizedInputs.cropName}</strong> tại <strong>{normalizedInputs.region}</strong>.
             </p>
@@ -568,12 +598,13 @@ const MarketPage = () => {
       <section className="mt-8 rounded-lg border border-gray-200 bg-white p-6 shadow">
         <div className="mb-4 flex flex-wrap items-center gap-3">
           <h2 className="text-lg font-semibold text-gray-900">Tin thị trường</h2>
-          <DataSourceBadge
-            data={
+          <SourceBadge
+            metadata={
               news[0] || {
                 source: newsError ? 'legacy' : 'realtime_api',
                 source_name: newsError ? 'Tin đã lưu' : 'Tin thị trường',
-                confidence: newsError ? 0.45 : 0.7,
+                success: false,
+                warning: newsError || 'Chưa có tin thị trường đã kiểm chứng.',
               }
             }
           />
@@ -591,13 +622,13 @@ const MarketPage = () => {
               >
                 <div className="flex items-start justify-between gap-3">
                   <p className="text-sm font-semibold text-gray-900">{item.title}</p>
-                  <DataSourceBadge data={item} />
+                  <SourceBadge metadata={item} />
                 </div>
                 <p className="mt-2 line-clamp-2 text-sm text-gray-600">{translateUiText(item.summary || item.ai_summary)}</p>
                 <div className="mt-3 grid gap-2 text-xs text-gray-600">
                   <p><span className="font-semibold">Tóm tắt:</span> {translateUiText(item.ai_summary || item.recommendation || item.summary || 'Đang tổng hợp.')}</p>
-                  <p><span className="font-semibold">Nông sản liên quan:</span> {(item.affected_crops || []).join(', ') || normalizedInputs.cropName}</p>
-                  <p><span className="font-semibold">Khu vực liên quan:</span> {(item.affected_regions || []).join(', ') || normalizedInputs.region}</p>
+                  <p><span className="font-semibold">Nông sản liên quan:</span> {(item.affected_crops || []).join(', ') || MISSING}</p>
+                  <p><span className="font-semibold">Khu vực liên quan:</span> {(item.affected_regions || []).join(', ') || MISSING}</p>
                   <p>
                     <span className="font-semibold">Tác động:</span> {translateUiText(item.impact || 'neutral')}
                     {' · '}Điểm {item.impact_score ?? 'N/A'}

@@ -29,10 +29,14 @@ class Settings(BaseSettings):
     AI_TIMEOUT_SECONDS: float = 120.0
     AI_CONTEXT_TOKENS: int = 3072
     AI_MAX_OUTPUT_TOKENS: int = 256
+    AI_KEEP_ALIVE: str = "15m"
     RAG_ENABLED: bool = True
     RAG_STORAGE_PATH: str = "storage/rag"
     RAG_EMBEDDING_MODEL: str = "embeddinggemma"
     RAG_TIMEOUT_SECONDS: float = 60.0
+    RAG_EMBED_CACHE_TTL_SECONDS: int = 300
+    RAG_EMBED_CACHE_SIZE: int = 256
+    RAG_EMBED_NUM_GPU: int = 0
     RAG_TOP_K: int = 4
     RAG_MAX_CHUNKS_PER_DOCUMENT: int = 1
     RAG_MIN_SIMILARITY: float = 0.35
@@ -45,6 +49,17 @@ class Settings(BaseSettings):
     KNOWLEDGE_AGENT_QA_SIMILARITY: float = 0.22
     KNOWLEDGE_AGENT_SOURCES_FILE: str = ""
     KNOWLEDGE_AGENT_SOURCES_JSON: str = "[]"
+    # Discovery only creates reviewable candidates; it never changes the
+    # active RAG registry without an administrator decision.
+    SOURCE_DISCOVERY_ENABLED: bool = True
+    SOURCE_DISCOVERY_HOUR: int = 3
+    SOURCE_DISCOVERY_MAX_CANDIDATES: int = 100
+    KNOWLEDGE_QUERY_DISCOVERY_ENABLED: bool = True
+    KNOWLEDGE_QUERY_DISCOVERY_MAX_CANDIDATES: int = 3
+    KNOWLEDGE_QUERY_DISCOVERY_COOLDOWN_SECONDS: int = 3600
+    KNOWLEDGE_BROWSER_SEARCH_ENABLED: bool = True
+    KNOWLEDGE_BROWSER_SEARCH_MAX_RESULTS: int = 10
+    KNOWLEDGE_BROWSER_SEARCH_TIMEOUT_SECONDS: float = 15.0
     EXTERNAL_CONNECT_TIMEOUT_SECONDS: float = 3.0
     EXTERNAL_READ_TIMEOUT_SECONDS: float = 8.0
     EXTERNAL_WRITE_TIMEOUT_SECONDS: float = 10.0
@@ -178,6 +193,7 @@ class Settings(BaseSettings):
         "http://172.17.176.1:5173",
         "http://172.17.176.1:5174",
         "http://172.17.176.1:5175",
+        "https://agriai-demo.pages.dev",
     ]
 
     ENVIRONMENT: str = "development"

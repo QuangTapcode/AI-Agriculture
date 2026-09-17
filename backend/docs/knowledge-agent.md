@@ -6,7 +6,7 @@ Knowledge Agent chỉ cập nhật dữ liệu cho RAG. Nó không sửa mã ngu
 
 Celery Beat gọi `app.tasks.knowledge_tasks.ingest_knowledge_sources` lúc 02:00 hằng ngày theo múi giờ `Asia/Ho_Chi_Minh`.
 
-1. Đọc danh sách nguồn từ `KNOWLEDGE_AGENT_SOURCES_FILE`; biến `KNOWLEDGE_AGENT_SOURCES_JSON` là cấu hình dự phòng.
+1. Đọc danh sách nguồn từ `KNOWLEDGE_AGENT_SOURCES_FILE`; biến `KNOWLEDGE_AGENT_SOURCES_JSON` là cấu hình dự phòng. Khi cả hai để trống hoặc là `[]`, service tự dùng registry `backend/config/knowledge_sources.json`.
 2. Chỉ theo liên kết cùng `allowed_domain` và khớp bộ lọc URL đã cấu hình.
 3. Tải PDF, TXT, Markdown hoặc trang HTML; nếu trang chi tiết có PDF cùng miền thì ưu tiên PDF.
 4. Chuẩn hóa văn bản và tính SHA-256. Nội dung đã có sẽ bị bỏ qua.
@@ -30,7 +30,7 @@ Mỗi phần tử trong `config/knowledge_sources.json` hỗ trợ:
 - `exclude_patterns`, `exclude_regexes`: loại liên kết điều hướng, bản xem PDF trùng hoặc mục không liên quan.
 - `include_start_page`: nạp chính trang nguồn khi đó là một tài liệu kỹ thuật tĩnh.
 - `region`, `crop`: metadata mặc định.
-- `max_documents`: giới hạn mỗi lần quét.
+- `max_documents`: quota tài liệu mới/không trùng mỗi lần chạy; service quét thêm các liên kết phía sau để không lặp mãi vài bài đầu.
 - `validation_questions`: bộ câu hỏi riêng của nguồn; nếu bỏ trống sẽ dùng ba câu hỏi nông nghiệp chung.
 
 Ví dụ:
@@ -51,7 +51,7 @@ Ví dụ:
 
 Worker và backend phải cùng mount `RAG_STORAGE_PATH`; cấu hình Docker Compose hiện dùng volume `rag_data` cho cả hai.
 
-Cấu hình mặc định hiện theo dõi 11 luồng từ 7 hệ thống: Khuyến nông Quốc gia (sách, trồng trọt, chăn nuôi, thủy sản), VAAS (sách và ấn phẩm), Viện KHKT Nông nghiệp miền Nam, Viện Khoa học Lâm nghiệp (tiến bộ kỹ thuật và tạp chí), Cục Thủy sản, cùng Cục Trồng trọt và Bảo vệ thực vật. Mỗi nguồn chỉ lấy tối đa 1-2 tài liệu đầu danh sách trong một lần chạy; hash nội dung ngăn việc lập chỉ mục lại ở đêm tiếp theo.
+Cấu hình mặc định theo dõi 13 luồng từ nhiều cơ quan, gồm Khuyến nông Quốc gia, VAAS, Viện KHKT Nông nghiệp miền Nam, Viện Khoa học Lâm nghiệp, Cục Thủy sản, Cục Trồng trọt và BVTV, Cổng Xúc tiến thương mại nông nghiệp và Tổng cục Thống kê. Mỗi nguồn có quota 8 tài liệu mới mỗi lần chạy; URL hash và content hash giúp bỏ qua nội dung không đổi, còn tài liệu mới phía sau sẽ được xử lý ở cùng lần chạy hoặc lần kế tiếp.
 
 ## Vận hành
 
