@@ -1,7 +1,7 @@
 """
 Deploy model weights đã train vào nơi backend nạp.
 
-Weights nằm trong `Training/` (theo dõi bằng git) nhưng backend nạp từ
+Weights nằm trong `training/quality/checkpoints/` (theo dõi bằng git) nhưng backend nạp từ
 `backend/ai_models/weights/` — thư mục bị .gitignore chặn. Script này nối
 hai chỗ đó lại, chạy được nhiều lần.
 
@@ -14,7 +14,7 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-SRC_DIR = ROOT / "Training"
+SRC_DIR = ROOT / "training" / "quality" / "checkpoints"
 DST_DIR = ROOT / "backend" / "ai_models" / "weights"
 
 # Tên file giữ nguyên: code nạp theo đúng những tên này.

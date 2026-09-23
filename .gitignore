@@ -77,6 +77,12 @@ docker-compose.override.yml
 # Cloudflare Wrangler local cache
 .wrangler/
 
+# Local workspace artifacts and training outputs
+.local/
+training/quality/data/
+training/quality/raw_data/
+training/quality/artifacts/
+
 # Testing
 .pytest_cache/
 .coverage

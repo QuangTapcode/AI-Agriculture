@@ -14,9 +14,9 @@ cổng đánh giá trong tài liệu này.
 - [x] Model production: `backend/ai_models/weights/best.pt`.
 - [x] Model hiện tại là YOLO detection, có 16 lớp: Apple, Banana, Mango, Orange × 4 mức chất lượng.
 - [x] Có checkpoint gốc `yolo11n.pt`, `yolo11s.pt`, `yolo11m.pt` trong `backend/`.
-- [x] Có notebook `train_dot2/train_yolo11_dot2.ipynb`.
-- [x] Có recipe tái lập trong `train_dot2/recipe.py`.
-- [x] Có cấu trúc mục tiêu 96 lớp trong `train_dot2/data.yaml`.
+- [x] Có notebook `training/yolo/train_yolo11_dot2.ipynb`.
+- [x] Có recipe tái lập trong `training/yolo/recipe.py`.
+- [x] Có cấu trúc mục tiêu 96 lớp trong `training/yolo/data.yaml`.
 - [ ] Dataset ảnh và label thật chưa nằm trong repository.
 - [ ] Chưa có báo cáo baseline chuẩn trên một test set cố định.
 
@@ -107,7 +107,7 @@ cổng đánh giá trong tài liệu này.
   - Phiên bản Python, Ultralytics, PyTorch, CUDA và loại GPU.
   - Seed, thời gian bắt đầu/kết thúc và thời lượng train.
 
-Notebook chạy chính: `train_dot2/train_yolo11_dot2.ipynb`.
+Notebook chạy chính: `training/yolo/train_yolo11_dot2.ipynb`.
 
 ## Giai đoạn 6 — Đánh giá model ứng viên
 

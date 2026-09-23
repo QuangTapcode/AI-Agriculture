@@ -1,6 +1,6 @@
 # Nhóm 3 — Khung ứng dụng (Sidebar, Navbar, Dashboard, Báo cáo)
 
-Nhánh `feat/ui-field-command`. Mọi thay đổi tunnel trong `deploy/agriai-demo-pages/_worker.js`
+Nhánh `feat/ui-field-command`. Mọi thay đổi tunnel trong `infra/deploy/agriai-demo-pages/_worker.js`
 được giữ nguyên ngoài commit giao diện.
 
 ## Phạm vi đã làm

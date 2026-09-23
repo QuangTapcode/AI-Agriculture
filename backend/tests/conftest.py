@@ -13,7 +13,7 @@ import sys
 import tempfile
 from pathlib import Path
 
-# train_dot2/ nằm ở thư mục gốc repo, ngoài backend/ — cho phép test import nó
+# training/yolo/ nằm ở thư mục gốc repo, ngoài backend/ — cho phép test import nó
 _REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))

@@ -6,7 +6,7 @@ No model loaded here — inference runs in the backend process.
 
 Usage:
     cd d:\\HocTap\\Nam3\\NongNghiepAI
-    streamlit run streamlit_quality.py
+    streamlit run training/quality/streamlit_quality.py
 """
 import os
 import tempfile

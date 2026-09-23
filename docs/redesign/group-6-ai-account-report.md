@@ -1,6 +1,6 @@
 # Nhóm 6 — AI và tài khoản (Trợ lý AI, Kho tài liệu, Cài đặt, Hồ sơ)
 
-Nhánh `feat/ui-field-command`. `deploy/agriai-demo-pages/_worker.js` nằm ngoài mọi commit giao diện.
+Nhánh `feat/ui-field-command`. `infra/deploy/agriai-demo-pages/_worker.js` nằm ngoài mọi commit giao diện.
 
 ## Phạm vi đã làm
 

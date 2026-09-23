@@ -1,6 +1,6 @@
 # Nhóm 5 — Vận hành nông nghiệp (Chất lượng, Thu hoạch, Mùa vụ, Cảnh báo, Thông báo)
 
-Nhánh `feat/ui-field-command`. `deploy/agriai-demo-pages/_worker.js` nằm ngoài mọi commit giao diện.
+Nhánh `feat/ui-field-command`. `infra/deploy/agriai-demo-pages/_worker.js` nằm ngoài mọi commit giao diện.
 
 ## Phạm vi đã làm
 

@@ -21,7 +21,7 @@ image Nginx cũ chỉ nghe cổng 80. Việc build lại `backend`, `frontend` v
 - `scripts/install-public-web-watchdog.ps1` cài scheduled task chạy mỗi giờ.
 - Production image được build sạch, dùng font WOFF2 nội bộ và favicon AgriAI.
 
-File `deploy/agriai-demo-pages/_worker.js` chứa URL tunnel tạm thời nên không nằm
+File `infra/deploy/agriai-demo-pages/_worker.js` chứa URL tunnel tạm thời nên không nằm
 trong commit, đúng quy tắc repository.
 
 ## Xác minh

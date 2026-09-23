@@ -196,7 +196,7 @@ Sau khi khởi động:
 2. Chạy file SQL schema:
    ```bash
    # Dùng SSMS hoặc sqlcmd
-   sqlcmd -S .\QUANGQUANG -i ..\NongNghiepAI_Full.sql
+   sqlcmd -S .\QUANGQUANG -i ..\docs\database\NongNghiepAI_Full.sql
    ```
 3. Cấu hình `DATABASE_URL` trong `.env` như ví dụ trên
 4. Khởi động server — SQLAlchemy tự `init_db()` để tạo các bảng còn thiếu

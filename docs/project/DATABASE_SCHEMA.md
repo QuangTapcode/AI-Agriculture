@@ -3,7 +3,7 @@
 **Database:** SQL Server  
 **Tên Database:** NongNghiepAI  
 **Số lượng bảng:** 10 tables  
-**File SQL:** `NongNghiepAI_Full.sql`
+**File SQL:** [`../database/NongNghiepAI_Full.sql`](../database/NongNghiepAI_Full.sql)
 
 ---
 
@@ -245,7 +245,7 @@ HarvestSchedule (1) ----< (N) QualityRecords
 
 ## 📊 Seed Data
 
-File `NongNghiepAI_Full.sql` bao gồm dữ liệu mẫu:
+File `../database/NongNghiepAI_Full.sql` bao gồm dữ liệu mẫu:
 
 - **5 Users** (4 farmers + 1 admin)
 - **10 CropTypes** (Lúa, Ngô, Cà phê, Sầu riêng, Xoài, Thanh long, Rau muống, Cà chua, Khoai lang, Hồ tiêu)
@@ -261,7 +261,7 @@ File `NongNghiepAI_Full.sql` bao gồm dữ liệu mẫu:
 ### 1. Chạy SQL Script
 ```sql
 -- Trong SQL Server Management Studio (SSMS)
--- Mở file: NongNghiepAI_Full.sql
+-- Mở file: docs/database/NongNghiepAI_Full.sql
 -- Nhấn F5 để chạy
 ```
 
@@ -290,5 +290,5 @@ pytest tests/test_api.py
 
 ---
 
-**File SQL đầy đủ:** `NongNghiepAI_Full.sql`  
+**File SQL đầy đủ:** `docs/database/NongNghiepAI_Full.sql`
 **Python Models:** `backend/app/models/`

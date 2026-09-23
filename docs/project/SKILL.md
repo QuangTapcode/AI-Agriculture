@@ -2,7 +2,7 @@
 ## Dự báo Thu hoạch & Định giá Nông sản
 
 **Phiên bản:** 1.2 | **Ngày:** 05/2026  
-**Nguồn:** NongNghiep.docx · Nhiệm_vụ_chi_tiết_Người_2.docx · NongNghiepAI_Full.sql  
+**Nguồn:** NongNghiep.docx · Nhiệm_vụ_chi_tiết_Người_2.docx · docs/database/NongNghiepAI_Full.sql
 **Stack:** Python / FastAPI · React 18 / Zustand / Tailwind · MS SQL Server · YOLOv8 · Prophet
 
 ---
@@ -625,4 +625,4 @@ Trước mỗi lần AI tạo output nghiệp vụ, kiểm tra:
 
 ---
 
-*Tài liệu này được tổng hợp từ: Đề án chuyên đề (NongNghiep.docx), Nhiệm vụ chi tiết Người 2 (Nhiệm_vụ_chi_tiết_Người_2.docx), Schema cơ sở dữ liệu (NongNghiepAI_Full.sql), và codebase thực tế (crawler_tasks.py, seed_db.py, chat.py). Nhóm 22 — Đại học Sư phạm Kỹ thuật Đà Nẵng — 05/2026.*
+*Tài liệu này được tổng hợp từ: Đề án chuyên đề (NongNghiep.docx), Nhiệm vụ chi tiết Người 2 (Nhiệm_vụ_chi_tiết_Người_2.docx), Schema cơ sở dữ liệu (docs/database/NongNghiepAI_Full.sql), và codebase thực tế (crawler_tasks.py, seed_db.py, chat.py). Nhóm 22 — Đại học Sư phạm Kỹ thuật Đà Nẵng — 05/2026.*

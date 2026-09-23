@@ -1,6 +1,6 @@
 # Nhóm 4 — Dữ liệu thị trường (Thời tiết, Định giá, Chi tiết cây trồng, Phân tích thị trường)
 
-Nhánh `feat/ui-field-command`. `deploy/agriai-demo-pages/_worker.js` vẫn nằm ngoài mọi commit giao diện.
+Nhánh `feat/ui-field-command`. `infra/deploy/agriai-demo-pages/_worker.js` vẫn nằm ngoài mọi commit giao diện.
 
 ## Phạm vi đã làm
 

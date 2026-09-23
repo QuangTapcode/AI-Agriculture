@@ -1,0 +1,29 @@
+services:
+  public-web:
+    build:
+      context: ../../frontend
+      dockerfile: Dockerfile.production
+    image: agriai-frontend-production:latest
+    container_name: agriai-public-web
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:18080:80"
+
+  quick-tunnel:
+    image: cloudflare/cloudflared:2026.9.0
+    container_name: agriai-quick-tunnel
+    restart: unless-stopped
+    depends_on:
+      - public-web
+    command:
+      - tunnel
+      - --no-autoupdate
+      - --loglevel
+      - info
+      - --url
+      - http://agriai-public-web:80
+
+networks:
+  default:
+    name: ai-agriculture_default
+    external: true

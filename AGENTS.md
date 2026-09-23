@@ -26,4 +26,4 @@ This repository uses multiple contexts. Start with `CONTEXT-MAP.md`, then read t
 
 - Follow red-green-refactor for behavior changes.
 - Run frontend tests and the production build before committing frontend work.
-- Do not commit `deploy/agriai-demo-pages/_worker.js` unless the task explicitly changes the active tunnel.
+- Do not commit `infra/deploy/agriai-demo-pages/_worker.js` unless the task explicitly changes the active tunnel.

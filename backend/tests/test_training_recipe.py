@@ -13,7 +13,7 @@ Ràng buộc rút ra từ chính dự án:
 """
 import pytest
 
-from train_dot2.recipe import HIGH_LEVEL, build_train_args, write_classes_sidecar
+from training.yolo.recipe import HIGH_LEVEL, build_train_args, write_classes_sidecar
 
 
 def test_uses_a_bigger_backbone_than_nano():
@@ -39,7 +39,7 @@ def test_colour_augmentation_stays_gentle():
     ultralytics kéo hsv_s=0.7, đủ để biến quả tươi thành quả héo trong mắt
     model và dạy nó bỏ qua đúng đặc trưng cần học.
     """
-    from train_dot2.recipe import BASELINE_NANO
+    from training.yolo.recipe import BASELINE_NANO
 
     assert HIGH_LEVEL.hsv_s < BASELINE_NANO.hsv_s
     assert HIGH_LEVEL.hsv_h <= 0.015
@@ -81,7 +81,7 @@ def test_sidecar_refuses_empty_class_list(tmp_path):
 
 def test_recipe_ghi_ro_vram_can_thiet():
     """Không ghi VRAM thì người dùng chạy rồi mới biết OOM sau vài phút."""
-    from train_dot2 import recipe
+    from training.yolo import recipe
 
     assert getattr(HIGH_LEVEL, "vram_gb", None), (
         "HIGH_LEVEL không nêu VRAM tối thiểu — GTX 1650 (4GB) sẽ OOM ngay"
@@ -91,7 +91,7 @@ def test_recipe_ghi_ro_vram_can_thiet():
 
 def test_co_recipe_chay_duoc_tren_gpu_4gb():
     """Máy dev dùng GTX 1650 4GB — phải có lựa chọn train được tại chỗ."""
-    from train_dot2.recipe import LOCAL_4GB
+    from training.yolo.recipe import LOCAL_4GB
 
     assert LOCAL_4GB.vram_gb <= 4, f"LOCAL_4GB cần {LOCAL_4GB.vram_gb}GB, không vừa"
     assert LOCAL_4GB.model.startswith("yolo11"), "Vẫn phải là họ YOLO11"
@@ -101,7 +101,7 @@ def test_co_recipe_chay_duoc_tren_gpu_4gb():
 
 
 def test_moi_recipe_deu_khai_vram():
-    from train_dot2.recipe import BASELINE_NANO, LOCAL_4GB
+    from training.yolo.recipe import BASELINE_NANO, LOCAL_4GB
 
     for r in (HIGH_LEVEL, BASELINE_NANO, LOCAL_4GB):
         assert getattr(r, "vram_gb", None), f"{r.name} thiếu vram_gb"

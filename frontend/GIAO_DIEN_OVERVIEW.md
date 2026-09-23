@@ -374,8 +374,8 @@ export const getPricing = async (cropName, region) => {
 
 ## 📚 Tài Liệu Tham Khảo
 
-- **Backend API**: `API_DOCUMENTATION.md`
-- **Database Schema**: `DATABASE_SCHEMA.md`
+- **Backend API**: `docs/project/API_DOCUMENTATION.md`
+- **Database Schema**: `docs/project/DATABASE_SCHEMA.md`
 - **Landing Page Guide**: `frontend/LANDING_PAGE_GUIDE.md`
 - **Component Library**: Lucide React Icons
 - **Charts**: Chart.js + react-chartjs-2

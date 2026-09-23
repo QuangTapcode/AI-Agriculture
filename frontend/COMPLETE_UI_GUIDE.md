@@ -491,8 +491,8 @@ Tất cả các trang đều responsive với breakpoints:
 
 ## 📚 Tài Liệu Tham Khảo
 
-- **Backend API**: `API_DOCUMENTATION.md`
-- **Database Schema**: `DATABASE_SCHEMA.md`
+- **Backend API**: `docs/project/API_DOCUMENTATION.md`
+- **Database Schema**: `docs/project/DATABASE_SCHEMA.md`
 - **Landing Page**: `frontend/LANDING_PAGE_GUIDE.md`
 - **Overview**: `frontend/GIAO_DIEN_OVERVIEW.md`
 - **React Router**: https://reactrouter.com

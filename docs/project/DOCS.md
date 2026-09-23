@@ -3,20 +3,20 @@
 ## 📖 Tài Liệu Dự Án
 
 ### 🚀 Bắt Đầu Nhanh
-- **[START_HERE.md](START_HERE.md)** - Hướng dẫn bắt đầu nhanh với SQL Server
-- **[README.md](README.md)** - Tổng quan dự án và cài đặt
+- **[START_BACKEND.md](START_BACKEND.md)** - Hướng dẫn bắt đầu nhanh với SQL Server
+- **[README.md](../../README.md)** - Tổng quan dự án và cài đặt
 
 ### 🗄️ Database
-- **[NongNghiepAI_Full.sql](NongNghiepAI_Full.sql)** - ⭐ Complete SQL Server schema (10 tables + seed data)
+- **[NongNghiepAI_Full.sql](../database/NongNghiepAI_Full.sql)** - ⭐ Complete SQL Server schema (10 tables + seed data)
 
 ### 🔌 API
 - **[API_DOCUMENTATION.md](API_DOCUMENTATION.md)** - Chi tiết các API endpoints
 - **API Docs (Live):** http://localhost:8000/docs
 
 ### 🛠️ Development
-- **[CONTRIBUTING.md](CONTRIBUTING.md)** - Hướng dẫn đóng góp code
-- **[CHANGELOG.md](CHANGELOG.md)** - Lịch sử thay đổi
-- **[TODO.md](TODO.md)** - Danh sách công việc cần làm
+- **[CONTRIBUTING.md](../../CONTRIBUTING.md)** - Hướng dẫn đóng góp code
+- **[CHANGELOG.md](../../CHANGELOG.md)** - Lịch sử thay đổi
+- **[TOD0.md](TOD0.md)** - Danh sách công việc cần làm
 
 ### 🚢 Deployment
 - **[DEPLOYMENT.md](DEPLOYMENT.md)** - Hướng dẫn triển khai production
@@ -28,7 +28,7 @@
 ### Setup Database
 ```bash
 # Chạy SQL script trong SSMS
-# File: NongNghiepAI_Full.sql (10 tables)
+# File: ../database/NongNghiepAI_Full.sql (10 tables)
 ```
 
 ### Start Backend
@@ -78,8 +78,8 @@ agri-ai/
 │   └── public/         # Static files
 │
 ├── scripts/            # Utility scripts
-│
-└── NongNghiepAI_Full.sql  # Complete SQL Server schema (10 tables)
+├── docs/database/      # Database schema and SQL
+└── training/           # Model training workflows and checkpoints
 ```
 
 ---

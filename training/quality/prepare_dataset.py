@@ -9,20 +9,21 @@ Cấu trúc đầu vào:
     rotten/
 
 Chạy:
-  python prepare_dataset.py
+  python training/quality/prepare_dataset.py
 """
 
 import os, shutil, random
 from pathlib import Path
 
-RAW_DIR  = "raw_data"   # thư mục ảnh gốc của bạn
-OUT_DIR  = "data"       # output cho train_quality_cnn.py
+QUALITY_DIR = Path(__file__).resolve().parent
+RAW_DIR  = Path(os.getenv("AGRI_RAW_DATA_DIR", QUALITY_DIR / "raw_data"))
+OUT_DIR  = Path(os.getenv("AGRI_DATA_DIR", QUALITY_DIR / "data"))
 VAL_SPLIT = 0.2
 SEED      = 42
 
 random.seed(SEED)
 
-classes = [d for d in os.listdir(RAW_DIR) if os.path.isdir(os.path.join(RAW_DIR, d))]
+classes = [d for d in os.listdir(RAW_DIR) if (RAW_DIR / d).is_dir()]
 print(f"Classes tìm thấy: {classes}")
 
 for cls in classes:

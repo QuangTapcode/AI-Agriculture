@@ -19,12 +19,12 @@ Kết quả cuối: **1 model duy nhất** nhận diện cả quả lẫn rau c�
 
 **2. Khối lượng label rất lớn.** 80 class mới, mỗi class nên có tối thiểu **150–300 ảnh đã gán bounding box** → khoảng **12.000–24.000 ảnh** cần label. Đây là phần tốn công nhất. Gợi ý chia nhỏ: làm trước 5 loại → train thử → rồi mở rộng dần, thay vì làm hết 20 loại cùng lúc.
 
-**3. Checkpoint đợt 1 nằm ở `Training/`, không phải thư mục này.**
+**3. Checkpoint đợt 1 nằm ở `training/quality/checkpoints/`, không phải thư mục này.**
 
 | File | Đường dẫn thật | Dung lượng |
 |---|---|---|
-| YOLO11 đợt 1 (16 class) | `Training/best.pt` | 5.5 MB |
-| EfficientNet đợt 1 (16 class) | `Training/efficientnet_quality.pt` | 16.4 MB |
+| YOLO11 đợt 1 (16 class) | `training/quality/checkpoints/best.pt` | 5.5 MB |
+| EfficientNet đợt 1 (16 class) | `training/quality/checkpoints/efficientnet_quality.pt` | 16.4 MB |
 
 Cả hai đều bình thường (ghi chú cũ nói `efficientnet_quality.pt` bị 0 byte là **sai**, đã kiểm tra lại).
 
@@ -93,7 +93,7 @@ Script tự remap index (đợt 1: 0–15, đợt 2: 16–95) và sinh `data.yam
 Mở **`train_yolo11_dot2.ipynb`** trên **Google Colab** (Runtime → GPU T4), chạy lần lượt các cell:
 
 1. Cài ultralytics + roboflow
-2. Upload `Training/best.pt` (checkpoint đợt 1) lên Colab
+2. Upload `training/quality/checkpoints/best.pt` (checkpoint đợt 1) lên Colab
 3. Tải dataset gộp từ Roboflow (điền API key)
 4. Kiểm tra `nc = 96`
 5. `model.train(...)` — 80 epochs, transfer từ checkpoint đợt 1

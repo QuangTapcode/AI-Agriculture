@@ -15,12 +15,13 @@ Cấu trúc thư mục dataset:
 
 Chạy:
   pip install torch torchvision tqdm matplotlib scikit-learn
-  python train_quality_cnn.py
+  python training/quality/train_quality_cnn.py
 """
 
 import os
 import copy
 import time
+from pathlib import Path
 import matplotlib.pyplot as plt
 import torch
 import torch.nn as nn
@@ -32,13 +33,18 @@ from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
 # ──────────────────────────────────────────────
 # 1. CẤU HÌNH
 # ──────────────────────────────────────────────
-DATA_DIR   = "data"          # thư mục chứa train/ và val/
+QUALITY_DIR = Path(__file__).resolve().parent
+DATA_DIR   = Path(os.getenv("AGRI_DATA_DIR", QUALITY_DIR / "data"))
 NUM_CLASSES = 4              # thay thành 3 nếu chỉ có Loại1/Loại2/Hỏng
 BATCH_SIZE  = 32
 NUM_EPOCHS  = 30
 LR          = 1e-3
 DEVICE      = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-SAVE_PATH   = "efficientnet_quality.pt"
+CHECKPOINT_DIR = Path(os.getenv("AGRI_CHECKPOINT_DIR", QUALITY_DIR / "checkpoints"))
+ARTIFACTS_DIR = Path(os.getenv("AGRI_TRAINING_ARTIFACTS_DIR", QUALITY_DIR / "artifacts"))
+SAVE_PATH   = CHECKPOINT_DIR / "efficientnet_quality.pt"
+CHECKPOINT_DIR.mkdir(parents=True, exist_ok=True)
+ARTIFACTS_DIR.mkdir(parents=True, exist_ok=True)
 
 print(f"[INFO] Device: {DEVICE}")
 
@@ -64,8 +70,8 @@ val_tf = transforms.Compose([
                          [0.229, 0.224, 0.225]),
 ])
 
-train_ds = datasets.ImageFolder(os.path.join(DATA_DIR, "train"), transform=train_tf)
-val_ds   = datasets.ImageFolder(os.path.join(DATA_DIR, "val"),   transform=val_tf)
+train_ds = datasets.ImageFolder(DATA_DIR / "train", transform=train_tf)
+val_ds   = datasets.ImageFolder(DATA_DIR / "val",   transform=val_tf)
 
 train_loader = DataLoader(train_ds, batch_size=BATCH_SIZE, shuffle=True,  num_workers=4, pin_memory=True)
 val_loader   = DataLoader(val_ds,   batch_size=BATCH_SIZE, shuffle=False, num_workers=4, pin_memory=True)
@@ -174,8 +180,9 @@ axes[1].set_title("Loss")
 axes[1].set_xlabel("Epoch"); axes[1].legend()
 
 plt.tight_layout()
-plt.savefig("training_curves.png", dpi=150)
-print("[INFO] Saved training_curves.png")
+training_curves_path = ARTIFACTS_DIR / "training_curves.png"
+plt.savefig(training_curves_path, dpi=150)
+print(f"[INFO] Saved {training_curves_path}")
 
 # ──────────────────────────────────────────────
 # 8. CONFUSION MATRIX
@@ -195,8 +202,9 @@ fig2, ax2 = plt.subplots(figsize=(6, 5))
 disp.plot(ax=ax2, cmap="Blues", colorbar=False)
 ax2.set_title("Confusion Matrix (Val)")
 plt.tight_layout()
-plt.savefig("confusion_matrix.png", dpi=150)
-print("[INFO] Saved confusion_matrix.png")
+confusion_matrix_path = ARTIFACTS_DIR / "confusion_matrix.png"
+plt.savefig(confusion_matrix_path, dpi=150)
+print(f"[INFO] Saved {confusion_matrix_path}")
 
 # ──────────────────────────────────────────────
 # 9. INFERENCE HELPER — dùng trong pipeline YOLO

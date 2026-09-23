@@ -1,7 +1,7 @@
 """
 TDD: model weights phải thực sự được deploy tới đường dẫn mà code trỏ tới.
 
-Bối cảnh: model đã train nằm ở `Training/*.pt` (repo root), nhưng code nạp từ
+Bối cảnh: model đã train nằm ở `training/quality/checkpoints/*.pt` (repo root), nhưng code nạp từ
 `ai_models/weights/*.pt`. Nếu thiếu, EfficientNet im lặng trả fallback
 "Fresh" (= Loại 1) → mọi nông sản đều được chấm tươi. Đây là fail nguy hiểm
 vì không có lỗi nào nổi lên.

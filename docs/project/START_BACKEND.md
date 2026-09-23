@@ -43,7 +43,7 @@ Nhấn `CTRL + C` trong terminal
 ## 📝 Lưu ý
 
 1. Đảm bảo SQL Server đang chạy
-2. Database `NongNghiepAI` đã được tạo với **10 bảng** (chạy file `NongNghiepAI_Full.sql`)
+2. Database `NongNghiepAI` đã được tạo với **10 bảng** (chạy file `docs/database/NongNghiepAI_Full.sql`)
 3. File `.env` đã cấu hình đúng connection string
 4. Đã cài đặt dependencies: `pip install -r requirements.txt`
 

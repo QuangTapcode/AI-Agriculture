@@ -1,9 +1,11 @@
 $ErrorActionPreference = "Stop"
 
 $projectRoot = Split-Path -Parent $PSScriptRoot
-$pagesDirectory = Join-Path $projectRoot "deploy\agriai-demo-pages"
+$recoveryModule = Join-Path $PSScriptRoot "PublicWebRecovery.psm1"
+Import-Module $recoveryModule -Force
+$pagesDirectory = Join-Path $projectRoot "infra\deploy\agriai-demo-pages"
 $workerPath = Join-Path $pagesDirectory "_worker.js"
-$logDirectory = Join-Path $projectRoot "logs"
+$logDirectory = Join-Path $projectRoot ".local\logs"
 $logPath = Join-Path $logDirectory "pages-proxy-update.log"
 $containerName = "agriai-quick-tunnel"
 $pagesUrl = "https://agriai-demo.pages.dev"
@@ -26,9 +28,8 @@ try {
             $ErrorActionPreference = "Continue"
             $logText = (docker logs --since $startedAt $containerName 2>&1) -join "`n"
             $ErrorActionPreference = "Stop"
-            $matches = [regex]::Matches($logText, 'https://[a-z0-9-]+\.trycloudflare\.com')
-            if ($matches.Count -gt 0) {
-                $quickTunnelUrl = $matches[$matches.Count - 1].Value
+            $quickTunnelUrl = Get-QuickTunnelUrl -Text $logText
+            if ($quickTunnelUrl) {
                 break
             }
         }
@@ -57,11 +58,7 @@ try {
     }
 
     $workerSource = Get-Content -LiteralPath $workerPath -Raw
-    $updatedSource = [regex]::Replace(
-        $workerSource,
-        'const ORIGIN_URL = "https://[a-z0-9-]+\.trycloudflare\.com";',
-        "const ORIGIN_URL = `"$quickTunnelUrl`";"
-    )
+    $updatedSource = Set-WorkerOriginUrl -WorkerSource $workerSource -OriginUrl $quickTunnelUrl
 
     if ($updatedSource -ne $workerSource) {
         $utf8WithoutBom = New-Object System.Text.UTF8Encoding($false)

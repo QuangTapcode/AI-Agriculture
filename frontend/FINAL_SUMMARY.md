@@ -374,8 +374,8 @@ Tất cả trang đều responsive với breakpoints:
 
 ## 📚 Documentation Links
 
-- **Backend API**: `API_DOCUMENTATION.md`
-- **Database Schema**: `DATABASE_SCHEMA.md`
+- **Backend API**: `docs/project/API_DOCUMENTATION.md`
+- **Database Schema**: `docs/project/DATABASE_SCHEMA.md`
 - **Landing Page**: `frontend/LANDING_PAGE_GUIDE.md`
 - **UI Overview**: `frontend/GIAO_DIEN_OVERVIEW.md`
 - **Complete Guide**: `frontend/COMPLETE_UI_GUIDE.md`
