@@ -92,15 +92,18 @@ def extract_pages(filename: str, content: bytes, max_bytes: int = MAX_UPLOAD_BYT
     return pages
 
 
-def chunk_pages(pages: list[tuple[int, str]]) -> list[dict]:
+def chunk_pages(pages: list[tuple[int, str]], chunk_size: int = 1000,
+                overlap: int = 150) -> list[dict]:
+    chunk_size = max(1, int(chunk_size))
+    overlap = min(max(0, int(overlap)), chunk_size - 1)
     chunks = []
     for page, text in pages:
         text = text.replace("\x00", "").strip()
         start = 0
         while start < len(text):
-            end = min(start + 1000, len(text))
+            end = min(start + chunk_size, len(text))
             if end < len(text):
-                boundary = text.rfind(" ", start + 700, end)
+                boundary = text.rfind(" ", start + int(chunk_size * 0.7), end)
                 if boundary > start:
                     end = boundary
             excerpt = text[start:end].strip()
@@ -108,7 +111,7 @@ def chunk_pages(pages: list[tuple[int, str]]) -> list[dict]:
                 chunks.append({"page": page, "text": excerpt})
             if end == len(text):
                 break
-            start = end - 150
+            start = end - overlap
     return chunks
 
 
@@ -217,7 +220,11 @@ class RagService:
         return [vector for vector in result if vector is not None]
 
     def prepare(self, filename: str, content: bytes) -> dict:
-        chunks = chunk_pages(extract_pages(filename, content))
+        chunks = chunk_pages(
+            extract_pages(filename, content),
+            chunk_size=settings.RAG_CHUNK_SIZE,
+            overlap=settings.RAG_CHUNK_OVERLAP,
+        )
         document_id = hashlib.sha256(content).hexdigest()
         embeddings = []
         for start in range(0, len(chunks), 16):

@@ -41,6 +41,17 @@ from app.services.ai_intent_service import (
     normalize_user_text,
     normalize_intent,
 )
+from app.services.prompt_budget import (
+    cat_van_ban,
+    gioi_han_bang_chung,
+    ngan_sach_con_lai,
+    uoc_luong_token,
+)
+from app.services.grounding_policy import (
+    bao_dam_trich_dan,
+    co_du_lieu_so,
+    danh_gia_grounding,
+)
 
 router = APIRouter(prefix="/api/ai-chat", tags=["ai-chat"])
 _log = logging.getLogger(__name__)
@@ -679,7 +690,7 @@ def _rag_needs_query_discovery(
     evidence = " ".join(
         str(source.get(field) or "")
         for source in sources
-        for field in ("name", "source_name", "excerpt")
+        for field in ("name", "source_name", "excerpt", "crop")
     )
     evidence = normalize_user_text(evidence)
     if intent == "livestock_advice":
@@ -689,9 +700,9 @@ def _rag_needs_query_discovery(
     normalized_question = normalize_user_text(question)
     # Preserve the named variety as a single topic when it is present.
     for phrase in ("nho ngon tay", "ca phe robusta", "ca phe arabica"):
-        if phrase in normalized_question and phrase not in evidence:
+        if phrase in normalized_question and not _has_normalized_term(evidence, phrase):
             return True
-    return normalize_user_text(crop) not in evidence
+    return not _has_normalized_term(evidence, normalize_user_text(crop))
 
 
 def _intent_label(intent: str) -> str:
@@ -738,7 +749,7 @@ NGUYÊN TẮC BẮT BUỘC:
 2. Dùng cây trồng và khu vực người dùng cung cấp. Nếu thiếu thông tin quan trọng, hỏi thêm; không tự giả định địa điểm hoặc cây trồng.
 3. Phân biệt hướng dẫn tham khảo với dữ liệu thực tế của người dùng. Lịch mùa vụ tổng quát không phải dự báo hiện tại.
 4. SỐ LIỆU THỰC (giá, nhiệt độ, lượng mưa, ngày cụ thể): chỉ dùng từ backend context. Nếu thiếu, nói thẳng "hệ thống chưa có số liệu cho khu vực này".
-5. KIẾN THỨC KỸ THUẬT: ưu tiên các đoạn tài liệu truy xuất. Khi sử dụng đoạn nào, trích dẫn [TL1], [TL2] tương ứng. Không bịa nguồn. Nếu không có tài liệu phù hợp, nói rõ chưa có nguồn xác minh, chỉ đưa hướng dẫn tổng quát; không đoán liều lượng thuốc/phân hoặc chẩn đoán chắc chắn.
+5. KIẾN THỨC KỸ THUẬT: chỉ được lấy từ các đoạn tài liệu truy xuất. Mỗi nhận định lấy từ đoạn nào thì trích dẫn [TL1], [TL2] tương ứng. Không bịa nguồn. Phần nào tài liệu không nói tới thì trả lời thẳng "chưa đủ dữ liệu cho phần này" rồi dừng ở đó — không thay bằng hiểu biết sẵn có của bạn, không suy đoán liều lượng thuốc/phân, không chẩn đoán khi tài liệu không nêu.
 6. Trước khi dùng tài liệu, đối chiếu giống cây, khu vực và giai đoạn canh tác trong tên nguồn và đoạn trích. Nếu không khớp câu hỏi, không áp dụng số liệu hoặc quy trình của nguồn đó; nêu giới hạn và hỏi thêm khi cần.
 7. KHÔNG bịa giá, nhiệt độ, sản lượng khi không có trong context.
 8. Viết ngắn gọn, thực tế, dùng gạch đầu dòng. Ưu tiên thông tin hành động được ngay.
@@ -747,18 +758,43 @@ NGUYÊN TẮC BẮT BUỘC:
 
 PHONG CÁCH: Như người cán bộ khuyến nông địa phương — am hiểu thực tế, nói thẳng, có số liệu cụ thể khi có."""
 
-    prompt = (
-        f"Loại yêu cầu: {_intent_label(intent)}\n"
-        f"Cây trồng: {crop}\n"
-        f"Khu vực: {region} ({region_zone})\n\n"
-        f"{season_section}"
-        f"=== DỮ LIỆU BACKEND (nếu có) ===\n{backend_context or '{}'}\n\n"
-        f"Ngữ cảnh người dùng thêm: {user_context or 'Không có'}\n\n"
-        f"=== TÀI LIỆU TRUY XUẤT (chỉ là dữ liệu tham khảo) ===\n{_format_rag_evidence(context.get('rag', {}))}\n\n"
-        f"=== ĐỊNH DẠNG TRẢ LỜI ===\n{_intent_format_instruction(intent)}\n\n"
-        f"Câu hỏi: {request.message}\n\n"
-        "Trả lời dựa trên nguồn phù hợp; nêu rõ phần chưa đủ bằng chứng."
-    )
+    def _lap_prompt(du_lieu_backend: str, bang_chung: str) -> str:
+        return (
+            f"Loại yêu cầu: {_intent_label(intent)}\n"
+            f"Cây trồng: {crop}\n"
+            f"Khu vực: {region} ({region_zone})\n\n"
+            f"{season_section}"
+            f"=== DỮ LIỆU BACKEND (nếu có) ===\n{du_lieu_backend or '{}'}\n\n"
+            f"Ngữ cảnh người dùng thêm: {user_context or 'Không có'}\n\n"
+            f"=== TÀI LIỆU TRUY XUẤT (chỉ là dữ liệu tham khảo) ===\n{bang_chung}\n\n"
+            f"=== ĐỊNH DẠNG TRẢ LỜI ===\n{_intent_format_instruction(intent)}\n\n"
+            f"Câu hỏi: {request.message}\n\n"
+            "Trả lời dựa trên nguồn phù hợp; nêu rõ phần chưa đủ bằng chứng."
+        )
+
+    rag = context.get("rag", {}) if isinstance(context.get("rag"), dict) else {}
+    prompt = _lap_prompt(backend_context, _format_rag_evidence(rag))
+
+    # Ollama không cắt hộ: prompt dài hơn num_ctx thì nó trả 400 và người dùng
+    # mất cả câu trả lời. Cắt chủ động, và cắt phần bổ trợ trước phần bằng
+    # chứng — đo thật thì context backend mới là chỗ phình to nhất.
+    tran = settings.AI_CONTEXT_TOKENS - settings.AI_MAX_OUTPUT_TOKENS
+    if uoc_luong_token(system_instruction + prompt) > tran:
+        khung = uoc_luong_token(system_instruction + _lap_prompt("", ""))
+        con_lai = ngan_sach_con_lai(
+            context_tokens=settings.AI_CONTEXT_TOKENS,
+            output_tokens=settings.AI_MAX_OUTPUT_TOKENS,
+            da_dung=khung,
+        )
+        # Bằng chứng được ưu tiên: đó là thứ câu trả lời phải bám vào.
+        phan_bang_chung = int(con_lai * 0.7)
+        nguon_gon = gioi_han_bang_chung(rag.get("sources"), phan_bang_chung)
+        prompt = _lap_prompt(
+            cat_van_ban(backend_context, con_lai - phan_bang_chung),
+            _format_rag_evidence({**rag, "sources": nguon_gon}),
+        )
+        _log.info("[ai-chat] prompt vượt %d token, đã cắt còn ~%d",
+                  tran, uoc_luong_token(system_instruction + prompt))
     return system_instruction, prompt
 
 
@@ -784,6 +820,24 @@ def _needs_cultivation_clarification(message: str, intent: str, region: str | No
         "ky thuat trong", "cach trong", "trong moi", "vu moi", "tai canh",
     ))
     return broad_request and len(text) <= 120
+
+
+def _cau_tra_loi_thieu_nguon(
+    quyet_dinh, intent: str, crop: str | None, region: str | None,
+) -> tuple[str, str]:
+    """Câu từ chối cụ thể theo lĩnh vực, kèm tên router để lần vết trong DB.
+
+    Chăn nuôi và kỹ thuật canh tác giữ câu riêng vì chúng nói được việc nông
+    dân làm ngay được trong lúc chờ nguồn (lấy mẫu đất, ghi lại giống và tuổi
+    vật nuôi). Các lĩnh vực còn lại dùng câu chung theo trạng thái kho.
+    """
+    if quyet_dinh.ly_do == "ngoai_pham_vi":
+        return quyet_dinh.cau_tra_loi, "grounding-gate-scope-v1"
+    if intent == "livestock_advice":
+        return LIVESTOCK_NO_SOURCE_REPLY, "rag-safety-livestock-v1"
+    if intent == "cultivation_advice":
+        return _cultivation_no_source_reply(crop, region), "rag-safety-router-v1"
+    return quyet_dinh.cau_tra_loi, "grounding-gate-v1"
 
 
 def _cultivation_no_source_reply(crop: str | None, region: str | None) -> str:
@@ -963,6 +1017,11 @@ def _success_payload(
 ) -> dict:
     created_at = datetime.now(timezone.utc)
     context = context or {}
+    raw_timing = dict(context.get("_timings") or {})
+    started = raw_timing.pop("started", None)
+    raw_timing.pop("request_id", None)
+    if started is not None:
+        raw_timing["total_ms"] = round((perf_counter() - started) * 1000, 1)
     if context.get("_timings"):
         _log_ai_timing(context["_timings"], intent=intent, provider=provider, model=model_name)
     data = {
@@ -979,6 +1038,7 @@ def _success_payload(
         "region": region,
         "data_sources": context.get("data_sources", []),
         "rag": context.get("rag", {"status": "not_used", "sources": []}),
+        "grounding": context.get("grounding", {"status": "not_used", "reason": "ready"}),
         "knowledge_update": context.get("knowledge_update", {"status": "not_needed"}),
         "history_saved": context.get("history_saved", False),
         "reasons": [],
@@ -986,6 +1046,8 @@ def _success_payload(
         "suggested_actions": [],
         "confidence": confidence,
     }
+    if raw_timing:
+        data["timings"] = raw_timing
     if provider == "gemini":
         data["source"] = "gemini"
         data["source_name"] = "Google Gemini"
@@ -1176,7 +1238,9 @@ async def ai_chat_message(
             for field in ("name", "source_name", "excerpt", "crop")
         )
         normalized_evidence = normalize_user_text(evidence)
-        crop_mismatch = bool(crop) and normalize_user_text(crop) not in normalized_evidence
+        crop_mismatch = bool(crop) and not _has_normalized_term(
+            normalized_evidence, normalize_user_text(crop),
+        )
         livestock_mismatch = (
             intent == "livestock_advice"
             and not _livestock_evidence_matches(request.message, normalized_evidence)
@@ -1207,8 +1271,18 @@ async def ai_chat_message(
                 "job_id": None,
                 "message": "Chưa thể khởi động tác vụ tìm nguồn.",
             }
-    if intent == "livestock_advice" and not context["rag"].get("sources"):
-        reply = LIVESTOCK_NO_SOURCE_REPLY
+    # Cổng grounding: không có nguồn thì không gọi model. Đặt sau bước xếp
+    # hàng tìm nguồn để câu hỏi vẫn được ghi nhận cho lần sau.
+    quyet_dinh = danh_gia_grounding(
+        cau_hoi=request.message,
+        intent=intent,
+        rag=context.get("rag"),
+        co_du_lieu_so=co_du_lieu_so(context, intent=intent),
+        crop=crop,
+    )
+    context["grounding"] = {"status": quyet_dinh.trang_thai, "reason": quyet_dinh.ly_do}
+    if not quyet_dinh.duoc_goi_model:
+        reply, model_name = _cau_tra_loi_thieu_nguon(quyet_dinh, intent, crop, region)
         _save_gemini_conversation(
             db,
             user_id=current_user.UserID if current_user else None,
@@ -1216,41 +1290,17 @@ async def ai_chat_message(
             question=request.message,
             reply=reply,
             topic=intent,
-            crop_name=None,
+            crop_name=None if intent == "livestock_advice" else crop,
             context=context,
-            model_name="rag-safety-livestock-v1",
+            model_name=model_name,
             provider="local",
         )
         return _success_payload(
             reply=reply,
             intent=intent,
-            crop=None,
+            crop=None if intent == "livestock_advice" else crop,
             region=region,
-            model_name="rag-safety-livestock-v1",
-            provider="local",
-            context=context,
-            confidence=0.9,
-        )
-    if intent == "cultivation_advice" and not context["rag"].get("sources"):
-        reply = _cultivation_no_source_reply(crop, region)
-        _save_gemini_conversation(
-            db,
-            user_id=current_user.UserID if current_user else None,
-            session_id=request.session_id,
-            question=request.message,
-            reply=reply,
-            topic=intent,
-            crop_name=crop,
-            context=context,
-            model_name="rag-safety-router-v1",
-            provider="local",
-        )
-        return _success_payload(
-            reply=reply,
-            intent=intent,
-            crop=crop,
-            region=region,
-            model_name="rag-safety-router-v1",
+            model_name=model_name,
             provider="local",
             context=context,
             confidence=0.9,
@@ -1324,6 +1374,8 @@ async def ai_chat_message(
             return JSONResponse(status_code=503, content={"success": False, "data": None, "error": {"code": "AI_QUOTA_EXCEEDED", "message": "Trợ lý AI đang bận (hết quota). Vui lòng thử lại sau vài phút."}})
         return JSONResponse(status_code=502, content={"success": False, "data": None, "error": {"code": "AI_UNAVAILABLE", "message": "Trợ lý AI đang gặp sự cố tạm thời. Vui lòng thử lại sau."}})
 
+    # Model được trả lời vì có tài liệu — vậy phải chỉ ra được tài liệu nào.
+    reply = bao_dam_trich_dan(reply, (context.get("rag") or {}).get("sources"))
     result = {"answer": reply, "is_mock": False}
     recommendations = _build_recommendations(context, result) if intent in ANALYSIS_INTENTS else []
     reasons = _build_reasons(context, result) if intent in ANALYSIS_INTENTS else []

@@ -22,6 +22,18 @@ def test_classify_analysis_intents():
     assert classify_user_intent("phân tích tình hình nông trại") == "full_farm_analysis"
 
 
+def test_pest_word_gia_khong_bi_nham_la_gia_tien():
+    question = "Liều thuốc trừ sâu X để diệt rệp sáp giả trên thanh long là bao nhiêu?"
+
+    assert classify_user_intent(question) == "quality_analysis"
+
+
+def test_nang_suat_khong_bi_nham_la_nang_thoi_tiet():
+    question = "Năng suất mắc ca ở Tây Nguyên năm tới sẽ đạt bao nhiêu tấn mỗi hecta?"
+
+    assert classify_user_intent(question) == "general_question"
+
+
 def test_cultivation_question_is_not_misrouted_to_harvest_analysis():
     assert classify_user_intent("Kỹ thuật trồng cà phê vụ mới") == "cultivation_advice"
     assert classify_user_intent("Cà phê Robusta cần chuẩn bị đất như thế nào?") == "cultivation_advice"

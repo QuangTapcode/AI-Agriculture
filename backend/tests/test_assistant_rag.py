@@ -101,6 +101,16 @@ def test_chunking_and_invalid_documents():
             extract_pages(filename, content)
 
 
+def test_chunk_size_and_overlap_are_configurable():
+    pages = [(1, "lúa " * 800)]
+    small = chunk_pages(pages, chunk_size=300, overlap=45)
+    large = chunk_pages(pages, chunk_size=800, overlap=120)
+
+    assert all(len(chunk["text"]) <= 300 for chunk in small)
+    assert all(len(chunk["text"]) <= 800 for chunk in large)
+    assert len(small) > len(large)
+
+
 def test_text_exported_from_pdf_keeps_page_boundaries():
     pages = extract_pages("guide.txt", "Trang một\fTrang hai".encode("utf-8"))
 

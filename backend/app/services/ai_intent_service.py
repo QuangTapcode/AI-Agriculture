@@ -310,6 +310,7 @@ def classify_user_intent(message: str) -> str:
     by itself because it is also the common greeting word "bạn".
     """
     text = normalize_user_text(message)
+    original = unicodedata.normalize("NFC", message).casefold()
     if not text:
         return "general_question"
 
@@ -350,7 +351,6 @@ def classify_user_intent(message: str) -> str:
         "co mua",
         "troi mua",
         "mua lon",
-        "nang",
         "nang nong",
         "tuoi",
         "nen tuoi",
@@ -424,6 +424,9 @@ def classify_user_intent(message: str) -> str:
         "loai ba",
         "sau benh",
         "sau hai",
+        "thuoc tru sau",
+        "thuoc bao ve thuc vat",
+        "lieu thuoc",
         "benh",
         "anh nay",
         "hinh anh",
@@ -458,7 +461,11 @@ def classify_user_intent(message: str) -> str:
 
     if _contains_any(text, full_farm_keywords):
         return "full_farm_analysis"
-    if _contains_any(text, price_keywords) or _has_word(text, "gia"):
+    # The normalized form of "giá" collides with "giả" (for example "rệp
+    # sáp giả"). Keep the exact accented spelling as the generic price signal;
+    # unaccented price queries still match the more specific phrases above.
+    has_accented_price = re.search(r"(?<!\w)giá(?!\w)", original) is not None
+    if _contains_any(text, price_keywords) or has_accented_price:
         return "price_analysis"
     # A cultivation request can mention a location such as "Đà Nẵng";
     # matching the substring "nắng" must not turn it into a weather query.
@@ -468,7 +475,8 @@ def classify_user_intent(message: str) -> str:
         return "cultivation_advice"
     if _contains_any(text, livestock_keywords):
         return "livestock_advice"
-    if _contains_any(text, tuple(item for item in weather_keywords if item != "tuoi")) or _mentions_watering(message, text) or _has_word(text, "gio"):
+    has_accented_sun = re.search(r"(?<!\w)nắng(?!\w)", original) is not None
+    if _contains_any(text, tuple(item for item in weather_keywords if item != "tuoi")) or has_accented_sun or _mentions_watering(message, text) or _has_word(text, "gio"):
         return "weather_analysis"
     if _contains_any(text, harvest_keywords):
         return "harvest_analysis"
@@ -491,7 +499,6 @@ def is_capability_question(message: str) -> bool:
             "ban lam duoc gi",
             "ai nay ho tro gi",
             "ho tro gi",
-            "huong dan",
             "cach dung",
             "su dung he thong",
             "chuc nang",

@@ -237,11 +237,13 @@ Sau khi chạy SQL schema, các tài khoản sau đã được seed (mật khẩ
 
 | Email | Mật khẩu | Role |
 |-------|----------|------|
-| `nguyenvanan@gmail.com` | `Farmer@2024` | farmer |
-| `tranthimy2205@gmail.com` | `Farmer@2024` | farmer |
-| `levanbinhfarmer@gmail.com` | `Farmer@2024` | farmer |
-| `phamthilan@gmail.com` | `Farmer@2024` | farmer |
-| `admin@agriAI.vn` | `Admin@2024` | admin |
+| `nguyenvanan@gmail.com` | `123456` | farmer |
+| `tranthimy2205@gmail.com` | `123456` | farmer |
+| `levanbinhfarmer@gmail.com` | `123456` | farmer |
+| `phamthilan@gmail.com` | `123456` | farmer |
+| `admin@agriai.vn` | `123456` | admin |
+
+Lưu ý: đây là thông tin seed/reference cho môi trường local. Tại lần kiểm tra ngày 2026-09-26, tài khoản public demo chưa đăng nhập được (HTTP 401), vì vậy chưa được coi là tài khoản reviewer đang hoạt động.
 
 Để reset mật khẩu hàng loạt, chạy script tạm thời hoặc gọi `POST /api/auth/register` với email chưa có.
 
@@ -271,7 +273,7 @@ Interactive docs đầy đủ tại `/docs`. Tóm tắt theo nhóm:
 ```bash
 curl -X POST http://localhost:8000/api/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"email": "admin@agriAI.vn", "password": "Admin@2024"}'
+  -d '{"email": "admin@agriai.vn", "password": "123456"}'
 ```
 
 Sau đó dùng `access_token` trong header: `Authorization: Bearer <token>`

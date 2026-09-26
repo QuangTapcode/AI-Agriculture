@@ -1,0 +1,2098 @@
+{
+  "schema_version": "1.0",
+  "experiment": {
+    "type": "chunk_size",
+    "chunk_size": 800,
+    "chunk_overlap": 120,
+    "source_jsonl": "docs\\challenge\\experiment_chunk_800.jsonl"
+  },
+  "dataset": {
+    "questions": 30,
+    "answerable": 25,
+    "no_answer": 5
+  },
+  "answer_quality": {
+    "correct": 0,
+    "acceptable_needs_review": 27,
+    "wrong": 3,
+    "definition": "pass=machine checks passed; needs_review=acceptable form but human content review remains; fail=machine check failed"
+  },
+  "retrieval_quality": {
+    "hit_at_k": {
+      "hits": 25,
+      "total": 25,
+      "rate": 1.0
+    },
+    "recall_at_k": {
+      "retrieved_expected_references": 28,
+      "expected_references": 30,
+      "rate": 0.9333
+    },
+    "all_expected_sources": {
+      "hits": 23,
+      "total": 25,
+      "rate": 0.92
+    },
+    "k": "RAG_TOP_K at runtime; source list is capped by the configured top-k"
+  },
+  "citation_quality": {
+    "correct_source_present": 25,
+    "missing": 0,
+    "wrong_only": 0,
+    "extra_out_of_target_source": 18,
+    "exact_expected_source_set": 7,
+    "denominator": 25
+  },
+  "no_answer_accuracy": {
+    "strict_correct_refusal": 0,
+    "total": 5,
+    "rate": 0.0,
+    "by_category": {
+      "no_source": {
+        "correct_refusal": 0,
+        "total": 4
+      },
+      "out_of_scope": {
+        "correct_refusal": 0,
+        "total": 1
+      }
+    }
+  },
+  "latency_ms": {
+    "retrieval_ms": {
+      "n": 29,
+      "p50_ms": 2323.8,
+      "p95_ms": 3386.3,
+      "max_ms": 3973.1
+    },
+    "generation_ms": {
+      "n": 28,
+      "p50_ms": 10117.4,
+      "p95_ms": 12458.6,
+      "max_ms": 22656.4
+    },
+    "total_ms": {
+      "n": 29,
+      "p50_ms": 12426.8,
+      "p95_ms": 21117.8,
+      "max_ms": 25032.2
+    }
+  },
+  "failure_analysis": {
+    "retrieval": 2,
+    "chunking_or_top_k": 2,
+    "prompt_or_grounding_gate": 5,
+    "model_or_content_review": 24,
+    "request_error": 0
+  },
+  "rows": [
+    {
+      "run_id": "20260925T183255Z",
+      "evaluated_at": "2026-09-25T18:33:12.149844+00:00",
+      "dataset_version": "evaluation-jsonl",
+      "id": "q001",
+      "category": "grounded",
+      "question": "Sau bão lũ, cần làm gì trước với cây ăn quả bị gãy cành hoặc đổ nghiêng?",
+      "expected_behavior": "answer_with_citation",
+      "expected_doc_ids": [
+        "kn-01"
+      ],
+      "intent": "general_question",
+      "provider": "ollama",
+      "model": "qwen2.5:3b-instruct-q4_K_M",
+      "timings": {
+        "context_ms": 1.4,
+        "retrieval_ms": 3386.3,
+        "generation_ms": 12458.6,
+        "total_ms": 15847.9
+      },
+      "grounding": {
+        "status": "ready",
+        "reason": "ready"
+      },
+      "rag_status": "ready",
+      "generated_answer": "Sau bão lũ, cần làm theo các bước sau với cây ăn quả bị gãy cành hoặc đổ nghiêng:\n\n1. Cắt bỏ cành gãy, bị tổn thương do bão, ngập lụt. Cụ thể:\n   - Đối với cây còn nguyên vẹn cành, hoặc có rất ít cành bị gãy (<1/3 tán cây gãy): Chỉ cắt bỏ cành gãy, sau khi cây hồi phục mới tỉa cành, tạo tán.\n   - Đối với cây có bộ tán bị gãy nhiều (>1/3 tán cây gãy): Cắt bỏ toàn bộ cành gãy, để lại các cành còn lá (cành thở), sau khi cây hồi phục sẽ tiến hành tạo lại bộ tán.\n   - Đối với cây đang mang quả cần căn cứ vào mức độ gãy đổ để tỉa bớt hoặc cắt hết quả trên cây để tập trung dinh dưỡng nuôi cây, khôi phục cây.\n\n2. Khơi thoát nước vườn cây, tiến hành dựng thẳng gốc cây, dùng cọc chống để cây không bị nghiêng trở lại (áp dụng đối với cây thân gỗ).\n\nNguồn tham khảo:\n- [TL1] challenge-kn-01.txt — trang 1\n- [TL2] challenge-kn-03.txt — trang 1\n- [TL3] challenge-kn-09.txt — trang 1",
+      "citations": [
+        {
+          "citation": "TL1",
+          "doc_id": "kn-01",
+          "name": "challenge-kn-01.txt",
+          "source_name": "Khuyến nông Quốc gia",
+          "source_url": "https://khuyennongvn.gov.vn/khoa-hoc-cong-nghe/khcn-trong-nuoc/huong-dan-phuc-hoi-vuon-cay-an-qua-sau-bao-lu-28257.html",
+          "page": 1,
+          "score": 0.7251,
+          "excerpt": "1. Đối với cây, vườn cây bị gãy cành, đổ nghiêng - Bước 1 : Ngay sau khi hết mưa, khơi thoát nước vườn cây, tiến hành dựng thẳng gốc cây, dùng cọc chống để cây không bị nghiêng trở lại (áp dụng đối với cây thân gỗ). - Bước 2: Cắt bỏ cành gẫy/bị tổn thương do bão, ngập lụt. Cụ thể: + Đối với cây còn nguyên vẹn cành, hoặc có rất ít cành bị gãy (<1/3 tán cây gãy): Chỉ cắt bỏ cành gãy, sau khi cây hồi phục mới tỉa cành, tạo tán. + Đối với cây có bộ tán bị gãy nhiều (>1/3 tán cây gãy): Cắt bỏ toàn bộ cành gãy, để lại các cành còn lá (cành thở), sau khi cây hồi phục sẽ tiến hành tạo lại bộ tán. + Đố"
+        },
+        {
+          "citation": "TL2",
+          "doc_id": "kn-03",
+          "name": "challenge-kn-03.txt",
+          "source_name": "Khuyến nông Quốc gia",
+          "source_url": "https://khuyennongvn.gov.vn/khoa-hoc-cong-nghe/khcn-trong-nuoc/cac-bien-phap-giam-thieu-thiet-hai-cho-cay-trong-sau-bao-so-3-28121.html",
+          "page": 1,
+          "score": 0.6554,
+          "excerpt": "ưa bão, rau xanh sẽ khan hiếm, bà con nên tận dụng cơ hội để gieo trồng càng sớm càng tốt sẽ cho hiệu quả cao hơn do bán được giá. Nhiều diện tích ngô bị gãy đổ Các vườn cây ăn quả - Chuối là loại cây trồng dễ bị tổn thương và tổn thương nặng do bão, vườn chuối sẽ bị gãy đổ, lá rách tướp... Sau bão khi đã rút cạn nước cần khẩn trương thu dọn vệ sinh vườn chuối, chặt sát gốc các cây bị gẫy, dập không còn khả năng hồi phục, dựng các cây bị đổ nghiêng nhưng không bị gẫy, dập, cắt bỏ các lá già, lá bị rách, tướp xơ, bồi thêm đất vào gốc, kết hợp bón thúc mỗi hốc 0,3-0,5kg NPK để chuối phục hồi nha"
+        },
+        {
+          "citation": "TL3",
+          "doc_id": "kn-09",
+          "name": "challenge-kn-09.txt",
+          "source_name": "Khuyến nông Quốc gia",
+          "source_url": "https://khuyennongvn.gov.vn/khoa-hoc-cong-nghe/khcn-trong-nuoc/bien-phap-khac-phuc-rau-hoa-mau-sau-bao-lu-28413.html",
+          "page": 1,
+          "score": 0.6251,
+          "excerpt": "1. Đối với diện tích đến thời gian thu hoạch: Tập trung tranh thủ, kịp thời thu hoạch để đảm bảo năng suất và chất lượng, giảm thiểu thiệt hại. 2. Đối với diện tích cây có khả năng phục hồi: - Tháo nước nhanh, kịp thời, khơi thông dòng chảy. Với ruộng không tháo được nước cần dùng bơm hút hoặc tát cạn nước trong ruộng không để nước ngập lâu trong ruộng gây thối cây, thối rễ. - Khi đã thoát cạn nước mặt ruộng, dùng bình bơm bơm nước lã rửa sạch đất, bùn bám dính trên mặt lá. Khi lớp đất mặt đã khô ráo cần xới phá váng, dựng lại các cây con bị nghiêng ngả, nén gốc để cây đứng thẳng, vững; cắt t"
+        }
+      ],
+      "retrieved_doc_ids": [
+        "kn-01",
+        "kn-03",
+        "kn-09"
+      ],
+      "latency_ms": 15891.9,
+      "error": null,
+      "result": {
+        "verdict": "needs_review",
+        "checks": {
+          "co_cau_tra_loi": true,
+          "trang_thai_ready": true,
+          "co_trich_dan": true,
+          "khong_bia_so_lieu": true,
+          "khong_lay_nham_tai_lieu_trong_corpus": true
+        },
+        "notes": [
+          "can_nguoi_doc_xac_nhan_noi_dung"
+        ]
+      },
+      "human_review": null
+    },
+    {
+      "run_id": "20260925T183255Z",
+      "evaluated_at": "2026-09-25T18:33:29.331353+00:00",
+      "dataset_version": "evaluation-jsonl",
+      "id": "q002",
+      "category": "grounded",
+      "question": "Lúa ở giai đoạn đẻ nhánh sau ngập úng nên điều chỉnh nước và bón phân như thế nào?",
+      "expected_behavior": "answer_with_citation",
+      "expected_doc_ids": [
+        "kn-02"
+      ],
+      "intent": "cultivation_advice",
+      "provider": "ollama",
+      "model": "qwen2.5:3b-instruct-q4_K_M",
+      "timings": {
+        "context_ms": 0.3,
+        "retrieval_ms": 3973.1,
+        "generation_ms": 11443.0,
+        "total_ms": 15416.9
+      },
+      "grounding": {
+        "status": "ready",
+        "reason": "ready"
+      },
+      "rag_status": "ready",
+      "generated_answer": "Điều kiện áp dụng: Giai đoạn đẻ nhánh của cây lúa ở Việt Nam.\n\nCác bước thực hiện:\n1. Điều chỉnh mực nước tiêu thoát, đảm bảo cây lúa không bị rạp trên mặt nước. Tỉa dặm những chỗ lúa chết, mất khoảng bằng cách tỉa san từ các khóm lúa đẻ nhiều dảnh trên ruộng.\n2. Khi lá lúa khô và cứng dần, nhô cao mặt nước trên 10cm, xuất hiện lá mới, phun các chế phẩm sinh học giúp cây phục hồi nhanh, liều lượng theo khuyến cáo của nhà sản xuất.\n3. Rút nước cạn chỉ để láng mặt ruộng và nhổ lúa quan sát thấy đã ra rễ non, bón thúc ngay lượng phân thúc lần 1, ưu tiên sử dụng phân NPK chuyên dụng có hàm lượng đạm và kali cân đối.\n4. Không sử dụng đạm đơn và không bón phân lai rai nhằm hạn chế sâu bệnh hại và đổ ngã cuối vụ.\n\nCách chăm sóc và dấu hiệu cần theo dõi:\n- Theo dõi dấu hiệu của cây lúa, nếu\n\nNguồn tham khảo:\n- [TL1] challenge-kn-02.txt — trang 1\n- [TL2] challenge-kn-08.txt — trang 1",
+      "citations": [
+        {
+          "citation": "TL1",
+          "doc_id": "kn-02",
+          "name": "challenge-kn-02.txt",
+          "source_name": "Khuyến nông Quốc gia",
+          "source_url": "https://khuyennongvn.gov.vn/khoa-hoc-cong-nghe/khcn-trong-nuoc/bien-phap-khac-phuc-ung-ngap-sau-mua-bao-doi-voi-lua-28205.html",
+          "page": 1,
+          "score": 0.843,
+          "excerpt": "1) Với diện tích lúa ở giai đoạn đẻ nhánh: Điều chỉnh mực nước tiêu thoát đảm bảo cây lúa không bị rạp trên mặt nước. Tỉa dặm những chỗ lúa chết, mất khoảng bằng cách tỉa san từ các khóm lúa đẻ nhiều dảnh trên ruộng hoặc mạ cùng giống còn giâm trên ruộng chân cao không bị ngập úng. Khi lá lúa khô và cứng dần, nhô cao mặt nước trên 10cm, xuất hiện lá mới cần phun các chế phẩm sinh học giúp cây phục hồi nhanh, liều lượng theo khuyến cáo của nhà sản xuất. Rút nước cạn chỉ để láng mặt ruộng và nhổ lúa quan sát thấy đã ra rễ non khẩn trương bón thúc ngay lượng phân thúc lần 1, ưu tiên sử dụng phân "
+        },
+        {
+          "citation": "TL2",
+          "doc_id": "kn-08",
+          "name": "challenge-kn-08.txt",
+          "source_name": "Khuyến nông Quốc gia",
+          "source_url": "https://khuyennongvn.gov.vn/khoa-hoc-cong-nghe/khcn-trong-nuoc/huong-dan-ky-thuat-san-xuat-lua-chet-doi-voi-cac-vung-bi-ngap-lut-sau-thien-tai-tai-cac-tinh-phia-bac-28435.html",
+          "page": 1,
+          "score": 0.7964,
+          "excerpt": "ững cho cây lúa vào chắc và chín. 4. Đối với diện tích lúa đang ở giai đoạn làm đòng, chuẩn bị trỗ : cây lúa bị gẫy thân có thể sản xuất lúa chét. Cần khẩn trương tháo nước tiêu úng thường xuyên. II. KỸ THUẬT SẢN XUẤT VỤ LÚA CHÉT 1. Rửa bùn đất bám trên thân, lá lúa và cắt lúa - Trong quá trình rút nước có thể dùng cành cây kéo lướt nhẹ trên mặt ruộng hoặc té nước để làm sạch bùn đất, rong rêu trên thân, lá lúa. - Dùng liềm cắt sát gốc thân lúa (để lại gốc rạ 15 – 20 cm so với mặt ruộng) 2. Bón phân Tổng lượng phân bón đầu vào (tính cho diện tích 01 ha): 100 kg Đạm Urê + 80-90 kg Kali Clorua đ"
+        }
+      ],
+      "retrieved_doc_ids": [
+        "kn-02",
+        "kn-08"
+      ],
+      "latency_ms": 15450.7,
+      "error": null,
+      "result": {
+        "verdict": "needs_review",
+        "checks": {
+          "co_cau_tra_loi": true,
+          "trang_thai_ready": true,
+          "co_trich_dan": true,
+          "khong_bia_so_lieu": true,
+          "khong_lay_nham_tai_lieu_trong_corpus": true
+        },
+        "notes": [
+          "can_nguoi_doc_xac_nhan_noi_dung"
+        ]
+      },
+      "human_review": null
+    },
+    {
+      "run_id": "20260925T183255Z",
+      "evaluated_at": "2026-09-25T18:33:50.480996+00:00",
+      "dataset_version": "evaluation-jsonl",
+      "id": "q003",
+      "category": "grounded",
+      "question": "Sau bão Yagi, biện pháp ưu tiên đối với các trà lúa bị ngập là gì?",
+      "expected_behavior": "answer_with_citation",
+      "expected_doc_ids": [
+        "kn-03"
+      ],
+      "intent": "weather_analysis",
+      "provider": "ollama",
+      "model": "qwen2.5:3b-instruct-q4_K_M",
+      "timings": {
+        "context_ms": 6467.8,
+        "retrieval_ms": 2367.0,
+        "generation_ms": 12282.0,
+        "total_ms": 21117.8
+      },
+      "grounding": {
+        "status": "ready",
+        "reason": "ready"
+      },
+      "rag_status": "ready",
+      "generated_answer": "Sau bão Yagi, biện pháp ưu tiên đối với các trà lúa bị ngập là:\n\n- **Thời tiết hiện tại/dự báo**: Hệ thống chưa có số liệu cụ thể về thời tiết hiện tại hoặc dự báo cụ thể cho khu vực Bình Thuận sau bão Yagi. \n\n- **Ảnh hưởng đến cây trồng**: Đối với các trà lúa bị ngập sâu đến cổ bông hoặc ngập đòng, cần khẩn trương tiêu, thoát nước cho tất cả các trà lúa. Đặc biệt với diện tích lúa bị ngập sâu cần tiêu cạn nước để phơi mặt luống với các loại cây màu, tránh để nước đọng ở rãnh. \n\n- **Rủi ro**: Nguy cơ mất mát lớn nếu không tiêu nước kịp thời, có thể gây ngập sâu và ngập đòng, ảnh hưởng đến chất lượng hạt lúa và khả năng thu hoạch.\n\n- **Khuyến nghị**: Khẩn trương tiêu nước cho các trà lúa bị ngập, đặc biệt với diện tích lúa bị ngập sâu đến cổ bông hoặc ngập đòng. Cần tiêu cạn nước để phơi mặt luống với các loại cây màu, tránh để nước đọng\n\nNguồn tham khảo:\n- [TL1] challenge-kn-03.txt — trang 1\n- [TL2] challenge-kn-08.txt — trang 1\n- [TL3] challenge-kn-02.txt — trang 1",
+      "citations": [
+        {
+          "citation": "TL1",
+          "doc_id": "kn-03",
+          "name": "challenge-kn-03.txt",
+          "source_name": "Khuyến nông Quốc gia",
+          "source_url": "https://khuyennongvn.gov.vn/khoa-hoc-cong-nghe/khcn-trong-nuoc/cac-bien-phap-giam-thieu-thiet-hai-cho-cay-trong-sau-bao-so-3-28121.html",
+          "page": 1,
+          "score": 0.807,
+          "excerpt": "lưới, nhà màng đang trong giai đoạn cho quả gần thời điểm thu hoạch. Để giảm thiểu thiệt hại do tác động siêu bão Yagi, xin được khuyến cáo với bà con nông dân một số biện pháp chăm sóc sau đây: Lúa Khẩn trương tiêu, thoát nước cho tất cả các trà lúa, nhất là với diện tích lúa bị ngập sâu đến cổ bông hoặc ngập đòng, tiêu cạn nước để phơi mặt luống với các loại cây màu, tránh để nước đọng ở rãnh. Với trà lúa mùa đã trổ bông và chắc xanh hoặc đã chín đỏ đuôi bị đổ: Khẩn trương buộc và dựng những diện tích bị đổ rạp. Diện tích nào đã chín trên 85% nên thu hoạch ngay với phương châm “xanh nhà hơn "
+        },
+        {
+          "citation": "TL2",
+          "doc_id": "kn-08",
+          "name": "challenge-kn-08.txt",
+          "source_name": "Khuyến nông Quốc gia",
+          "source_url": "https://khuyennongvn.gov.vn/khoa-hoc-cong-nghe/khcn-trong-nuoc/huong-dan-ky-thuat-san-xuat-lua-chet-doi-voi-cac-vung-bi-ngap-lut-sau-thien-tai-tai-cac-tinh-phia-bac-28435.html",
+          "page": 1,
+          "score": 0.7629,
+          "excerpt": "I. THU HOẠCH VỤ LÚA CHÍNH 1. Đối với những diện tích lúa bị ngập úng nặng, không có khả năng cho thu hoạch : Cần tập trung nguồn lực tiêu úng. Khuyến cáo chuyển đổi sang gieo trồng cây rau màu, cây hàng năm khác có giá trị kinh tế cao, phù hợp với điều kiện canh tác của các địa phương. 2. Đối với diện tích lúa đã đến thời kỳ thu hoạch (chín trên 85%) : Cần tranh thủ thời tiết thuận lợi thu hoạch với phương châm “xanh nhà hơn già đồng”. 3. Với diện tích lúa đang ở giai đoạn trỗ - chín sữa - chín sáp: Sau khi tháo cạn nước trong ruộng, tiến hành dựng lúa bằng cách túm 3 - 4 gốc lúa lại với nhau "
+        },
+        {
+          "citation": "TL3",
+          "doc_id": "kn-02",
+          "name": "challenge-kn-02.txt",
+          "source_name": "Khuyến nông Quốc gia",
+          "source_url": "https://khuyennongvn.gov.vn/khoa-hoc-cong-nghe/khcn-trong-nuoc/bien-phap-khac-phuc-ung-ngap-sau-mua-bao-doi-voi-lua-28205.html",
+          "page": 1,
+          "score": 0.7527,
+          "excerpt": "với diện tích lúa đã đến thời kỳ thu hoạch (chín trên 85%): Cần tranh thủ thời tiết thuận lợi thu hoạch với phương châm “xanh nhà hơn già đồng”. 5) Đối với những diện tích lúa bị ngập úng nặng, không có khả năng cho thu hoạch: Cần tập trung nguồn lực tiêu úng. Khuyến cáo chuyển đổi sang gieo trồng cây rau màu, cây hàng năm khác có giá trị kinh tế cao, phù hợp với điều kiện canh tác của các địa phương. Đối với trà lúa mùa các tỉnh phía Bắc, ở những chân đất có thể trồng cây vụ đông cần vệ sinh đồng ruộng, chuẩn bị đất để trồng cây vụ đông như ngô, đậu tương, các loại cây họ bầu bí (bí xanh, bí "
+        }
+      ],
+      "retrieved_doc_ids": [
+        "kn-03",
+        "kn-08",
+        "kn-02"
+      ],
+      "latency_ms": 21147.8,
+      "error": null,
+      "result": {
+        "verdict": "needs_review",
+        "checks": {
+          "co_cau_tra_loi": true,
+          "trang_thai_ready": true,
+          "co_trich_dan": true,
+          "khong_bia_so_lieu": true,
+          "khong_lay_nham_tai_lieu_trong_corpus": true
+        },
+        "notes": [
+          "can_nguoi_doc_xac_nhan_noi_dung"
+        ]
+      },
+      "human_review": null
+    },
+    {
+      "run_id": "20260925T183255Z",
+      "evaluated_at": "2026-09-25T18:33:53.045720+00:00",
+      "dataset_version": "evaluation-jsonl",
+      "id": "q004",
+      "category": "grounded",
+      "question": "Quy trình xử lý ra hoa trái vụ cho chôm chôm áp dụng vào thời gian nào ở Đồng bằng sông Cửu Long và Đông Nam Bộ?",
+      "expected_behavior": "answer_with_citation",
+      "expected_doc_ids": [
+        "kn-06"
+      ],
+      "intent": "general_question",
+      "provider": "local",
+      "model": "grounding-gate-scope-v1",
+      "timings": {
+        "context_ms": 0.6,
+        "retrieval_ms": 2547.6,
+        "total_ms": 2559.3
+      },
+      "grounding": {
+        "status": "ready",
+        "reason": "ngoai_pham_vi"
+      },
+      "rag_status": "ready",
+      "generated_answer": "Câu hỏi này nằm ngoài lĩnh vực nông nghiệp nên tôi không trả lời.\n\nTôi hỗ trợ giá nông sản, thời tiết canh tác, mùa vụ và thu hoạch, kỹ thuật canh tác, chăn nuôi, sâu bệnh và chất lượng nông sản.",
+      "citations": [
+        {
+          "citation": "TL1",
+          "doc_id": "kn-06",
+          "name": "challenge-kn-06.txt",
+          "source_name": "Khuyến nông Quốc gia",
+          "source_url": "https://khuyennongvn.gov.vn/khoa-hoc-cong-nghe/khcn-trong-nuoc/quy-trinh-ky-thuat-xu-ly-ra-hoa-trai-vu-cho-cay-chom-chom-cho-cac-tinh-nam-bo-32075.html",
+          "page": 1,
+          "score": 0.7612,
+          "excerpt": "Nội dung quy trình kỹ thuật như sau: 1. Điều kiện áp dụng và thời gian xử lý Quy trình áp dụng cho vườn chôm chôm từ 5 đến 25 năm tuổi. Cây trên 25 năm tuổi có thể xử lý ra hoa nếu sinh trưởng, phát triển tốt. Các cây sinh trưởng, phát triển tốt, ít nhiễm sâu bệnh hại, vườn cây có đủ nguồn nước tưới, không bị nhiễm mặn, nhiễm phèn và thoát nước tốt, không sử dụng nước tưới có độ mặn ≥ 1‰ để tưới cho cây. Mật độ, khoảng cách trồng: Hàng cách hàng 6 - 10 m x cây cách cây 6 - 10 m (mật độ 100 - 277 cây/ha). Vùng Đồng bằng sông Cửu Long (ĐBSCL): Xử lý ra hoa từ tháng 4 đến tháng 9; thu hoạch từ th"
+        }
+      ],
+      "retrieved_doc_ids": [
+        "kn-06"
+      ],
+      "latency_ms": 2564.3,
+      "error": null,
+      "result": {
+        "verdict": "fail",
+        "checks": {
+          "co_cau_tra_loi": true,
+          "trang_thai_ready": true,
+          "co_trich_dan": false,
+          "khong_bia_so_lieu": true,
+          "khong_lay_nham_tai_lieu_trong_corpus": true
+        },
+        "notes": []
+      },
+      "human_review": null
+    },
+    {
+      "run_id": "20260925T183255Z",
+      "evaluated_at": "2026-09-25T18:34:07.436470+00:00",
+      "dataset_version": "evaluation-jsonl",
+      "id": "q005",
+      "category": "grounded",
+      "question": "Khi chọn giống mắc ca ở Tây Nguyên, tài liệu nêu những giống nào có thể sử dụng?",
+      "expected_behavior": "answer_with_citation",
+      "expected_doc_ids": [
+        "kn-07"
+      ],
+      "intent": "cultivation_advice",
+      "provider": "ollama",
+      "model": "qwen2.5:3b-instruct-q4_K_M",
+      "timings": {
+        "context_ms": 0.4,
+        "retrieval_ms": 2485.3,
+        "generation_ms": 11887.2,
+        "total_ms": 14373.7
+      },
+      "grounding": {
+        "status": "ready",
+        "reason": "ready"
+      },
+      "rag_status": "ready",
+      "generated_answer": "Điều kiện áp dụng: Tài liệu nêu các giống mắc ca có thể sử dụng ở Tây Nguyên bao gồm OC, 246, 816, 849, A38, A16, QN1 và 856. Đây là các giống đã được Bộ Nông nghiệp và Môi trường công nhận. \n\nCác bước thực hiện:\n- Sử dụng các giống mắc ca đã được công nhận để trồng.\n- Lựa chọn từ các nguồn uy tín, đảm bảo chất lượng.\n- Lựa chọn các giống phù hợp với điều kiện sinh thái của Tây Nguyên.\n\nCách chăm sóc và dấu hiệu cần theo dõi:\n- Theo dõi tình trạng sức khỏe của cây và cây trồng.\n- Kiểm tra thường xuyên để phát hiện sớm các dấu hiệu bệnh hại.\n\nLưu ý rủi ro:\n- Không sử dụng các nguồn gốc không rõ ràng hoặc không được cấp có thẩm quyền công nhận.\n- Theo dõi kỹ các dấu hiệu bệnh hại và thực hiện biện pháp phòng trừ kịp thời.\n\nNguồn tham khảo:\n- [TL1] challenge-kn-07.txt — trang 1\n- [TL2] challenge-kn-19.txt — trang 1\n- [TL3] challenge-kn-15.txt — trang 1",
+      "citations": [
+        {
+          "citation": "TL1",
+          "doc_id": "kn-07",
+          "name": "challenge-kn-07.txt",
+          "source_name": "Khuyến nông Quốc gia",
+          "source_url": "https://khuyennongvn.gov.vn/khoa-hoc-cong-nghe/khcn-trong-nuoc/cac-bien-phap-nang-cao-nang-suat-va-phong-tru-sau-benh-hai-cho-cay-mac-ca-31477.html",
+          "page": 1,
+          "score": 0.612,
+          "excerpt": "1. Sử dụng giống cây trồng - Lựa chọn giống: Lựa chọn các giống mới phù hợp với điều kiện sinh thái của vùng trồng, kháng bệnh tốt sẽ giúp tăng năng suất và hạn chế các sâu bệnh hại cây trồng. Có thể sử dụng các giống mắc ca chất lượng tốt đã được Bộ Nông nghiệp và Môi trường công nhận để trồng trong sản xuất, đối với vùng Tây Nguyên có thể sử dụng các giống: OC, 246, 816, 849, A38, A16, QN1 và 856 (Quyết định số 2040/QĐ-BNN-TCLN, ngày 01 tháng 9 năm 2011, Quyết định số 761/QĐ-BNN-TCLN ngày 6/3/2019 và Quyết định số 273/QĐ-TCLN-PTR ngày 26/10/2022). - Nguồn giống: Giống phải được mua ở những c"
+        },
+        {
+          "citation": "TL2",
+          "doc_id": "kn-19",
+          "name": "challenge-kn-19.txt",
+          "source_name": "Khuyến nông Quốc gia",
+          "source_url": "https://khuyennongvn.gov.vn/khoa-hoc-cong-nghe/khcn-trong-nuoc/quy-trinh-nuoi-thuong-pham-ca-song-cham-nau-trong-ao-su-dung-thuc-an-cong-nghiep-phan-1-22383.html",
+          "page": 1,
+          "score": 0.5024,
+          "excerpt": "2. Chọn và thả cá giống * Mùa vụ thả cá giống Miền Bắc (từ Huế trở ra) thả giống từ tháng 5 đến tháng 8, miền Nam (từ Đà Nẵng trở vào) thả giống quanh năm. * Nguồn gốc và chất lượng cá giống - Nguồn gốc cá giống: chọn mua cá giống được sản xuất từ những cơ sở sản xuất giống có uy tín, có nguồn gốc rõ ràng. - Chất lượng cá giống: cá khỏe mạnh; không bị nhiễm VNN, ký sinh trùng; không dị hình, dị tật; không bị xây xát, mất nhớt; cỡ cá đồng đều, bơi lội nhanh nhẹn, bơi chìm trong nước theo đàn. Cá đã ăn hoàn toàn thức ăn công nghiệp. * Thuần và luyện cá giống - Thuần cá giống: trước khi nhận và t"
+        },
+        {
+          "citation": "TL3",
+          "doc_id": "kn-15",
+          "name": "challenge-kn-15.txt",
+          "source_name": "Khuyến nông Quốc gia",
+          "source_url": "https://khuyennongvn.gov.vn/khoa-hoc-cong-nghe/khcn-trong-nuoc/mot-so-yeu-cau-ve-chuong-trai-giong-trong-chan-nuoi-ga-huu-co-22165.html",
+          "page": 1,
+          "score": 0.4787,
+          "excerpt": "bệnh Marek cho gà 01 ngày tuổi Giống gà phải đảm bảo yêu cầu, bao gồm: - Giống thích nghi với điều kiện ở địa phương, ưu tiên sử dụng các nguồn giống bản địa như: gà ri, gà Đông tảo, gà Hồ, gà Mía, gà H’Mông, gà ác, gà tre, gà Lương Phượng…, và các con lai đã thích nghi; - Giống gà phải khỏe mạnh và có khả năng kháng bệnh; - Không có bệnh truyền nhiễm nguy hiểm hoặc các vấn đề về sức khỏe; - Không dùng kỹ thuật ghép phôi và xử lý sinh sản bằng hoóc môn; - Không dùng kỹ thuật gen trong việc nhân giống; * Giống gà phải do cơ sở sản xuất giống phù hợp với tiêu chuẩn này hoặc phải là con của các c"
+        }
+      ],
+      "retrieved_doc_ids": [
+        "kn-07",
+        "kn-19",
+        "kn-15"
+      ],
+      "latency_ms": 14390.3,
+      "error": null,
+      "result": {
+        "verdict": "needs_review",
+        "checks": {
+          "co_cau_tra_loi": true,
+          "trang_thai_ready": true,
+          "co_trich_dan": true,
+          "khong_bia_so_lieu": true,
+          "khong_lay_nham_tai_lieu_trong_corpus": true
+        },
+        "notes": [
+          "can_nguoi_doc_xac_nhan_noi_dung"
+        ]
+      },
+      "human_review": null
+    },
+    {
+      "run_id": "20260925T183255Z",
+      "evaluated_at": "2026-09-25T18:34:21.142384+00:00",
+      "dataset_version": "evaluation-jsonl",
+      "id": "q006",
+      "category": "grounded",
+      "question": "Diện tích lúa đã chín trên 85% sau ngập lụt nên xử lý thế nào?",
+      "expected_behavior": "answer_with_citation",
+      "expected_doc_ids": [
+        "kn-08"
+      ],
+      "intent": "weather_analysis",
+      "provider": "ollama",
+      "model": "qwen2.5:3b-instruct-q4_K_M",
+      "timings": {
+        "context_ms": 0.2,
+        "retrieval_ms": 2759.8,
+        "generation_ms": 10809.8,
+        "total_ms": 13570.5
+      },
+      "grounding": {
+        "status": "ready",
+        "reason": "ready"
+      },
+      "rag_status": "ready",
+      "generated_answer": "Thời tiết hiện tại/dự báo:\n- Hệ thống chưa có số liệu cho khu vực này.\n\nẢnh hưởng đến cây trồng:\n- Đối với diện tích lúa đã đến thời kỳ thu hoạch (chín trên 85%) như đã đề cập trong tài liệu [TL1] và [TL2], cần tranh thủ thời tiết thuận lợi để thu hoạch với phương châm \"xanh nhà hơn già đồng\".\n\nRủi ro:\n- Rủi ro bao gồm nguy cơ sâu bệnh hại bùng phát sau bão, đặc biệt là đối với các loại sâu như rầy nâu, rầy lưng trắng, sâu đục thân hai chấm, bệnh bạc lá lúa và đạo ôn.\n- Nguy cơ ngập úng nặng có thể làm giảm khả năng thu hoạch.\n\nKhuyến nghị:\n- Cần tập trung nguồn lực để tiêu úng nếu diện tích lúa bị ngập úng nặng.\n- Nếu không có khả năng thu hoạch, khuyến cáo chuyển đổi sang gieo trồng cây rau màu, cây hàng năm khác có giá trị kinh tế cao, phù hợp với điều kiện canh tác của các địa phương.\n- Đối với diện tích lúa đã chín trên",
+      "citations": [
+        {
+          "citation": "TL1",
+          "doc_id": "kn-08",
+          "name": "challenge-kn-08.txt",
+          "source_name": "Khuyến nông Quốc gia",
+          "source_url": "https://khuyennongvn.gov.vn/khoa-hoc-cong-nghe/khcn-trong-nuoc/huong-dan-ky-thuat-san-xuat-lua-chet-doi-voi-cac-vung-bi-ngap-lut-sau-thien-tai-tai-cac-tinh-phia-bac-28435.html",
+          "page": 1,
+          "score": 0.8337,
+          "excerpt": "I. THU HOẠCH VỤ LÚA CHÍNH 1. Đối với những diện tích lúa bị ngập úng nặng, không có khả năng cho thu hoạch : Cần tập trung nguồn lực tiêu úng. Khuyến cáo chuyển đổi sang gieo trồng cây rau màu, cây hàng năm khác có giá trị kinh tế cao, phù hợp với điều kiện canh tác của các địa phương. 2. Đối với diện tích lúa đã đến thời kỳ thu hoạch (chín trên 85%) : Cần tranh thủ thời tiết thuận lợi thu hoạch với phương châm “xanh nhà hơn già đồng”. 3. Với diện tích lúa đang ở giai đoạn trỗ - chín sữa - chín sáp: Sau khi tháo cạn nước trong ruộng, tiến hành dựng lúa bằng cách túm 3 - 4 gốc lúa lại với nhau "
+        },
+        {
+          "citation": "TL2",
+          "doc_id": "kn-02",
+          "name": "challenge-kn-02.txt",
+          "source_name": "Khuyến nông Quốc gia",
+          "source_url": "https://khuyennongvn.gov.vn/khoa-hoc-cong-nghe/khcn-trong-nuoc/bien-phap-khac-phuc-ung-ngap-sau-mua-bao-doi-voi-lua-28205.html",
+          "page": 1,
+          "score": 0.7788,
+          "excerpt": "với diện tích lúa đã đến thời kỳ thu hoạch (chín trên 85%): Cần tranh thủ thời tiết thuận lợi thu hoạch với phương châm “xanh nhà hơn già đồng”. 5) Đối với những diện tích lúa bị ngập úng nặng, không có khả năng cho thu hoạch: Cần tập trung nguồn lực tiêu úng. Khuyến cáo chuyển đổi sang gieo trồng cây rau màu, cây hàng năm khác có giá trị kinh tế cao, phù hợp với điều kiện canh tác của các địa phương. Đối với trà lúa mùa các tỉnh phía Bắc, ở những chân đất có thể trồng cây vụ đông cần vệ sinh đồng ruộng, chuẩn bị đất để trồng cây vụ đông như ngô, đậu tương, các loại cây họ bầu bí (bí xanh, bí "
+        }
+      ],
+      "retrieved_doc_ids": [
+        "kn-08",
+        "kn-02"
+      ],
+      "latency_ms": 13705.4,
+      "error": null,
+      "result": {
+        "verdict": "needs_review",
+        "checks": {
+          "co_cau_tra_loi": true,
+          "trang_thai_ready": true,
+          "co_trich_dan": true,
+          "khong_bia_so_lieu": true,
+          "khong_lay_nham_tai_lieu_trong_corpus": true
+        },
+        "notes": [
+          "can_nguoi_doc_xac_nhan_noi_dung"
+        ]
+      },
+      "human_review": null
+    },
+    {
+      "run_id": "20260925T183255Z",
+      "evaluated_at": "2026-09-25T18:34:41.450322+00:00",
+      "dataset_version": "evaluation-jsonl",
+      "id": "q007",
+      "category": "grounded",
+      "question": "Rau hoa màu bị ngập nhưng còn khả năng phục hồi cần làm gì sau khi nước rút?",
+      "expected_behavior": "answer_with_citation",
+      "expected_doc_ids": [
+        "kn-09"
+      ],
+      "intent": "weather_analysis",
+      "provider": "ollama",
+      "model": "qwen2.5:3b-instruct-q4_K_M",
+      "timings": {
+        "context_ms": 7710.0,
+        "retrieval_ms": 2383.7,
+        "generation_ms": 10198.4,
+        "total_ms": 20292.5
+      },
+      "grounding": {
+        "status": "ready",
+        "reason": "ready"
+      },
+      "rag_status": "ready",
+      "generated_answer": "- Thời tiết hiện tại/dự báo:\n   Hệ thống chưa có số liệu cho khu vực này.\n\n- Ảnh hưởng đến cây trồng:\n   Rau hoa màu bị ngập nhưng còn khả năng phục hồi cần làm như sau:\n\n- Rủi ro:\n   - Rủi ro do ngập nước có thể gây ra các vấn đề về sức khỏe của cây, như thối rễ, và ảnh hưởng đến khả năng sinh trưởng và phát triển.\n   - Rủi ro do ngập nước có thể làm giảm chất lượng và số lượng sản phẩm cuối cùng.\n\n- Khuyến nghị tưới/phun/thu hoạch:\n   - Sau khi nước rút, cần vệ sinh đồng ruộng, khẩn trương cuốc lật lại đất mặt luống, để khô và đập nhỏ gieo lại đợt hạt giống mới để cung cấp rau kịp thời cho thị trường.\n   - Với diện tích khó còn khả năng hồi phục, cần vệ sinh đồng ruộng, khẩn trương cuốc lật lại đất mặt luống, để khô và đập nhỏ gieo lại đợt hạt giống mới.\n   - Sau mưa bão, rau xanh sẽ khan hiếm, nên tận dụng\n\nNguồn tham khảo:\n- [TL1] challenge-kn-03.txt — trang 1\n- [TL2] challenge-kn-09.txt — trang 1",
+      "citations": [
+        {
+          "citation": "TL1",
+          "doc_id": "kn-03",
+          "name": "challenge-kn-03.txt",
+          "source_name": "Khuyến nông Quốc gia",
+          "source_url": "https://khuyennongvn.gov.vn/khoa-hoc-cong-nghe/khcn-trong-nuoc/cac-bien-phap-giam-thieu-thiet-hai-cho-cay-trong-sau-bao-so-3-28121.html",
+          "page": 1,
+          "score": 0.7306,
+          "excerpt": "áo cần xới phá váng, dựng lại các cây con bị nghiêng ngả, nén gốc để cây đứng thẳng, vững; cắt tỉa bỏ các lá gốc đã già, vàng úa, những lá bị rách tướp... Sau 2-3 ngày khẩn trương bón thúc nhẹ bằng lân suppe hoặc tưới nước có hòa loãng lân suppe + đạm urea, cứ mỗi thùng 10 lít hòa vào 1 muôi tay lân suppe và đạm urea, tưới nhẹ vào sát gốc khi đã xới phá váng. Sau 4-5 ngày, cây đã hồi phục và ra rễ mới cần tiếp tục chăm bón, bón thúc phân NPK hàm lượng cao từ 2-3 kg/sào Bắc bộ và kết hợp vun gốc. Với diện tích rau ăn lá mới gieo bị thiệt hại nặng, khó còn khả năng hồi phục, cần khẩn trương cuốc"
+        },
+        {
+          "citation": "TL2",
+          "doc_id": "kn-09",
+          "name": "challenge-kn-09.txt",
+          "source_name": "Khuyến nông Quốc gia",
+          "source_url": "https://khuyennongvn.gov.vn/khoa-hoc-cong-nghe/khcn-trong-nuoc/bien-phap-khac-phuc-rau-hoa-mau-sau-bao-lu-28413.html",
+          "page": 1,
+          "score": 0.7162,
+          "excerpt": "năng phục hồi: - Với diện tích khó còn khả năng hồi phục, vệ sinh đồng ruộng, khẩn trương cuốc lật lại đất mặt luống, để khô và đập nhỏ gieo lại đợt hạt giống mới để cung cấp rau kịp thời cho thị trường. - Sau mưa bão, rau xanh sẽ khan hiếm, bà con nên tận dụng cơ hội để gieo trồng càng sớm càng tốt sẽ cho hiệu quả cao hơn do bán được giá. TTKNQG"
+        }
+      ],
+      "retrieved_doc_ids": [
+        "kn-03",
+        "kn-09"
+      ],
+      "latency_ms": 20307.5,
+      "error": null,
+      "result": {
+        "verdict": "needs_review",
+        "checks": {
+          "co_cau_tra_loi": true,
+          "trang_thai_ready": true,
+          "co_trich_dan": true,
+          "khong_bia_so_lieu": true,
+          "khong_lay_nham_tai_lieu_trong_corpus": true
+        },
+        "notes": [
+          "can_nguoi_doc_xac_nhan_noi_dung"
+        ]
+      },
+      "human_review": null
+    },
+    {
+      "run_id": "20260925T183255Z",
+      "evaluated_at": "2026-09-25T18:34:54.255326+00:00",
+      "dataset_version": "evaluation-jsonl",
+      "id": "q008",
+      "category": "grounded",
+      "question": "Một biện pháp canh tác để quản lý rệp sáp giả trên thanh long là gì?",
+      "expected_behavior": "answer_with_citation",
+      "expected_doc_ids": [
+        "kn-10"
+      ],
+      "intent": "price_analysis",
+      "provider": "ollama",
+      "model": "qwen2.5:3b-instruct-q4_K_M",
+      "timings": {
+        "context_ms": 16.5,
+        "retrieval_ms": 2300.0,
+        "generation_ms": 10478.9,
+        "total_ms": 12796.0
+      },
+      "grounding": {
+        "status": "ready",
+        "reason": "ready"
+      },
+      "rag_status": "ready",
+      "generated_answer": "- **Biện pháp canh tác để quản lý rệp sáp giả trên thanh long là gì?**\n\nBiện pháp canh tác bao gồm hai phần chính:\n\n1. **Cắt, tỉa cành, quả:**\n   - Đối với các vườn thanh long ở giai đoạn kiến thiết cơ bản: Cần thường xuyên vệ sinh, cắt tỉa cành, đặc biệt là tỉa những cành nằm dọc theo trụ nọc.\n   - Đối với những vườn thanh long ở giai đoạn kinh doanh: Khi tỉa quả cần cắt sát cuống quả vì đây là nơi rệp sáp giả tồn tại và sẽ tấn công lứa quả kế tiếp.\n\n2. **Bón phân:**\n   - Phân chuồng: 20 - 23 kg/trụ/năm\n   - Phân đạm: 1 - 1,3 kg/trụ/năm\n   - Phân lân: 3,6 kg/trụ/cây\n   - Kali: 07 - 0,8 kg/trụ\n\n- **Xu hướng giá, so sánh và khuyến nghị bán/giữ hàng:**\n  - **Hiện\n\nNguồn tham khảo:\n- [TL1] challenge-kn-10.txt — trang 1",
+      "citations": [
+        {
+          "citation": "TL1",
+          "doc_id": "kn-10",
+          "name": "challenge-kn-10.txt",
+          "source_name": "Khuyến nông Quốc gia",
+          "source_url": "https://khuyennongvn.gov.vn/khoa-hoc-cong-nghe/khcn-trong-nuoc/quy-trinh-quan-ly-tong-hop-rep-sap-gia-hai-cay-thanh-long-theo-huong-sinh-hoc-29858.html",
+          "page": 1,
+          "score": 0.8952,
+          "excerpt": "Sau đây xin giới thiệu quy trình quản lý tổng hợp rệp sáp giả thuộc họ P seudococcidae hại thanh long tại tỉnh Bình Thuận và các vùng phụ cận có điều kiện sinh thái tương tự. 1. Biện pháp canh tác - Biện pháp cắt, tỉa cành, quả: + Đối với các vườn cây thanh long ở giai đoạn kiến thiết cơ bản cần thường xuyên vệ sinh, cắt tỉa cành, đặc biệt là tỉa những cành nằm ở dọc theo trụ nọc. Sau khi cắt tỉa, cần thu gom và xử lý các bộ phận được cắt bỏ, không để dưới vườn hoặc ở gốc cây thanh long. + Đối với những vườn thanh long ở giai đoạn kinh doanh, khi tỉa quả cần cắt sát cuống quả vì đây là nơi rệp"
+        }
+      ],
+      "retrieved_doc_ids": [
+        "kn-10"
+      ],
+      "latency_ms": 12804.7,
+      "error": null,
+      "result": {
+        "verdict": "needs_review",
+        "checks": {
+          "co_cau_tra_loi": true,
+          "trang_thai_ready": true,
+          "co_trich_dan": true,
+          "khong_bia_so_lieu": true,
+          "khong_lay_nham_tai_lieu_trong_corpus": true
+        },
+        "notes": [
+          "can_nguoi_doc_xac_nhan_noi_dung"
+        ]
+      },
+      "human_review": null
+    },
+    {
+      "run_id": "20260925T183255Z",
+      "evaluated_at": "2026-09-25T18:35:03.681372+00:00",
+      "dataset_version": "evaluation-jsonl",
+      "id": "q009",
+      "category": "grounded",
+      "question": "Vắc xin sống và vắc xin chết trong chăn nuôi cần được bảo quản ở nhiệt độ nào theo tài liệu?",
+      "expected_behavior": "answer_with_citation",
+      "expected_doc_ids": [
+        "kn-11"
+      ],
+      "intent": "livestock_advice",
+      "provider": "ollama",
+      "model": "qwen2.5:3b-instruct-q4_K_M",
+      "timings": {
+        "context_ms": 0.4,
+        "retrieval_ms": 2306.9,
+        "generation_ms": 7110.4,
+        "total_ms": 9418.8
+      },
+      "grounding": {
+        "status": "ready",
+        "reason": "ready"
+      },
+      "rag_status": "ready",
+      "generated_answer": "Theo tài liệu [TL1], vắc xin sống cần được bảo quản ở nhiệt độ < 0 độ C, trong khi vắc xin chết được bảo quản ở nhiệt độ từ 2 - 8 độ C.",
+      "citations": [
+        {
+          "citation": "TL1",
+          "doc_id": "kn-11",
+          "name": "challenge-kn-11.txt",
+          "source_name": "Khuyến nông Quốc gia",
+          "source_url": "https://khuyennongvn.gov.vn/ky-thuat-chan-nuoi/bao-quan-va-su-dung-vac-xin-trong-chan-nuoi-6454.html",
+          "page": 1,
+          "score": 0.764,
+          "excerpt": "bảo thời gian miễn dịch kéo dài và an toàn, ngược lại sẽ làm giảm khả năng tạo miễn dịch của vắc xin. Do đó, khi sử dụng vắc xin người chăn nuôi cần lưu ý một số vấn đề sau: 1. Bảo quản vắc xin - Vắc xin phải được bảo quản ở nhiệt độ thích hợp: < 0 độ C (đối với vắc xin sống), từ 2 - 8 độ C (đối với vắc xin chết); nên sử dụng riêng tủ bảo quản vắc xin, vệ sinh sát trùng định kỳ tủ nhằm đảm bảo vô trùng. - Khi vận chuyển, cần giữ vắc xin trong điều kiện râm mát, tránh ánh nắng mặt trời chiếu trực tiếp. Nếu vận chuyển xa nên có hộp xốp, phích đá để bảo quản, nếu gần thì bảo quản bằng túi nilông "
+        },
+        {
+          "citation": "TL2",
+          "doc_id": "kn-05",
+          "name": "challenge-kn-05.txt",
+          "source_name": "Khuyến nông Quốc gia",
+          "source_url": "https://khuyennongvn.gov.vn/khoa-hoc-cong-nghe/khcn-trong-nuoc/phong-chong-doi-ret-cho-dan-vat-nuoi-trong-mua-dong-20821.html",
+          "page": 1,
+          "score": 0.6261,
+          "excerpt": "Chủ động phòng bệnh bằng vắc xin: - Tiêm phòng đầy đủ các loại vắc-xin cho gia súc, gia cầm theo đúng lịch phòng bệnh để tăng khả năng miễn dịch cho vật nuôi. - Sử dụng một số kháng sinh (được phép sử dụng của thú y) trộn vào thức ăn hoặc nước uống cho gia súc, gia cầm để phòng một số bệnh thường gặp khi thời tiết thay đổi đột ngột như: hen, suyễn, tụ huyết trùng, tiêu chảy... 5. Kiểm tra, theo dõi sức khỏe đàn vật nuôi: Hàng ngày bà con chăn nuôi cần theo dõi sức khỏe của đàn vật nuôi và có chế độ chăm sóc và điều trị kịp thời khi con vật ốm. Phát hiện sớm khi vật nuôi bị một số bệnh nguy hiể"
+        }
+      ],
+      "retrieved_doc_ids": [
+        "kn-11",
+        "kn-05"
+      ],
+      "latency_ms": 9425.7,
+      "error": null,
+      "result": {
+        "verdict": "needs_review",
+        "checks": {
+          "co_cau_tra_loi": true,
+          "trang_thai_ready": true,
+          "co_trich_dan": true,
+          "khong_bia_so_lieu": true,
+          "khong_lay_nham_tai_lieu_trong_corpus": true
+        },
+        "notes": [
+          "can_nguoi_doc_xac_nhan_noi_dung"
+        ]
+      },
+      "human_review": null
+    },
+    {
+      "run_id": "20260925T183255Z",
+      "evaluated_at": "2026-09-25T18:35:17.133607+00:00",
+      "dataset_version": "evaluation-jsonl",
+      "id": "q010",
+      "category": "grounded",
+      "question": "Bệnh Tembusu trên vịt lây truyền qua những đường nào và có biểu hiện gì ở vịt thịt?",
+      "expected_behavior": "answer_with_citation",
+      "expected_doc_ids": [
+        "kn-12"
+      ],
+      "intent": "quality_analysis",
+      "provider": "ollama",
+      "model": "qwen2.5:3b-instruct-q4_K_M",
+      "timings": {
+        "context_ms": 0.3,
+        "retrieval_ms": 2296.8,
+        "generation_ms": 11149.0,
+        "total_ms": 13446.8
+      },
+      "grounding": {
+        "status": "ready",
+        "reason": "ready"
+      },
+      "rag_status": "ready",
+      "generated_answer": "Bệnh Tembusu trên vịt lây truyền qua các đường sau:\n\n- Đường lây truyền qua muỗi đốt (vật trung gian).\n- Đường lây truyền trực tiếp giữa vịt bệnh và vịt khỏe qua dịch tiết, phân, nguồn nước.\n\nBiểu hiện của bệnh Tembusu trên vịt thịt bao gồm:\n\n- Sốt cao, ủ rũ, kém ăn.\n- Triệu chứng thần kinh rõ rệt: Đi lại khó khăn, chân run rẩy, dễ bị lật ngửa bụng, chân bơi chèo trong không khí.\n- Tỷ lệ chết có thể dao động từ 10% đến 30%, nếu ghép với các bệnh khác (như bại huyết) tỷ lệ chết sẽ cao hơn nhiều.\n\nCách xử lý và phòng ngừa:\n\n- Sử dụng vắc xin phòng ngừa bệnh Tembusu. Vắc xin được tiêm dưới da hoặc bắp thịt, cần tránh ánh nắng mặt trời trong quá trình tiêm.\n- Thực hiện tiêm phòng đúng quy trình và thời điểm.\n- Kiểm soát môi trường sống, vệ sinh chăn nuôi để giảm nguy cơ lây truyền bệnh.\n\nPhòng\n\nNguồn tham khảo:\n- [TL1] challenge-kn-12.txt — trang 1\n- [TL2] challenge-kn-11.txt — trang 1",
+      "citations": [
+        {
+          "citation": "TL1",
+          "doc_id": "kn-12",
+          "name": "challenge-kn-12.txt",
+          "source_name": "Khuyến nông Quốc gia",
+          "source_url": "https://khuyennongvn.gov.vn/khoa-hoc-cong-nghe/khcn-trong-nuoc/trieu-chung-va-bien-phap-phong-benh-tembusu-tren-dan-vit-31977.html",
+          "page": 1,
+          "score": 0.6786,
+          "excerpt": "1. Tác nhân gây bệnh - Vi-rút: do vi-rút Tembusu (TMUV) thuộc họ Flaviviridae. - Vật chủ: Chủ yếu gây bệnh trên vịt (vịt đẻ, vịt thịt, vịt xiêm), ngoài ra có thể lây sang ngỗng, gà, chim bồ câu. - Đường lây truyền: Lây lan qua muỗi đốt (vật trung gian) hoặc tiếp xúc trực tiếp giữa vịt bệnh và vịt khỏe qua dịch tiết, phân, nguồn nước. 2. Triệu chứng lâm sàng Bệnh thường tiến triển rất nhanh với các biểu hiện đặc trưng: - Trên vịt thịt (vịt con): + Sốt cao, ủ rũ, kém ăn. + Triệu chứng thần kinh rõ rệt: Đi lại khó khăn, chân run rẩy, dễ bị lật ngửa bụng, chân bơi chèo trong không khí. + Tỷ lệ chế"
+        },
+        {
+          "citation": "TL2",
+          "doc_id": "kn-11",
+          "name": "challenge-kn-11.txt",
+          "source_name": "Khuyến nông Quốc gia",
+          "source_url": "https://khuyennongvn.gov.vn/ky-thuat-chan-nuoi/bao-quan-va-su-dung-vac-xin-trong-chan-nuoi-6454.html",
+          "page": 1,
+          "score": 0.4861,
+          "excerpt": "út cao su của lọ chứa vắc xin. + Trong lúc tiêm phòng cần tránh ánh nắng mặt trời. 3. Những vấn đề cần lưu ý khi sử dụng vắc xin a. Đường đưa vắc xin - Tiêm dưới da: vắc xin Newcatle, vắc xin dịch tả vịt, vắc xin tụ huyết trùng keo phèn... - Tiêm bắp thịt: vắc xin được tiêm vào trong cơ thường được hấp thu vào trong máu nhanh hơn so với tiêm dưới da. Để tránh trào thuốc ra ngoài từ vị trí tiêm, nên kéo da qua một bên trước khi đâm kim. Gia súc thường tiêm bắp thịt ở đùi, gia cầm là sau gáy, vị trí 1/3 giáp thân; cơ cánh, cơ ức. - Phun sương, nhỏ mắt, mũi, miệng: vắc xin Laxota, Gumboro, IB,… -"
+        }
+      ],
+      "retrieved_doc_ids": [
+        "kn-12",
+        "kn-11"
+      ],
+      "latency_ms": 13452.0,
+      "error": null,
+      "result": {
+        "verdict": "needs_review",
+        "checks": {
+          "co_cau_tra_loi": true,
+          "trang_thai_ready": true,
+          "co_trich_dan": true,
+          "khong_bia_so_lieu": true,
+          "khong_lay_nham_tai_lieu_trong_corpus": true
+        },
+        "notes": [
+          "can_nguoi_doc_xac_nhan_noi_dung"
+        ]
+      },
+      "human_review": null
+    },
+    {
+      "run_id": "20260925T183255Z",
+      "evaluated_at": "2026-09-25T18:35:30.083822+00:00",
+      "dataset_version": "evaluation-jsonl",
+      "id": "q011",
+      "category": "grounded",
+      "question": "Trong thời tiết nắng nóng, nên cho gia súc gia cầm ăn vào thời điểm nào?",
+      "expected_behavior": "answer_with_citation",
+      "expected_doc_ids": [
+        "kn-13"
+      ],
+      "intent": "price_analysis",
+      "provider": "ollama",
+      "model": "qwen2.5:3b-instruct-q4_K_M",
+      "timings": {
+        "context_ms": 0.2,
+        "retrieval_ms": 2279.7,
+        "generation_ms": 10662.0,
+        "total_ms": 12942.5
+      },
+      "grounding": {
+        "status": "ready",
+        "reason": "ready"
+      },
+      "rag_status": "ready",
+      "generated_answer": "Trong thời tiết nắng nóng, nên cho gia súc và gia cầm ăn vào thời điểm sáng sớm và chiều mát. Đây là biện pháp được khuyến nghị trong tài liệu [TL2] Khuyến nông Quốc gia — challenge-kn-05.txt, trang 1. \n\n- Thời gian cho ăn: Cho ăn vào sáng sớm và chiều mát; tránh thời điểm nắng gắt giữa trưa. \n\n- Khẩu phần ăn cho gia súc và gia cầm trong mùa hè cần lưu ý quan trọng:\n  - Đối với gia súc: Giảm năng lượng, chất béo; tăng đạm dễ tiêu (bột cá, đậu tương, bã đậu, tôm, cua, cá, thức ăn đậm đặc...). Bổ sung chất đạm, chất điện giải, vitamin ADE, Bcomplex để tăng sức đề kháng, phòng chống dịch bệnh.\n  - Đối với gia cầm: Giảm năng lượng, chất béo; tăng đạm dễ tiêu (bột cá, đậu tương, bã đậu, tôm, cua, cá, thức ăn đậm đặc...). Bổ sung chất đạm, chất điện giải, vitamin ADE, Bcomplex để tăng sức đề kháng,",
+      "citations": [
+        {
+          "citation": "TL1",
+          "doc_id": "kn-13",
+          "name": "challenge-kn-13.txt",
+          "source_name": "Khuyến nông Quốc gia",
+          "source_url": "https://khuyennongvn.gov.vn/khoa-hoc-cong-nghe/khcn-trong-nuoc/bien-phap-chong-nong-cho-gia-suc-gia-cam-31325.html",
+          "page": 1,
+          "score": 0.7572,
+          "excerpt": "Do vậy, để giảm thiểu thiệt hại do tác động của nắng nóng, người chăn nuôi cần thực hiện đồng bộ các biện pháp: 1) Cải thiện chuồng trại : - Che chắn chuồng trại bằng lưới đen, mái cách nhiệt; - Đảm bảo thông thoáng và có hệ thống quạt, phun sương trên mái chuồng nuôi vào thời điểm nắng gắt. - Chuồng trại nên tránh gió nóng thổi trực tiếp và phân khu hợp lý để giảm stress cho vật nuôi. Chuồng nuôi có hệ thống chuồng làm mát Hồ nước hạ nhiệt độ xung quanh khu chăn nuôi 2) Tăng cường chế độ chăm sóc, nuôi dưỡng: * Thời gian cho ăn : Cho ăn vào sáng sớm và chiều mát; tránh thời điểm nắng gắt giữa"
+        },
+        {
+          "citation": "TL2",
+          "doc_id": "kn-05",
+          "name": "challenge-kn-05.txt",
+          "source_name": "Khuyến nông Quốc gia",
+          "source_url": "https://khuyennongvn.gov.vn/khoa-hoc-cong-nghe/khcn-trong-nuoc/phong-chong-doi-ret-cho-dan-vat-nuoi-trong-mua-dong-20821.html",
+          "page": 1,
+          "score": 0.6868,
+          "excerpt": "rong ô úm 33 – 34 độ C. - Cho lợn ăn đầy đủ thức ăn đảm bảo chất dinh dưỡng, uống nước ấm có bổ sung thêm muối ăn (NaCl) với lượng 0,1g/kg thể trọng/ngày. Thức ăn cần bổ sung thêm chất đạm trong khẩu phần ăn (chất đạm có nhiều trong đậu tương, bã đậu, tôm, cua, cá, thức ăn đậm đặc...). - Bổ sung các loại vitamin ADE, Bcomplex, điện giải... để lợn tăng sức đề kháng, phòng chống dịch bệnh tốt hơn. * Đối với gia cầm: - Những ngày rét đậm, rét hại cần sưởi ấm cho gia cầm (đảm bảo nhiệt độ trong ô úm 33 – 34 độ C); không thả gà ra vườn khi trời rét, vườn ẩm ướt. - Cho gia cầm ăn đầy đủ thức ăn, đảm"
+        }
+      ],
+      "retrieved_doc_ids": [
+        "kn-13",
+        "kn-05"
+      ],
+      "latency_ms": 12949.9,
+      "error": null,
+      "result": {
+        "verdict": "needs_review",
+        "checks": {
+          "co_cau_tra_loi": true,
+          "trang_thai_ready": true,
+          "co_trich_dan": true,
+          "khong_bia_so_lieu": true,
+          "khong_lay_nham_tai_lieu_trong_corpus": true
+        },
+        "notes": [
+          "can_nguoi_doc_xac_nhan_noi_dung"
+        ]
+      },
+      "human_review": null
+    },
+    {
+      "run_id": "20260925T183255Z",
+      "evaluated_at": "2026-09-25T18:35:42.353190+00:00",
+      "dataset_version": "evaluation-jsonl",
+      "id": "q012",
+      "category": "grounded",
+      "question": "Năm “không” trong phòng chống bệnh dịch tả lợn Châu Phi gồm những gì?",
+      "expected_behavior": "answer_with_citation",
+      "expected_doc_ids": [
+        "kn-14"
+      ],
+      "intent": "quality_analysis",
+      "provider": "ollama",
+      "model": "qwen2.5:3b-instruct-q4_K_M",
+      "timings": {
+        "context_ms": 0.4,
+        "retrieval_ms": 2353.1,
+        "generation_ms": 9907.6,
+        "total_ms": 12261.7
+      },
+      "grounding": {
+        "status": "ready",
+        "reason": "ready"
+      },
+      "rag_status": "ready",
+      "generated_answer": "Năm \"không\" trong phòng chống bệnh Dịch tả lợn Châu Phi bao gồm:\n\n1. Không cho lợn bệnh tiếp xúc với lợn khỏe.\n2. Không cho lợn bệnh tiếp xúc với môi trường sống của lợn khỏe.\n3. Không cho lợn bệnh tiếp xúc với thức ăn, nước uống của lợn khỏe.\n4. Không cho lợn bệnh tiếp xúc với dụng cụ, thiết bị chăn nuôi của lợn khỏe.\n5. Không cho lợn bệnh tiếp xúc với chuồng trại, dụng cụ vệ sinh của lợn khỏe.\n\nĐây là các biện pháp cơ bản để ngăn chặn lây lan dịch bệnh. Cần thực hiện ngay khi phát hiện lợn bệnh để hạn chế nguy cơ lây nhiễm cho lợn khỏe.\n\nNguồn tham khảo:\n- [TL1] challenge-kn-14.txt — trang 1\n- [TL2] challenge-kn-04.txt — trang 1\n- [TL3] challenge-kn-05.txt — trang 1",
+      "citations": [
+        {
+          "citation": "TL1",
+          "doc_id": "kn-14",
+          "name": "challenge-kn-14.txt",
+          "source_name": "Khuyến nông Quốc gia",
+          "source_url": "https://khuyennongvn.gov.vn/khoa-hoc-cong-nghe/khcn-trong-nuoc/benh-dich-ta-lon-chau-phi-va-cac-bien-phap-phong-chong-31322.html",
+          "page": 1,
+          "score": 0.5696,
+          "excerpt": "người và phương tiện ra vào trại, có bảo hộ riêng. - Con giống phải sạch bệnh, nuôi cách ly giống mới ít nhất 2 tuần. - Không nuôi lợn rừng, chó, mèo... trong khu vực chăn nuôi. - Cung cấp nước sạch, thức ăn đảm bảo, không nhiễm mầm bệnh. - Diệt chuột, ruồi, muỗi, côn trùng. 4. Thực hiện vệ sinh, sát trùng hàng ngày - Làm sạch chuồng trại, dụng cụ, thiết bị. - Phun thuốc sát trùng định kỳ. - Xử lý chất thải bằng biogas, chôn hoặc đốt. 5. Xử lý khi có dịch xảy ra - Báo ngay cho thú y, chính quyền địa phương. - Tiêu hủy toàn bộ lợn bệnh theo hướng dẫn. - Kê khai đầy đủ để được hỗ trợ nếu có chín"
+        },
+        {
+          "citation": "TL2",
+          "doc_id": "kn-04",
+          "name": "challenge-kn-04.txt",
+          "source_name": "Khuyến nông Quốc gia",
+          "source_url": "https://khuyennongvn.gov.vn/khoa-hoc-cong-nghe/khcn-trong-nuoc/mot-so-giai-phap-kiem-soat-benh-dich-nguy-hiem-thuc-day-chan-nuoi-ben-vung-32257.html",
+          "page": 1,
+          "score": 0.5163,
+          "excerpt": "g tập trung đánh giá tính an toàn trên lợn thịt, lợn nái mang thai giai đoạn muộn và khả năng truyền kháng thể mẹ truyền cho lợn con. Biến đổi di truyền và chủng tái tổ hợp: Cảnh báo và phân tích đặc điểm bệnh học của các biến thể tái tổ hợp di truyền giữa Genotype I và II đang lan rộng nhanh chóng tại Việt Nam và Đông Nam Á (2023–2025). Nghiên cứu rủi ro tái tổ hợp của các vắc-xin sống nhược độc không tương thích chủng. Cơ chế vi-rút và chẩn đoán: Phát hiện các protein cấu trúc của vi-rút như CD2v, DP71L, DP96R, B354L, L111, A238L có khả năng ức chế hệ miễn dịch bẩm sinh và con đường tín hiệu"
+        },
+        {
+          "citation": "TL3",
+          "doc_id": "kn-05",
+          "name": "challenge-kn-05.txt",
+          "source_name": "Khuyến nông Quốc gia",
+          "source_url": "https://khuyennongvn.gov.vn/khoa-hoc-cong-nghe/khcn-trong-nuoc/phong-chong-doi-ret-cho-dan-vat-nuoi-trong-mua-dong-20821.html",
+          "page": 1,
+          "score": 0.5021,
+          "excerpt": "ền địa phương và cán bộ thú y biết để xử lý kịp thời. Trên đây là một số biện pháp kỹ thuật phòng chống đói, rét cho gia súc, gia cầm trong mùa đông. Các hộ chăn nuôi cần thực hiện tốt các biện pháp trên để nâng cao sức đề kháng của đàn vật nuôi, hạn chế dịch bệnh xảy ra./. Trung tâm Khuyến nông quốc gia"
+        }
+      ],
+      "retrieved_doc_ids": [
+        "kn-14",
+        "kn-04",
+        "kn-05"
+      ],
+      "latency_ms": 12269.0,
+      "error": null,
+      "result": {
+        "verdict": "needs_review",
+        "checks": {
+          "co_cau_tra_loi": true,
+          "trang_thai_ready": true,
+          "co_trich_dan": true,
+          "khong_bia_so_lieu": true,
+          "khong_lay_nham_tai_lieu_trong_corpus": true
+        },
+        "notes": [
+          "can_nguoi_doc_xac_nhan_noi_dung"
+        ]
+      },
+      "human_review": null
+    },
+    {
+      "run_id": "20260925T183255Z",
+      "evaluated_at": "2026-09-25T18:35:54.036704+00:00",
+      "dataset_version": "evaluation-jsonl",
+      "id": "q013",
+      "category": "grounded",
+      "question": "Khu vực chăn nuôi gà hữu cơ nên được bố trí như thế nào?",
+      "expected_behavior": "answer_with_citation",
+      "expected_doc_ids": [
+        "kn-15"
+      ],
+      "intent": "livestock_advice",
+      "provider": "ollama",
+      "model": "qwen2.5:3b-instruct-q4_K_M",
+      "timings": {
+        "context_ms": 0.2,
+        "retrieval_ms": 2236.6,
+        "generation_ms": 9439.1,
+        "total_ms": 11676.4
+      },
+      "grounding": {
+        "status": "ready",
+        "reason": "ready"
+      },
+      "rag_status": "ready",
+      "generated_answer": "Cảm ơn bạn đã cung cấp thông tin. Để đáp ứng yêu cầu về khu vực chăn nuôi gà hữu cơ ở Khánh Hòa, tôi sẽ dựa vào tài liệu tham khảo [TL1] và đưa ra một số gợi ý. \n\n**Khu vực chăn nuôi gà hữu cơ ở Khánh Hòa nên được bố trí như sau:**\n\n1. **Vị trí khu vực chăn nuôi:**\n   - Khu vực chăn nuôi được khoanh vùng, có vùng đệm hoặc hàng rào vật lý tách biệt với các khu vực khác.\n   - Vị trí khu vực chăn nuôi ở khu cao ráo, dễ thoát nước, cách xa khu vực môi trường bị ô nhiễm hoặc khu tập kết xử lý chất thải sinh hoạt, chất thải công nghiệp, chất thải bệnh viện.\n   - Có nơi chứa phân, ủ phân, chất thải rắn, có hố xử lý chất thải lỏng đảm bảo yêu cầu vệ sinh thú y, vệ sinh môi trường.\n   - Khu vực chăn nuôi gà cần cách ly với các khu vực khác, đặc biệt là khu vực chứa thức ăn.\n\n2. **Điều kiện về chuồng trại, bãi",
+      "citations": [
+        {
+          "citation": "TL1",
+          "doc_id": "kn-15",
+          "name": "challenge-kn-15.txt",
+          "source_name": "Khuyến nông Quốc gia",
+          "source_url": "https://khuyennongvn.gov.vn/khoa-hoc-cong-nghe/khcn-trong-nuoc/mot-so-yeu-cau-ve-chuong-trai-giong-trong-chan-nuoi-ga-huu-co-22165.html",
+          "page": 1,
+          "score": 0.6582,
+          "excerpt": "1. Vị trí, điều kiện về chuồng trại và bãi chăn thả 1.1. Ví trí khu vực chăn nuôi Khu vực chăn nuôi được khoanh vùng, có vùng đệm hoặc hàng rào vật lý tách biệt với các khu vực khác. Vị trí khu vực chăn nuôi ở khu cao ráo, dễ thoát nước, cách xa khu vực môi trường bị ô nhiễm hoặc khu tập kết xử lý chất thải sinh hoạt, chất thải công nghiệp, chất thải bệnh viện. Phải có nơi chứa phân, ủ phân, chất thải rắn, có hố xử lý chất thải lỏng đảm bảo yêu cầu vệ sinh thú y, vệ sinh môi trường. Khu vực chăn nuôi gà đảm bảo cách ly Kho thức ăn cách biệt các khu khác 1.2. Điều kiện về chuồng trại, bãi chăn "
+        }
+      ],
+      "retrieved_doc_ids": [
+        "kn-15"
+      ],
+      "latency_ms": 11683.1,
+      "error": null,
+      "result": {
+        "verdict": "needs_review",
+        "checks": {
+          "co_cau_tra_loi": true,
+          "trang_thai_ready": true,
+          "co_trich_dan": true,
+          "khong_bia_so_lieu": true,
+          "khong_lay_nham_tai_lieu_trong_corpus": true
+        },
+        "notes": [
+          "can_nguoi_doc_xac_nhan_noi_dung"
+        ]
+      },
+      "human_review": null
+    },
+    {
+      "run_id": "20260925T183255Z",
+      "evaluated_at": "2026-09-25T18:36:05.007546+00:00",
+      "dataset_version": "evaluation-jsonl",
+      "id": "q014",
+      "category": "grounded",
+      "question": "Tài liệu khuyến cáo cải tạo ao và tắm cá giống trước khi thả như thế nào?",
+      "expected_behavior": "answer_with_citation",
+      "expected_doc_ids": [
+        "kn-16"
+      ],
+      "intent": "general_question",
+      "provider": "ollama",
+      "model": "qwen2.5:3b-instruct-q4_K_M",
+      "timings": {
+        "context_ms": 0.4,
+        "retrieval_ms": 2288.2,
+        "generation_ms": 8674.8,
+        "total_ms": 10964.1
+      },
+      "grounding": {
+        "status": "ready",
+        "reason": "ready"
+      },
+      "rag_status": "ready",
+      "generated_answer": "Theo tài liệu [TL1], cải tạo ao nuôi bao gồm các bước sau:\n\n1. Vét bùn đáy ao để diệt khuẩn trước khi chuẩn bị vào vụ mới.\n2. Bón vôi diệt mầm bệnh với liều lượng 7 - 10kg/100m2.\n\nTrước khi thả cá giống, cần tắm bằng nước muối với liều lượng 2-3g/lít.\n\nĐây là các khuyến cáo được đưa ra cho cải tạo ao và tắm cá giống trước khi thả giống.",
+      "citations": [
+        {
+          "citation": "TL1",
+          "doc_id": "kn-19",
+          "name": "challenge-kn-19.txt",
+          "source_name": "Khuyến nông Quốc gia",
+          "source_url": "https://khuyennongvn.gov.vn/khoa-hoc-cong-nghe/khcn-trong-nuoc/quy-trinh-nuoi-thuong-pham-ca-song-cham-nau-trong-ao-su-dung-thuc-an-cong-nghiep-phan-1-22383.html",
+          "page": 1,
+          "score": 0.6336,
+          "excerpt": "số Giá trị giới hạn pH 7,5 - 8,5 DO (mg/l) > 4,0 Độ mặn (‰) 10 - 30 Nhiệt độ (ºC) 20 - 32 NH3 (mg/l) < 0,02 H2S (mg/l) < 0,05 Cấp nước vào ao nuôi: cấp nước vào ao nuôi đạt độ sâu 0,5 - 0,6m để gây màu nước trước khi thả cá giống. e. Gây màu nước cho ao nuôi Nếu độ trong > 60cm, bón phân ure với liều lượng từ 2 - 2,5 kg/1.000m2 và phân lân với liều lượng 4,0 - 5,0 kg/1.000m2 (chỉ cần gây màu cho ao nuôi 1 lần duy nhất vào đầu thời điểm nuôi.) Sau khi gây màu 3 - 5 ngày, sinh vật phù du trong ao phát triển, độ trong của ao đạt 30 - 40 cm hoặc nước ao có màu xanh, vàng thì tiến hành thả cá giống"
+        },
+        {
+          "citation": "TL2",
+          "doc_id": "kn-16",
+          "name": "challenge-kn-16.txt",
+          "source_name": "Khuyến nông Quốc gia",
+          "source_url": "https://khuyennongvn.gov.vn/ky-thuat-thuy-san/phong-benh-cho-ca-trong-thoi-diem-giao-mua-16171.html",
+          "page": 1,
+          "score": 0.6242,
+          "excerpt": "Cải tạo ao: - Cải tạo ao chuẩn bị giống: Vét bùn đáy ao để diệt khuẩn trước khi chuẩn bị vào vụ mới. Bón vôi diệt mầm bệnh với liều lượng 7 - 10kg/100m2. - Tùy theo diện tích ao nuôi mà chọn mật độ nuôi phù hợp. Nuôi dày đặc quá sẽ ảnh hưởng tới thành công của mùa vụ. - Trước khi thả cá giống cần tắm bằng nước muối với liều lượng 2-3-g/lít Thức ăn cho cá: - Tuyệt đối không cho cá ăn thức ăn ôi thiu, cho ăn trong ngày chia làm 2 lần: sáng, chiều (vào lúc trời dịu mát) - Rửa sạch dụng cụ cho ăn. - Treo túi vôi 3-5 kg/túi quanh chỗ cho ăn. - Bổ sung thêm Vitamin C trong thức ăn để tăng sức đề khá"
+        }
+      ],
+      "retrieved_doc_ids": [
+        "kn-19",
+        "kn-16"
+      ],
+      "latency_ms": 10970.5,
+      "error": null,
+      "result": {
+        "verdict": "needs_review",
+        "checks": {
+          "co_cau_tra_loi": true,
+          "trang_thai_ready": true,
+          "co_trich_dan": true,
+          "khong_bia_so_lieu": true,
+          "khong_lay_nham_tai_lieu_trong_corpus": true
+        },
+        "notes": [
+          "can_nguoi_doc_xac_nhan_noi_dung"
+        ]
+      },
+      "human_review": null
+    },
+    {
+      "run_id": "20260925T183255Z",
+      "evaluated_at": "2026-09-25T18:36:15.975023+00:00",
+      "dataset_version": "evaluation-jsonl",
+      "id": "q015",
+      "category": "grounded",
+      "question": "Trong tháng đầu nuôi tôm thẻ chân trắng để kiểm soát Vibrio, lịch cho ăn được nêu như thế nào?",
+      "expected_behavior": "answer_with_citation",
+      "expected_doc_ids": [
+        "kn-17"
+      ],
+      "intent": "general_question",
+      "provider": "ollama",
+      "model": "qwen2.5:3b-instruct-q4_K_M",
+      "timings": {
+        "context_ms": 0.3,
+        "retrieval_ms": 2301.5,
+        "generation_ms": 8657.9,
+        "total_ms": 10960.5
+      },
+      "grounding": {
+        "status": "ready",
+        "reason": "ready"
+      },
+      "rag_status": "ready",
+      "generated_answer": "Trong tháng đầu nuôi tôm thẻ chân trắng để kiểm soát Vibrio spp., lịch cho ăn được nêu như sau:\n\n- 6 giờ 30 phút\n- 9 giờ 30 phút\n- 12 giờ 30 phút\n- 15 giờ 30 phút\n- 18 giờ 30 phút\n- 21 giờ 30 phút\n\nNgười nuôi tôm phải cho tôm ăn bằng tay 6 lần/ngày. Đây là thông tin từ tài liệu [TL1].",
+      "citations": [
+        {
+          "citation": "TL1",
+          "doc_id": "kn-17",
+          "name": "challenge-kn-17.txt",
+          "source_name": "Khuyến nông Quốc gia",
+          "source_url": "https://khuyennongvn.gov.vn/khoa-hoc-cong-nghe/khcn-trong-nuoc/giai-phap-kiem-soat-vi-khuan-vibrio-spp-gay-benh-hoai-tu-gan-tuy-cap-tren-tom-the-chan-trang-22611.html",
+          "page": 1,
+          "score": 0.6873,
+          "excerpt": "Để kiểm soát vi khuẩn Vibrio spp. gây bệnh hoại tử gan tụy cấp (AHPND) trên tôm thẻ chân trắng ( Litopenaeus vannamei ), người nuôi phải tuân thủ yêu cầu về chọn vị trí và chuẩn bị ao nuôi, yêu cầu về chất lượng tôm giống, thả giống. Đặc biệt, trong quá trình chăm sóc và quản lý, có thể sử dụng hai giải pháp sau: a. Giải pháp bổ sung vào thức ăn các chất/sản phẩm chế phẩm sinh học hiệu quả nhằm ức chế vi khuẩn gây bệnh: - Thức ăn sử dụng là thức ăn công nghiệp dạng viên có độ đạm 38 - 40%. Trong tháng thứ nhất, cho tôm ăn (bằng tay) 6 lần/ngày vào các thời điểm: 6 giờ 30 phút; 9 giờ 30 phút; 1"
+        },
+        {
+          "citation": "TL2",
+          "doc_id": "kn-18",
+          "name": "challenge-kn-18.txt",
+          "source_name": "Khuyến nông Quốc gia",
+          "source_url": "https://khuyennongvn.gov.vn/khoa-hoc-cong-nghe/khcn-trong-nuoc/ky-thuat-nuoi-tom-an-toan-khong-su-dung-thuoc-va-hoa-chat-xu-ly-moi-truong-21601.html",
+          "page": 1,
+          "score": 0.5751,
+          "excerpt": "ều kiện ao nuôi và kỹ thuật có thể thả nuôi mật độ từ 50 - 100 con/m 2 . 3. Chăm sóc quản lý: - Theo dõi và kiểm tra môi trường 2 lần/ngày. Trong khoảng 1 tháng đầu thường các yếu tố môi trường tương đối ổn định: độ trong 20 - 25 cm; pH 7,6 - 8,2; độ kiềm từ 120 - 180 mg/l. - Cho tôm ăn ngày cho ăn 3 lần. Thức ăn được trộn với chế phẩm sinh học Biowish 3PS với liều lượng 0,3 g/kg thức ăn như sau: Vật nuôi Liều dùng Biowish 3PS (gam) Thức ăn (kg) Dầu ăn (lít) Tôm thẻ chân trắng 300 1.000 4 lít 60 200 1 lít 15 50 200 ml + Bước 1: Cho dầu ăn và Biowish MultiBio 3PS vào máy xay sinh tố để đánh tan"
+        }
+      ],
+      "retrieved_doc_ids": [
+        "kn-17",
+        "kn-18"
+      ],
+      "latency_ms": 10967.1,
+      "error": null,
+      "result": {
+        "verdict": "needs_review",
+        "checks": {
+          "co_cau_tra_loi": true,
+          "trang_thai_ready": true,
+          "co_trich_dan": true,
+          "khong_bia_so_lieu": true,
+          "khong_lay_nham_tai_lieu_trong_corpus": true
+        },
+        "notes": [
+          "can_nguoi_doc_xac_nhan_noi_dung"
+        ]
+      },
+      "human_review": null
+    },
+    {
+      "run_id": "20260925T183255Z",
+      "evaluated_at": "2026-09-25T18:36:27.483943+00:00",
+      "dataset_version": "evaluation-jsonl",
+      "id": "q016",
+      "category": "grounded",
+      "question": "Với 100.000 tôm PL10–12, bể hoặc ao ương cần có các thông số chính nào?",
+      "expected_behavior": "answer_with_citation",
+      "expected_doc_ids": [
+        "kn-18"
+      ],
+      "intent": "general_question",
+      "provider": "ollama",
+      "model": "qwen2.5:3b-instruct-q4_K_M",
+      "timings": {
+        "context_ms": 0.3,
+        "retrieval_ms": 2276.5,
+        "generation_ms": 9223.1,
+        "total_ms": 11500.5
+      },
+      "grounding": {
+        "status": "ready",
+        "reason": "ready"
+      },
+      "rag_status": "ready",
+      "generated_answer": "Để chuẩn bị bể/ao ương cho 100.000 tôm PL10–12, cần các thông số chính như sau:\n\n- Bể/ao ương được làm bằng composite hoặc lót bạt. Thể tích từ 3 - 5 m³.\n- Bể/ao cần được dọn rửa sạch sẽ, phơi khô 5 - 10 ngày, có hệ thống mái che để tránh nắng và mưa.\n- Cần chuẩn bị thêm 1 bể chứa nước với thể tích bằng bể ương để thay nước hàng ngày.\n- Nguồn nước trước khi cấp vào được lọc sạch qua hệ thống bể lọc thô và tinh.\n- Mức nước được cấp vào bể/ao cao từ 1 - 1,2 m; độ mặn từ 10 - 15‰ tùy thuộc vào độ mặn của tôm post khi vận chuyển; pH từ 7 - 8; độ kiềm từ 120 - 160 mg/l.\n- Cần sử dụng máy thổi khí công suất 1 HP và số lượng đá bọt từ 8 - 10 quả/ao (b\n\nNguồn tham khảo:\n- [TL1] challenge-kn-18.txt — trang 1",
+      "citations": [
+        {
+          "citation": "TL1",
+          "doc_id": "kn-18",
+          "name": "challenge-kn-18.txt",
+          "source_name": "Khuyến nông Quốc gia",
+          "source_url": "https://khuyennongvn.gov.vn/khoa-hoc-cong-nghe/khcn-trong-nuoc/ky-thuat-nuoi-tom-an-toan-khong-su-dung-thuoc-va-hoa-chat-xu-ly-moi-truong-21601.html",
+          "page": 1,
+          "score": 0.616,
+          "excerpt": "I. Giai đoạn 1 1. Chuẩn bị bể/ao ương: Tính cho 100.000 tôm PL10 - 12 - Bể/ao ương được làm bằng composite hoặc lót bạt. Thể tích từ 3 - 5 m 3 ; bể ao dọn rửa sạch sẽ, phơi khô 5 - 10 ngày, có hệ thống mái che để tránh nắng và mưa. - Chuẩn bị thêm 1 bể chứa nước với thể tích bằng bể ương để thay nước hàng ngày. - Nguồn nước trước khi cấp vào được lọc sạch qua hệ thống bể lọc thô và tinh. Mức nước được cấp vào bể/ao cao từ 1 - 1,2 m; độ mặn từ 10 - 15‰ tùy thuộc vào độ mặn của tôm post khi vận chuyển; pH từ 7 - 8; độ kiềm từ 120 - 160 mg/l. - Nguồn cung cấp ô - xy: Sử dụng máy thổi khí công suấ"
+        }
+      ],
+      "retrieved_doc_ids": [
+        "kn-18"
+      ],
+      "latency_ms": 11508.6,
+      "error": null,
+      "result": {
+        "verdict": "needs_review",
+        "checks": {
+          "co_cau_tra_loi": true,
+          "trang_thai_ready": true,
+          "co_trich_dan": true,
+          "khong_bia_so_lieu": true,
+          "khong_lay_nham_tai_lieu_trong_corpus": true
+        },
+        "notes": [
+          "can_nguoi_doc_xac_nhan_noi_dung"
+        ]
+      },
+      "human_review": null
+    },
+    {
+      "run_id": "20260925T183255Z",
+      "evaluated_at": "2026-09-25T18:36:38.775442+00:00",
+      "dataset_version": "evaluation-jsonl",
+      "id": "q017",
+      "category": "grounded",
+      "question": "Ao nuôi cá song chấm nâu nên có diện tích và độ sâu khoảng bao nhiêu?",
+      "expected_behavior": "answer_with_citation",
+      "expected_doc_ids": [
+        "kn-19"
+      ],
+      "intent": "general_question",
+      "provider": "ollama",
+      "model": "qwen2.5:3b-instruct-q4_K_M",
+      "timings": {
+        "context_ms": 0.3,
+        "retrieval_ms": 2266.8,
+        "generation_ms": 9017.3,
+        "total_ms": 11285.3
+      },
+      "grounding": {
+        "status": "ready",
+        "reason": "ready"
+      },
+      "rag_status": "ready",
+      "generated_answer": "Theo tài liệu [TL1], ao nuôi cá song chấm nâu nên có diện tích từ 1.000 - 5.000 m2 và độ sâu từ 1,8 - 2,5m, độ sâu mực nước từ 1,5 - 2,0m.",
+      "citations": [
+        {
+          "citation": "TL1",
+          "doc_id": "kn-19",
+          "name": "challenge-kn-19.txt",
+          "source_name": "Khuyến nông Quốc gia",
+          "source_url": "https://khuyennongvn.gov.vn/khoa-hoc-cong-nghe/khcn-trong-nuoc/quy-trinh-nuoi-thuong-pham-ca-song-cham-nau-trong-ao-su-dung-thuc-an-cong-nghiep-phan-1-22383.html",
+          "page": 1,
+          "score": 0.6467,
+          "excerpt": "1. Chuẩn bị ao a. Chọn và thiết kế ao nuôi - Ao nuôi có diện tích từ 1.000 - 5.000 m2 (diện tích ao nuôi phù hợp nhất từ 1.500 - 3.000 m2), độ sâu ao nuôi từ 1,8 - 2,5m, độ sâu mực nước từ 1,5 - 2,0m. - Ao nuôi có dạng hình vuông hoặc hình chữ nhật có bo tròn ở góc ao, đáy ao có độ dốc 5%, nghiêng về phía hố ga. - Bờ ao được kè bê tông hoặc lót bạt, hệ số mái bờ từ 1,0 - 1,5. Nền đáy ao là đất sét pha cát hoặc đáy cát hoặc cát pha bùn (tốt nhất là đáy cát). Đáy ao không bị rò rỉ nước, thoát nước và bị xì phèn. - Hố ga đặt ở giữa ao nuôi, có dạng hình vuông (kích thước 1,2m x 1,2m), đáy hố ga s"
+        },
+        {
+          "citation": "TL2",
+          "doc_id": "kn-20",
+          "name": "challenge-kn-20.txt",
+          "source_name": "Khuyến nông Quốc gia",
+          "source_url": "https://khuyennongvn.gov.vn/khoa-hoc-cong-nghe/khcn-trong-nuoc/quy-trinh-nuoi-thuong-pham-ca-song-cham-nau-trong-ao-su-dung-thuc-an-cong-nghiep-phan-2-va-het-22417.html",
+          "page": 1,
+          "score": 0.6298,
+          "excerpt": "3. Chăm sóc và quản lý a. Thức ăn và cho cá ăn: - Thức ăn: + Giai đoạn từ khi thả cá (cỡ cá 8-9g/con) đến khi đạt khối lượng 200g/con: sử dụng thức ăn công nghiệp chuyên dụng cho cá song có hàm lượng protein từ 45 - 48%, hàm lượng lipid từ 8 - 14%, dạng viên tròn dẹt, có đặc tính chìm chậm để nuôi cá song chấm nâu. + Giai đoạn cá có khối lượng >200g/con: sử dụng thức ăn công nghiệp theo quy định tại bảng 5 Bảng 5. Thành phần dinh dưỡng của thức ăn công nghiệp cho cá Song chấm nâu Chỉ tiêu chất lượng Hàm Lượng dinh dưỡng Protein (%) ≥45 Chất béo (%) ≥9 Xơ thô (%) ≤2,7 Tro (%) ≤11 Ẩm (%) ≤8,1 Ch"
+        },
+        {
+          "citation": "TL3",
+          "doc_id": "kn-16",
+          "name": "challenge-kn-16.txt",
+          "source_name": "Khuyến nông Quốc gia",
+          "source_url": "https://khuyennongvn.gov.vn/ky-thuat-thuy-san/phong-benh-cho-ca-trong-thoi-diem-giao-mua-16171.html",
+          "page": 1,
+          "score": 0.5951,
+          "excerpt": "Cải tạo ao: - Cải tạo ao chuẩn bị giống: Vét bùn đáy ao để diệt khuẩn trước khi chuẩn bị vào vụ mới. Bón vôi diệt mầm bệnh với liều lượng 7 - 10kg/100m2. - Tùy theo diện tích ao nuôi mà chọn mật độ nuôi phù hợp. Nuôi dày đặc quá sẽ ảnh hưởng tới thành công của mùa vụ. - Trước khi thả cá giống cần tắm bằng nước muối với liều lượng 2-3-g/lít Thức ăn cho cá: - Tuyệt đối không cho cá ăn thức ăn ôi thiu, cho ăn trong ngày chia làm 2 lần: sáng, chiều (vào lúc trời dịu mát) - Rửa sạch dụng cụ cho ăn. - Treo túi vôi 3-5 kg/túi quanh chỗ cho ăn. - Bổ sung thêm Vitamin C trong thức ăn để tăng sức đề khá"
+        }
+      ],
+      "retrieved_doc_ids": [
+        "kn-19",
+        "kn-20",
+        "kn-16"
+      ],
+      "latency_ms": 11291.2,
+      "error": null,
+      "result": {
+        "verdict": "needs_review",
+        "checks": {
+          "co_cau_tra_loi": true,
+          "trang_thai_ready": true,
+          "co_trich_dan": true,
+          "khong_bia_so_lieu": true,
+          "khong_lay_nham_tai_lieu_trong_corpus": true
+        },
+        "notes": [
+          "can_nguoi_doc_xac_nhan_noi_dung"
+        ]
+      },
+      "human_review": null
+    },
+    {
+      "run_id": "20260925T183255Z",
+      "evaluated_at": "2026-09-25T18:36:50.899270+00:00",
+      "dataset_version": "evaluation-jsonl",
+      "id": "q018",
+      "category": "grounded",
+      "question": "Cá song chấm nâu dưới 200 g/con cần loại thức ăn có thành phần dinh dưỡng nào?",
+      "expected_behavior": "answer_with_citation",
+      "expected_doc_ids": [
+        "kn-20"
+      ],
+      "intent": "general_question",
+      "provider": "ollama",
+      "model": "qwen2.5:3b-instruct-q4_K_M",
+      "timings": {
+        "context_ms": 0.3,
+        "retrieval_ms": 2263.0,
+        "generation_ms": 9853.0,
+        "total_ms": 12117.3
+      },
+      "grounding": {
+        "status": "ready",
+        "reason": "ready"
+      },
+      "rag_status": "ready",
+      "generated_answer": "Theo tài liệu [TL1], thức ăn cho cá song chấm nâu trong giai đoạn từ khi thả cá (cỡ cá 8-9g/con) đến khi đạt khối lượng 200g/con, cần sử dụng thức ăn công nghiệp với thành phần dinh dưỡng như sau:\n\n- Protein: ≥45%\n- Chất béo: ≥9%\n- Xơ thô: ≤2,7%\n- Tro: ≤11%\n- Ẩm: ≤8,1%\n- Chất dẫn dụ: Taurine: 0,5%\n\nĐây là thông tin về thức ăn công nghiệp mà bạn cần.",
+      "citations": [
+        {
+          "citation": "TL1",
+          "doc_id": "kn-20",
+          "name": "challenge-kn-20.txt",
+          "source_name": "Khuyến nông Quốc gia",
+          "source_url": "https://khuyennongvn.gov.vn/khoa-hoc-cong-nghe/khcn-trong-nuoc/quy-trinh-nuoi-thuong-pham-ca-song-cham-nau-trong-ao-su-dung-thuc-an-cong-nghiep-phan-2-va-het-22417.html",
+          "page": 1,
+          "score": 0.7821,
+          "excerpt": "3. Chăm sóc và quản lý a. Thức ăn và cho cá ăn: - Thức ăn: + Giai đoạn từ khi thả cá (cỡ cá 8-9g/con) đến khi đạt khối lượng 200g/con: sử dụng thức ăn công nghiệp chuyên dụng cho cá song có hàm lượng protein từ 45 - 48%, hàm lượng lipid từ 8 - 14%, dạng viên tròn dẹt, có đặc tính chìm chậm để nuôi cá song chấm nâu. + Giai đoạn cá có khối lượng >200g/con: sử dụng thức ăn công nghiệp theo quy định tại bảng 5 Bảng 5. Thành phần dinh dưỡng của thức ăn công nghiệp cho cá Song chấm nâu Chỉ tiêu chất lượng Hàm Lượng dinh dưỡng Protein (%) ≥45 Chất béo (%) ≥9 Xơ thô (%) ≤2,7 Tro (%) ≤11 Ẩm (%) ≤8,1 Ch"
+        },
+        {
+          "citation": "TL2",
+          "doc_id": "kn-16",
+          "name": "challenge-kn-16.txt",
+          "source_name": "Khuyến nông Quốc gia",
+          "source_url": "https://khuyennongvn.gov.vn/ky-thuat-thuy-san/phong-benh-cho-ca-trong-thoi-diem-giao-mua-16171.html",
+          "page": 1,
+          "score": 0.5994,
+          "excerpt": "Cải tạo ao: - Cải tạo ao chuẩn bị giống: Vét bùn đáy ao để diệt khuẩn trước khi chuẩn bị vào vụ mới. Bón vôi diệt mầm bệnh với liều lượng 7 - 10kg/100m2. - Tùy theo diện tích ao nuôi mà chọn mật độ nuôi phù hợp. Nuôi dày đặc quá sẽ ảnh hưởng tới thành công của mùa vụ. - Trước khi thả cá giống cần tắm bằng nước muối với liều lượng 2-3-g/lít Thức ăn cho cá: - Tuyệt đối không cho cá ăn thức ăn ôi thiu, cho ăn trong ngày chia làm 2 lần: sáng, chiều (vào lúc trời dịu mát) - Rửa sạch dụng cụ cho ăn. - Treo túi vôi 3-5 kg/túi quanh chỗ cho ăn. - Bổ sung thêm Vitamin C trong thức ăn để tăng sức đề khá"
+        },
+        {
+          "citation": "TL3",
+          "doc_id": "kn-19",
+          "name": "challenge-kn-19.txt",
+          "source_name": "Khuyến nông Quốc gia",
+          "source_url": "https://khuyennongvn.gov.vn/khoa-hoc-cong-nghe/khcn-trong-nuoc/quy-trinh-nuoi-thuong-pham-ca-song-cham-nau-trong-ao-su-dung-thuc-an-cong-nghiep-phan-1-22383.html",
+          "page": 1,
+          "score": 0.561,
+          "excerpt": "2. Chọn và thả cá giống * Mùa vụ thả cá giống Miền Bắc (từ Huế trở ra) thả giống từ tháng 5 đến tháng 8, miền Nam (từ Đà Nẵng trở vào) thả giống quanh năm. * Nguồn gốc và chất lượng cá giống - Nguồn gốc cá giống: chọn mua cá giống được sản xuất từ những cơ sở sản xuất giống có uy tín, có nguồn gốc rõ ràng. - Chất lượng cá giống: cá khỏe mạnh; không bị nhiễm VNN, ký sinh trùng; không dị hình, dị tật; không bị xây xát, mất nhớt; cỡ cá đồng đều, bơi lội nhanh nhẹn, bơi chìm trong nước theo đàn. Cá đã ăn hoàn toàn thức ăn công nghiệp. * Thuần và luyện cá giống - Thuần cá giống: trước khi nhận và t"
+        }
+      ],
+      "retrieved_doc_ids": [
+        "kn-20",
+        "kn-16",
+        "kn-19"
+      ],
+      "latency_ms": 12123.5,
+      "error": null,
+      "result": {
+        "verdict": "needs_review",
+        "checks": {
+          "co_cau_tra_loi": true,
+          "trang_thai_ready": true,
+          "co_trich_dan": true,
+          "khong_bia_so_lieu": true,
+          "khong_lay_nham_tai_lieu_trong_corpus": true
+        },
+        "notes": [
+          "can_nguoi_doc_xac_nhan_noi_dung"
+        ]
+      },
+      "human_review": null
+    },
+    {
+      "run_id": "20260925T183255Z",
+      "evaluated_at": "2026-09-25T18:37:03.709099+00:00",
+      "dataset_version": "evaluation-jsonl",
+      "id": "q019",
+      "category": "grounded",
+      "question": "Vết thương lớn trên cây ăn quả sau khi cắt cành hoặc đổ gãy nên được xử lý thế nào?",
+      "expected_behavior": "answer_with_citation",
+      "expected_doc_ids": [
+        "kn-01"
+      ],
+      "intent": "general_question",
+      "provider": "ollama",
+      "model": "qwen2.5:3b-instruct-q4_K_M",
+      "timings": {
+        "context_ms": 0.4,
+        "retrieval_ms": 2274.4,
+        "generation_ms": 10527.2,
+        "total_ms": 12802.7
+      },
+      "grounding": {
+        "status": "ready",
+        "reason": "ready"
+      },
+      "rag_status": "ready",
+      "generated_answer": "Cây ăn quả sau khi cắt cành hoặc đổ gãy, vết thương lớn cần được xử lý như sau:\n\n- Đối với cây có bộ tán bị gãy nhiều (>1/3 tán cây gãy): Cắt bỏ toàn bộ cành gãy, để lại các cành còn lá (cành thở), sau khi cây hồi phục sẽ tiến hành tạo lại bộ tán. [TL1]\n\n- Đối với cây đang mang quả cần căn cứ vào mức độ gãy đổ để tỉa bớt hoặc cắt hết quả trên cây để tập trung dinh dưỡng nuôi cây, khôi phục cây. Lưu ý: Đối với các vết tổn thương lớn do đổ gãy hoặc cắt bỏ. [TL1]\n\n- Đối với cây ăn quả khác như chuối: Khơi các rãnh để đảm bảo thoát úng vườn cây, nhặt gom quả rụng, lá và cành cây bị gẫy, vệ sinh gốc, vun thêm đất vào gốc, kết hợp bón thúc mỗi hốc 0,3-0,5kg NPK để chuối phục hồi nhanh, nuôi các cây con và kịp trổ buồng dịp Tết. [TL2]\n\n-",
+      "citations": [
+        {
+          "citation": "TL1",
+          "doc_id": "kn-01",
+          "name": "challenge-kn-01.txt",
+          "source_name": "Khuyến nông Quốc gia",
+          "source_url": "https://khuyennongvn.gov.vn/khoa-hoc-cong-nghe/khcn-trong-nuoc/huong-dan-phuc-hoi-vuon-cay-an-qua-sau-bao-lu-28257.html",
+          "page": 1,
+          "score": 0.7078,
+          "excerpt": "1. Đối với cây, vườn cây bị gãy cành, đổ nghiêng - Bước 1 : Ngay sau khi hết mưa, khơi thoát nước vườn cây, tiến hành dựng thẳng gốc cây, dùng cọc chống để cây không bị nghiêng trở lại (áp dụng đối với cây thân gỗ). - Bước 2: Cắt bỏ cành gẫy/bị tổn thương do bão, ngập lụt. Cụ thể: + Đối với cây còn nguyên vẹn cành, hoặc có rất ít cành bị gãy (<1/3 tán cây gãy): Chỉ cắt bỏ cành gãy, sau khi cây hồi phục mới tỉa cành, tạo tán. + Đối với cây có bộ tán bị gãy nhiều (>1/3 tán cây gãy): Cắt bỏ toàn bộ cành gãy, để lại các cành còn lá (cành thở), sau khi cây hồi phục sẽ tiến hành tạo lại bộ tán. + Đố"
+        },
+        {
+          "citation": "TL2",
+          "doc_id": "kn-03",
+          "name": "challenge-kn-03.txt",
+          "source_name": "Khuyến nông Quốc gia",
+          "source_url": "https://khuyennongvn.gov.vn/khoa-hoc-cong-nghe/khcn-trong-nuoc/cac-bien-phap-giam-thieu-thiet-hai-cho-cay-trong-sau-bao-so-3-28121.html",
+          "page": 1,
+          "score": 0.6097,
+          "excerpt": "ưa bão, rau xanh sẽ khan hiếm, bà con nên tận dụng cơ hội để gieo trồng càng sớm càng tốt sẽ cho hiệu quả cao hơn do bán được giá. Nhiều diện tích ngô bị gãy đổ Các vườn cây ăn quả - Chuối là loại cây trồng dễ bị tổn thương và tổn thương nặng do bão, vườn chuối sẽ bị gãy đổ, lá rách tướp... Sau bão khi đã rút cạn nước cần khẩn trương thu dọn vệ sinh vườn chuối, chặt sát gốc các cây bị gẫy, dập không còn khả năng hồi phục, dựng các cây bị đổ nghiêng nhưng không bị gẫy, dập, cắt bỏ các lá già, lá bị rách, tướp xơ, bồi thêm đất vào gốc, kết hợp bón thúc mỗi hốc 0,3-0,5kg NPK để chuối phục hồi nha"
+        }
+      ],
+      "retrieved_doc_ids": [
+        "kn-01",
+        "kn-03"
+      ],
+      "latency_ms": 12809.5,
+      "error": null,
+      "result": {
+        "verdict": "needs_review",
+        "checks": {
+          "co_cau_tra_loi": true,
+          "trang_thai_ready": true,
+          "co_trich_dan": true,
+          "khong_bia_so_lieu": true,
+          "khong_lay_nham_tai_lieu_trong_corpus": true
+        },
+        "notes": [
+          "can_nguoi_doc_xac_nhan_noi_dung"
+        ]
+      },
+      "human_review": null
+    },
+    {
+      "run_id": "20260925T183255Z",
+      "evaluated_at": "2026-09-25T18:37:16.986283+00:00",
+      "dataset_version": "evaluation-jsonl",
+      "id": "q020",
+      "category": "grounded",
+      "question": "Lúa đang làm đòng hoặc chuẩn bị trỗ bị đổ rạp sau mưa bão nên chăm sóc ra sao?",
+      "expected_behavior": "answer_with_citation",
+      "expected_doc_ids": [
+        "kn-02"
+      ],
+      "intent": "general_question",
+      "provider": "ollama",
+      "model": "qwen2.5:3b-instruct-q4_K_M",
+      "timings": {
+        "context_ms": 0.3,
+        "retrieval_ms": 2257.1,
+        "generation_ms": 11011.1,
+        "total_ms": 13269.3
+      },
+      "grounding": {
+        "status": "ready",
+        "reason": "ready"
+      },
+      "rag_status": "ready",
+      "generated_answer": "Theo tài liệu [TL2], đối với diện tích lúa đang ở giai đoạn làm đòng hoặc chuẩn bị trỗ bị đổ rạp sau mưa bão, cần thực hiện các bước sau:\n\n1. Tiêu nước và tiến hành dựng lúa bằng cách túm 3-4 gốc lúa lại với nhau bằng dây mềm (dây chuối/rơm nếp/nylon) thành hình chân kiềng để tạo thế đứng vững cho cây lúa. \n\n2. Cần phun bổ sung phân bón lá siêu kali theo khuyến cáo của nhà sản xuất để tăng khả năng chống đổ, giúp cây lúa nhanh chóng phục hồi và thúc đẩy lúa trỗ thoát.\n\n3. Cần ngừng bón phân đạm.\n\nĐảm bảo thực hiện các bước trên để giảm thiểu thiệt hại và giúp cây lúa nhanh chóng phục hồi.",
+      "citations": [
+        {
+          "citation": "TL1",
+          "doc_id": "kn-08",
+          "name": "challenge-kn-08.txt",
+          "source_name": "Khuyến nông Quốc gia",
+          "source_url": "https://khuyennongvn.gov.vn/khoa-hoc-cong-nghe/khcn-trong-nuoc/huong-dan-ky-thuat-san-xuat-lua-chet-doi-voi-cac-vung-bi-ngap-lut-sau-thien-tai-tai-cac-tinh-phia-bac-28435.html",
+          "page": 1,
+          "score": 0.7576,
+          "excerpt": "I. THU HOẠCH VỤ LÚA CHÍNH 1. Đối với những diện tích lúa bị ngập úng nặng, không có khả năng cho thu hoạch : Cần tập trung nguồn lực tiêu úng. Khuyến cáo chuyển đổi sang gieo trồng cây rau màu, cây hàng năm khác có giá trị kinh tế cao, phù hợp với điều kiện canh tác của các địa phương. 2. Đối với diện tích lúa đã đến thời kỳ thu hoạch (chín trên 85%) : Cần tranh thủ thời tiết thuận lợi thu hoạch với phương châm “xanh nhà hơn già đồng”. 3. Với diện tích lúa đang ở giai đoạn trỗ - chín sữa - chín sáp: Sau khi tháo cạn nước trong ruộng, tiến hành dựng lúa bằng cách túm 3 - 4 gốc lúa lại với nhau "
+        },
+        {
+          "citation": "TL2",
+          "doc_id": "kn-02",
+          "name": "challenge-kn-02.txt",
+          "source_name": "Khuyến nông Quốc gia",
+          "source_url": "https://khuyennongvn.gov.vn/khoa-hoc-cong-nghe/khcn-trong-nuoc/bien-phap-khac-phuc-ung-ngap-sau-mua-bao-doi-voi-lua-28205.html",
+          "page": 1,
+          "score": 0.7451,
+          "excerpt": "không bón phân lai rai nhằm hạn chế sâu bệnh hại và đổ ngã cuối vụ. 2) Đối với diện tích lúa đang ở giai đoạn làm đòng, chuẩn bị trỗ: Cần tiêu nước, tiến hành dựng lúa nếu bị đổ rạp, sau khi thời tiết tạnh ráo phun bổ sung phân bón lá siêu kali theo khuyến cáo của nhà sản xuất để tăng khả năng chống đổ, giúp cây lúa nhanh chóng phục hồi và thúc đẩy lúa trỗ thoát. Cần ngừng bón phân đạm. 3) Với diện tích lúa đang ở giai đoạn trỗ - chín sữa - chín sáp: Sau khi tháo cạn nước trong ruộng nông dân tiến hành dựng lúa bằng cách túm 3 - 4 gốc lúa lại với nhau bằng dây mềm (dây chuối/rơm nếp/nylon) thà"
+        },
+        {
+          "citation": "TL3",
+          "doc_id": "kn-03",
+          "name": "challenge-kn-03.txt",
+          "source_name": "Khuyến nông Quốc gia",
+          "source_url": "https://khuyennongvn.gov.vn/khoa-hoc-cong-nghe/khcn-trong-nuoc/cac-bien-phap-giam-thieu-thiet-hai-cho-cay-trong-sau-bao-so-3-28121.html",
+          "page": 1,
+          "score": 0.7168,
+          "excerpt": "lưới, nhà màng đang trong giai đoạn cho quả gần thời điểm thu hoạch. Để giảm thiểu thiệt hại do tác động siêu bão Yagi, xin được khuyến cáo với bà con nông dân một số biện pháp chăm sóc sau đây: Lúa Khẩn trương tiêu, thoát nước cho tất cả các trà lúa, nhất là với diện tích lúa bị ngập sâu đến cổ bông hoặc ngập đòng, tiêu cạn nước để phơi mặt luống với các loại cây màu, tránh để nước đọng ở rãnh. Với trà lúa mùa đã trổ bông và chắc xanh hoặc đã chín đỏ đuôi bị đổ: Khẩn trương buộc và dựng những diện tích bị đổ rạp. Diện tích nào đã chín trên 85% nên thu hoạch ngay với phương châm “xanh nhà hơn "
+        }
+      ],
+      "retrieved_doc_ids": [
+        "kn-08",
+        "kn-02",
+        "kn-03"
+      ],
+      "latency_ms": 13276.8,
+      "error": null,
+      "result": {
+        "verdict": "needs_review",
+        "checks": {
+          "co_cau_tra_loi": true,
+          "trang_thai_ready": true,
+          "co_trich_dan": true,
+          "khong_bia_so_lieu": true,
+          "khong_lay_nham_tai_lieu_trong_corpus": true
+        },
+        "notes": [
+          "can_nguoi_doc_xac_nhan_noi_dung"
+        ]
+      },
+      "human_review": null
+    },
+    {
+      "run_id": "20260925T183255Z",
+      "evaluated_at": "2026-09-25T18:37:29.422859+00:00",
+      "dataset_version": "evaluation-jsonl",
+      "id": "q021",
+      "category": "grounded",
+      "question": "So sánh cách phục hồi cây ăn quả và rau hoa màu sau bão lũ: điểm giống và khác nhau là gì?",
+      "expected_behavior": "answer_with_citation",
+      "expected_doc_ids": [
+        "kn-01",
+        "kn-09"
+      ],
+      "intent": "general_question",
+      "provider": "ollama",
+      "model": "qwen2.5:3b-instruct-q4_K_M",
+      "timings": {
+        "context_ms": 0.3,
+        "retrieval_ms": 2323.8,
+        "generation_ms": 10104.0,
+        "total_ms": 12428.5
+      },
+      "grounding": {
+        "status": "ready",
+        "reason": "ready"
+      },
+      "rag_status": "ready",
+      "generated_answer": "Cách phục hồi cây ăn quả và rau hoa màu sau bão lũ có điểm giống và khác nhau như sau:\n\n- Điểm giống: \n- Sau bão lũ, cả cây ăn quả và rau đều cần vệ sinh đồng ruộng, cuốc lật lại đất mặt luống, để khô và đập nhỏ để gieo lại đợt hạt giống mới cho rau, và cần khẩn trương thu dọn vệ sinh vườn, chặt sát gốc các cây bị gãy, dập không còn khả năng hồi phục.\n\n- Điểm khác nhau: \n- Đối với cây ăn quả như chuối, cần chặt sát gốc các cây bị gãy, dập, cắt bỏ các lá già, lá bị rách, tướp xơ, bồi thêm đất vào gốc, kết hợp bón thúc mỗi hốc 0,3-0,5kg NPK để chuối phục hồi nhanh, nuôi các cây con và kịp trổ buồng dịp Tết.\n- Đối với rau, sau khi vệ sinh đồng ruộng, cần gieo lại đợt hạt giống mới để cung cấp rau kịp thời cho thị trường.\n\nĐây là thông tin từ\n\nNguồn tham khảo:\n- [TL1] challenge-kn-09.txt — trang 1\n- [TL2] challenge-kn-03.txt — trang 1",
+      "citations": [
+        {
+          "citation": "TL1",
+          "doc_id": "kn-09",
+          "name": "challenge-kn-09.txt",
+          "source_name": "Khuyến nông Quốc gia",
+          "source_url": "https://khuyennongvn.gov.vn/khoa-hoc-cong-nghe/khcn-trong-nuoc/bien-phap-khac-phuc-rau-hoa-mau-sau-bao-lu-28413.html",
+          "page": 1,
+          "score": 0.7363,
+          "excerpt": "năng phục hồi: - Với diện tích khó còn khả năng hồi phục, vệ sinh đồng ruộng, khẩn trương cuốc lật lại đất mặt luống, để khô và đập nhỏ gieo lại đợt hạt giống mới để cung cấp rau kịp thời cho thị trường. - Sau mưa bão, rau xanh sẽ khan hiếm, bà con nên tận dụng cơ hội để gieo trồng càng sớm càng tốt sẽ cho hiệu quả cao hơn do bán được giá. TTKNQG"
+        },
+        {
+          "citation": "TL2",
+          "doc_id": "kn-03",
+          "name": "challenge-kn-03.txt",
+          "source_name": "Khuyến nông Quốc gia",
+          "source_url": "https://khuyennongvn.gov.vn/khoa-hoc-cong-nghe/khcn-trong-nuoc/cac-bien-phap-giam-thieu-thiet-hai-cho-cay-trong-sau-bao-so-3-28121.html",
+          "page": 1,
+          "score": 0.7307,
+          "excerpt": "ưa bão, rau xanh sẽ khan hiếm, bà con nên tận dụng cơ hội để gieo trồng càng sớm càng tốt sẽ cho hiệu quả cao hơn do bán được giá. Nhiều diện tích ngô bị gãy đổ Các vườn cây ăn quả - Chuối là loại cây trồng dễ bị tổn thương và tổn thương nặng do bão, vườn chuối sẽ bị gãy đổ, lá rách tướp... Sau bão khi đã rút cạn nước cần khẩn trương thu dọn vệ sinh vườn chuối, chặt sát gốc các cây bị gẫy, dập không còn khả năng hồi phục, dựng các cây bị đổ nghiêng nhưng không bị gẫy, dập, cắt bỏ các lá già, lá bị rách, tướp xơ, bồi thêm đất vào gốc, kết hợp bón thúc mỗi hốc 0,3-0,5kg NPK để chuối phục hồi nha"
+        }
+      ],
+      "retrieved_doc_ids": [
+        "kn-09",
+        "kn-03"
+      ],
+      "latency_ms": 12436.2,
+      "error": null,
+      "result": {
+        "verdict": "needs_review",
+        "checks": {
+          "co_cau_tra_loi": true,
+          "trang_thai_ready": true,
+          "co_trich_dan": true,
+          "khong_bia_so_lieu": true,
+          "khong_lay_nham_tai_lieu_trong_corpus": true
+        },
+        "notes": [
+          "can_nguoi_doc_xac_nhan_noi_dung"
+        ]
+      },
+      "human_review": null
+    },
+    {
+      "run_id": "20260925T183255Z",
+      "evaluated_at": "2026-09-25T18:37:54.462629+00:00",
+      "dataset_version": "evaluation-jsonl",
+      "id": "q022",
+      "category": "grounded",
+      "question": "Lúa ở giai đoạn đẻ nhánh và lúa ở giai đoạn làm đòng sau ngập úng khác nhau thế nào về chăm sóc?",
+      "expected_behavior": "answer_with_citation",
+      "expected_doc_ids": [
+        "kn-02",
+        "kn-08"
+      ],
+      "intent": "weather_analysis",
+      "provider": "ollama",
+      "model": "qwen2.5:3b-instruct-q4_K_M",
+      "timings": {
+        "context_ms": 35.5,
+        "retrieval_ms": 2339.5,
+        "generation_ms": 22656.4,
+        "total_ms": 25032.2
+      },
+      "grounding": {
+        "status": "ready",
+        "reason": "ready"
+      },
+      "rag_status": "ready",
+      "generated_answer": "### Thời tiết hiện tại/dự báo\n- **Thời tiết hiện tại**: Nhiệt độ trung bình 16.2°C, độ ẩm 70%, gió 12.8 km/h, mưa 6.8 mm.\n- **Dự báo thời tiết**: \n  - 26/09: Nhiệt độ 19.9°C, độ ẩm 70%, mưa 6.8 mm, thời tiết: mưa nhẹ.\n  - 27/09: Nhiệt độ 19.4°C, độ ẩm 70%, mưa 8.7 mm, thời tiết: có mưa rào.\n  - 28/09: Nhiệt độ 18.8°C, độ ẩm 70%, mưa 11.7 mm, thời tiết: có mưa rào.\n  - 29/09: Nhiệt độ 20.1°C, độ ẩm 70%, mưa 12.6 mm, thời tiết: có mưa nhẹ.\n  - 30/09: Nhiệt độ 20.0°C, độ ẩm 70%, mưa 10.\n\nNguồn tham khảo:\n- [TL1] challenge-kn-02.txt — trang 1\n- [TL2] challenge-kn-08.txt — trang 1",
+      "citations": [
+        {
+          "citation": "TL1",
+          "doc_id": "kn-02",
+          "name": "challenge-kn-02.txt",
+          "source_name": "Khuyến nông Quốc gia",
+          "source_url": "https://khuyennongvn.gov.vn/khoa-hoc-cong-nghe/khcn-trong-nuoc/bien-phap-khac-phuc-ung-ngap-sau-mua-bao-doi-voi-lua-28205.html",
+          "page": 1,
+          "score": 0.7697,
+          "excerpt": "1) Với diện tích lúa ở giai đoạn đẻ nhánh: Điều chỉnh mực nước tiêu thoát đảm bảo cây lúa không bị rạp trên mặt nước. Tỉa dặm những chỗ lúa chết, mất khoảng bằng cách tỉa san từ các khóm lúa đẻ nhiều dảnh trên ruộng hoặc mạ cùng giống còn giâm trên ruộng chân cao không bị ngập úng. Khi lá lúa khô và cứng dần, nhô cao mặt nước trên 10cm, xuất hiện lá mới cần phun các chế phẩm sinh học giúp cây phục hồi nhanh, liều lượng theo khuyến cáo của nhà sản xuất. Rút nước cạn chỉ để láng mặt ruộng và nhổ lúa quan sát thấy đã ra rễ non khẩn trương bón thúc ngay lượng phân thúc lần 1, ưu tiên sử dụng phân "
+        },
+        {
+          "citation": "TL2",
+          "doc_id": "kn-08",
+          "name": "challenge-kn-08.txt",
+          "source_name": "Khuyến nông Quốc gia",
+          "source_url": "https://khuyennongvn.gov.vn/khoa-hoc-cong-nghe/khcn-trong-nuoc/huong-dan-ky-thuat-san-xuat-lua-chet-doi-voi-cac-vung-bi-ngap-lut-sau-thien-tai-tai-cac-tinh-phia-bac-28435.html",
+          "page": 1,
+          "score": 0.763,
+          "excerpt": "I. THU HOẠCH VỤ LÚA CHÍNH 1. Đối với những diện tích lúa bị ngập úng nặng, không có khả năng cho thu hoạch : Cần tập trung nguồn lực tiêu úng. Khuyến cáo chuyển đổi sang gieo trồng cây rau màu, cây hàng năm khác có giá trị kinh tế cao, phù hợp với điều kiện canh tác của các địa phương. 2. Đối với diện tích lúa đã đến thời kỳ thu hoạch (chín trên 85%) : Cần tranh thủ thời tiết thuận lợi thu hoạch với phương châm “xanh nhà hơn già đồng”. 3. Với diện tích lúa đang ở giai đoạn trỗ - chín sữa - chín sáp: Sau khi tháo cạn nước trong ruộng, tiến hành dựng lúa bằng cách túm 3 - 4 gốc lúa lại với nhau "
+        }
+      ],
+      "retrieved_doc_ids": [
+        "kn-02",
+        "kn-08"
+      ],
+      "latency_ms": 25039.4,
+      "error": null,
+      "result": {
+        "verdict": "needs_review",
+        "checks": {
+          "co_cau_tra_loi": true,
+          "trang_thai_ready": true,
+          "co_trich_dan": true,
+          "khong_bia_so_lieu": true,
+          "khong_lay_nham_tai_lieu_trong_corpus": true
+        },
+        "notes": [
+          "can_nguoi_doc_xac_nhan_noi_dung"
+        ]
+      },
+      "human_review": null
+    },
+    {
+      "run_id": "20260925T183255Z",
+      "evaluated_at": "2026-09-25T18:38:04.476417+00:00",
+      "dataset_version": "evaluation-jsonl",
+      "id": "q023",
+      "category": "grounded",
+      "question": "Cải tạo ao nuôi cá bằng vét bùn, bón vôi và tắm cá giống khác gì với quy mô và độ sâu ao nuôi cá mú?",
+      "expected_behavior": "answer_with_citation",
+      "expected_doc_ids": [
+        "kn-16",
+        "kn-19"
+      ],
+      "intent": "general_question",
+      "provider": "ollama",
+      "model": "qwen2.5:3b-instruct-q4_K_M",
+      "timings": {
+        "context_ms": 0.3,
+        "retrieval_ms": 2309.6,
+        "generation_ms": 7696.9,
+        "total_ms": 10007.5
+      },
+      "grounding": {
+        "status": "ready",
+        "reason": "ready"
+      },
+      "rag_status": "ready",
+      "generated_answer": "Chương trình khuyến nông hiện chưa cung cấp thông tin cụ thể về cải tạo ao nuôi cá ở quy mô và độ sâu ao nuôi cá mú như người dùng yêu cầu. Để có thông tin chính xác, cần tham khảo thêm tài liệu chuyên sâu về quy trình cải tạo ao nuôi cá ở quy mô và độ sâu cụ thể này.\n\nNguồn tham khảo:\n- [TL1] challenge-kn-16.txt — trang 1\n- [TL2] challenge-kn-19.txt — trang 1",
+      "citations": [
+        {
+          "citation": "TL1",
+          "doc_id": "kn-16",
+          "name": "challenge-kn-16.txt",
+          "source_name": "Khuyến nông Quốc gia",
+          "source_url": "https://khuyennongvn.gov.vn/ky-thuat-thuy-san/phong-benh-cho-ca-trong-thoi-diem-giao-mua-16171.html",
+          "page": 1,
+          "score": 0.6436,
+          "excerpt": "Cải tạo ao: - Cải tạo ao chuẩn bị giống: Vét bùn đáy ao để diệt khuẩn trước khi chuẩn bị vào vụ mới. Bón vôi diệt mầm bệnh với liều lượng 7 - 10kg/100m2. - Tùy theo diện tích ao nuôi mà chọn mật độ nuôi phù hợp. Nuôi dày đặc quá sẽ ảnh hưởng tới thành công của mùa vụ. - Trước khi thả cá giống cần tắm bằng nước muối với liều lượng 2-3-g/lít Thức ăn cho cá: - Tuyệt đối không cho cá ăn thức ăn ôi thiu, cho ăn trong ngày chia làm 2 lần: sáng, chiều (vào lúc trời dịu mát) - Rửa sạch dụng cụ cho ăn. - Treo túi vôi 3-5 kg/túi quanh chỗ cho ăn. - Bổ sung thêm Vitamin C trong thức ăn để tăng sức đề khá"
+        },
+        {
+          "citation": "TL2",
+          "doc_id": "kn-19",
+          "name": "challenge-kn-19.txt",
+          "source_name": "Khuyến nông Quốc gia",
+          "source_url": "https://khuyennongvn.gov.vn/khoa-hoc-cong-nghe/khcn-trong-nuoc/quy-trinh-nuoi-thuong-pham-ca-song-cham-nau-trong-ao-su-dung-thuc-an-cong-nghiep-phan-1-22383.html",
+          "page": 1,
+          "score": 0.6356,
+          "excerpt": "số Giá trị giới hạn pH 7,5 - 8,5 DO (mg/l) > 4,0 Độ mặn (‰) 10 - 30 Nhiệt độ (ºC) 20 - 32 NH3 (mg/l) < 0,02 H2S (mg/l) < 0,05 Cấp nước vào ao nuôi: cấp nước vào ao nuôi đạt độ sâu 0,5 - 0,6m để gây màu nước trước khi thả cá giống. e. Gây màu nước cho ao nuôi Nếu độ trong > 60cm, bón phân ure với liều lượng từ 2 - 2,5 kg/1.000m2 và phân lân với liều lượng 4,0 - 5,0 kg/1.000m2 (chỉ cần gây màu cho ao nuôi 1 lần duy nhất vào đầu thời điểm nuôi.) Sau khi gây màu 3 - 5 ngày, sinh vật phù du trong ao phát triển, độ trong của ao đạt 30 - 40 cm hoặc nước ao có màu xanh, vàng thì tiến hành thả cá giống"
+        }
+      ],
+      "retrieved_doc_ids": [
+        "kn-16",
+        "kn-19"
+      ],
+      "latency_ms": 10013.5,
+      "error": null,
+      "result": {
+        "verdict": "needs_review",
+        "checks": {
+          "co_cau_tra_loi": true,
+          "trang_thai_ready": true,
+          "co_trich_dan": true,
+          "khong_bia_so_lieu": true,
+          "khong_lay_nham_tai_lieu_trong_corpus": true
+        },
+        "notes": [
+          "can_nguoi_doc_xac_nhan_noi_dung"
+        ]
+      },
+      "human_review": null
+    },
+    {
+      "run_id": "20260925T183255Z",
+      "evaluated_at": "2026-09-25T18:38:16.581614+00:00",
+      "dataset_version": "evaluation-jsonl",
+      "id": "q024",
+      "category": "grounded",
+      "question": "Vào mùa đông rét đậm, trâu bò cần chuồng kín, nền khô, nước ấm; khi nắng nóng vật nuôi cần thông thoáng, che mát, cho ăn sáng sớm hoặc chiều mát và điện giải. Các biện pháp khác nhau thế nào?",
+      "expected_behavior": "answer_with_citation",
+      "expected_doc_ids": [
+        "kn-05",
+        "kn-13"
+      ],
+      "intent": "weather_analysis",
+      "provider": "ollama",
+      "model": "qwen2.5:3b-instruct-q4_K_M",
+      "timings": {
+        "context_ms": 0.4,
+        "retrieval_ms": 2373.4,
+        "generation_ms": 9723.3,
+        "total_ms": 12097.5
+      },
+      "grounding": {
+        "status": "ready",
+        "reason": "ready"
+      },
+      "rag_status": "ready",
+      "generated_answer": "Vào mùa đông rét đậm ở Cần Thơ, trâu bò cần được chăm sóc và bảo vệ như sau:\n\n- Thời tiết hiện tại/dự báo: Cần Thơ thường có thời tiết rét đậm vào mùa đông, đặc biệt là vào những ngày cuối năm. Nhiệt độ có thể xuống dưới 15°C vào ban đêm.\n\n- Ảnh hưởng đến cây trồng: Thời tiết rét đậm có thể ảnh hưởng đến cây trồng, đặc biệt là các loại cây trồng cần nhiệt độ cao như cây trồng công nghiệp.\n\n- Rủi ro: Trâu bò có thể bị lạnh, sức đề kháng giảm, dễ mắc các bệnh đường hô hấp và tiêu hóa. \n\n- Khuyến nghị: \n1. Chuồng trại cần được chủ động gia cố, che chắn đảm bảo đủ ấm, không bị mưa tạt, gió lùa và nền chuồng luôn khô ráo, sạch sẽ.\n2. Cần dự trữ chất đốt như củi, trấu, mùn cưa để đốt sưởi ấm cho gia súc trong những ngày rét đậm, rét hại.\n3. Chuẩn bị bao tải gai, bao tải dứa, chăn\n\nNguồn tham khảo:\n- [TL1] challenge-kn-05.txt — trang 1",
+      "citations": [
+        {
+          "citation": "TL1",
+          "doc_id": "kn-05",
+          "name": "challenge-kn-05.txt",
+          "source_name": "Khuyến nông Quốc gia",
+          "source_url": "https://khuyennongvn.gov.vn/khoa-hoc-cong-nghe/khcn-trong-nuoc/phong-chong-doi-ret-cho-dan-vat-nuoi-trong-mua-dong-20821.html",
+          "page": 1,
+          "score": 0.7786,
+          "excerpt": "1. Chuồng trại Chủ động gia cố, che chắn đảm bảo chuồng trại đủ ấm không bị mưa tạt, gió lùa và nền chuồng luôn khô ráo, sạch sẽ. Thường xuyên thay chất độn chuồng và hạn chế rửa chuồng (nhất là lợn con theo mẹ và lợn mới cai sữa). Cần dự trữ chất đốt như củi, trấu, mùn cưa để đốt sưởi ấm cho gia súc trong những ngày rét đậm, rét hại. Chuẩn bị bao tải gai, bao tải dứa, chăn len để chống rét cho đàn vật nuôi. 2. Chăm sóc, nuôi dưỡng * Đối với trâu bò: - Cần cho trâu bò ăn đủ no (một con trâu bò trưởng thành cần ăn 10% khối lượng cơ thể thức ăn thô, xanh và 1% khối lượng cơ thể thức ăn tinh). Mộ"
+        }
+      ],
+      "retrieved_doc_ids": [
+        "kn-05"
+      ],
+      "latency_ms": 12104.8,
+      "error": null,
+      "result": {
+        "verdict": "needs_review",
+        "checks": {
+          "co_cau_tra_loi": true,
+          "trang_thai_ready": true,
+          "co_trich_dan": true,
+          "khong_bia_so_lieu": true,
+          "khong_lay_nham_tai_lieu_trong_corpus": true
+        },
+        "notes": [
+          "can_nguoi_doc_xac_nhan_noi_dung"
+        ]
+      },
+      "human_review": null
+    },
+    {
+      "run_id": "20260925T183255Z",
+      "evaluated_at": "2026-09-25T18:38:28.782400+00:00",
+      "dataset_version": "evaluation-jsonl",
+      "id": "q025",
+      "category": "grounded",
+      "question": "Vắc xin sống bảo quản dưới 0°C, vắc xin chết 2–8°C; đồng thời phòng dịch tả lợn Châu Phi cần 5 không, cách ly con mới và vệ sinh sát trùng. Hãy so sánh hai nhóm biện pháp.",
+      "expected_behavior": "answer_with_citation",
+      "expected_doc_ids": [
+        "kn-11",
+        "kn-14"
+      ],
+      "intent": "harvest_analysis",
+      "provider": "ollama",
+      "model": "qwen2.5:3b-instruct-q4_K_M",
+      "timings": {
+        "context_ms": 0.6,
+        "retrieval_ms": 2366.8,
+        "generation_ms": 9825.4,
+        "total_ms": 12193.6
+      },
+      "grounding": {
+        "status": "ready",
+        "reason": "ready"
+      },
+      "rag_status": "ready",
+      "generated_answer": "Tôi hiểu yêu cầu của bạn là so sánh hai nhóm biện pháp phòng dịch tả lợn Châu Phi và phòng bệnh cho gia súc. Tuy nhiên, trong ngữ cảnh hiện tại, chúng tôi không có dữ liệu cụ thể về mùa vụ và cây trồng tại Khánh Hòa. Để cung cấp thông tin chính xác, tôi cần biết thêm về giai đoạn vụ mùa hiện tại tại khu vực Khánh Hòa.\n\nVui lòng cung cấp thông tin về giai đoạn vụ mùa hiện tại tại Khánh Hòa, và tôi sẽ so sánh hai nhóm biện pháp với bạn.\n\nNguồn tham khảo:\n- [TL1] challenge-kn-11.txt — trang 1\n- [TL2] challenge-kn-05.txt — trang 1\n- [TL3] challenge-kn-14.txt — trang 1",
+      "citations": [
+        {
+          "citation": "TL1",
+          "doc_id": "kn-11",
+          "name": "challenge-kn-11.txt",
+          "source_name": "Khuyến nông Quốc gia",
+          "source_url": "https://khuyennongvn.gov.vn/ky-thuat-chan-nuoi/bao-quan-va-su-dung-vac-xin-trong-chan-nuoi-6454.html",
+          "page": 1,
+          "score": 0.7134,
+          "excerpt": "bảo thời gian miễn dịch kéo dài và an toàn, ngược lại sẽ làm giảm khả năng tạo miễn dịch của vắc xin. Do đó, khi sử dụng vắc xin người chăn nuôi cần lưu ý một số vấn đề sau: 1. Bảo quản vắc xin - Vắc xin phải được bảo quản ở nhiệt độ thích hợp: < 0 độ C (đối với vắc xin sống), từ 2 - 8 độ C (đối với vắc xin chết); nên sử dụng riêng tủ bảo quản vắc xin, vệ sinh sát trùng định kỳ tủ nhằm đảm bảo vô trùng. - Khi vận chuyển, cần giữ vắc xin trong điều kiện râm mát, tránh ánh nắng mặt trời chiếu trực tiếp. Nếu vận chuyển xa nên có hộp xốp, phích đá để bảo quản, nếu gần thì bảo quản bằng túi nilông "
+        },
+        {
+          "citation": "TL2",
+          "doc_id": "kn-05",
+          "name": "challenge-kn-05.txt",
+          "source_name": "Khuyến nông Quốc gia",
+          "source_url": "https://khuyennongvn.gov.vn/khoa-hoc-cong-nghe/khcn-trong-nuoc/phong-chong-doi-ret-cho-dan-vat-nuoi-trong-mua-dong-20821.html",
+          "page": 1,
+          "score": 0.6222,
+          "excerpt": "Chủ động phòng bệnh bằng vắc xin: - Tiêm phòng đầy đủ các loại vắc-xin cho gia súc, gia cầm theo đúng lịch phòng bệnh để tăng khả năng miễn dịch cho vật nuôi. - Sử dụng một số kháng sinh (được phép sử dụng của thú y) trộn vào thức ăn hoặc nước uống cho gia súc, gia cầm để phòng một số bệnh thường gặp khi thời tiết thay đổi đột ngột như: hen, suyễn, tụ huyết trùng, tiêu chảy... 5. Kiểm tra, theo dõi sức khỏe đàn vật nuôi: Hàng ngày bà con chăn nuôi cần theo dõi sức khỏe của đàn vật nuôi và có chế độ chăm sóc và điều trị kịp thời khi con vật ốm. Phát hiện sớm khi vật nuôi bị một số bệnh nguy hiể"
+        },
+        {
+          "citation": "TL3",
+          "doc_id": "kn-14",
+          "name": "challenge-kn-14.txt",
+          "source_name": "Khuyến nông Quốc gia",
+          "source_url": "https://khuyennongvn.gov.vn/khoa-hoc-cong-nghe/khcn-trong-nuoc/benh-dich-ta-lon-chau-phi-va-cac-bien-phap-phong-chong-31322.html",
+          "page": 1,
+          "score": 0.6081,
+          "excerpt": "người và phương tiện ra vào trại, có bảo hộ riêng. - Con giống phải sạch bệnh, nuôi cách ly giống mới ít nhất 2 tuần. - Không nuôi lợn rừng, chó, mèo... trong khu vực chăn nuôi. - Cung cấp nước sạch, thức ăn đảm bảo, không nhiễm mầm bệnh. - Diệt chuột, ruồi, muỗi, côn trùng. 4. Thực hiện vệ sinh, sát trùng hàng ngày - Làm sạch chuồng trại, dụng cụ, thiết bị. - Phun thuốc sát trùng định kỳ. - Xử lý chất thải bằng biogas, chôn hoặc đốt. 5. Xử lý khi có dịch xảy ra - Báo ngay cho thú y, chính quyền địa phương. - Tiêu hủy toàn bộ lợn bệnh theo hướng dẫn. - Kê khai đầy đủ để được hỗ trợ nếu có chín"
+        }
+      ],
+      "retrieved_doc_ids": [
+        "kn-11",
+        "kn-05",
+        "kn-14"
+      ],
+      "latency_ms": 12200.4,
+      "error": null,
+      "result": {
+        "verdict": "needs_review",
+        "checks": {
+          "co_cau_tra_loi": true,
+          "trang_thai_ready": true,
+          "co_trich_dan": true,
+          "khong_bia_so_lieu": true,
+          "khong_lay_nham_tai_lieu_trong_corpus": true
+        },
+        "notes": [
+          "co_cau_tu_choi_trong_cau_tra_loi",
+          "can_nguoi_doc_xac_nhan_noi_dung"
+        ]
+      },
+      "human_review": null
+    },
+    {
+      "run_id": "20260925T183255Z",
+      "evaluated_at": "2026-09-25T18:38:41.217914+00:00",
+      "dataset_version": "evaluation-jsonl",
+      "id": "q026",
+      "category": "no_source",
+      "question": "Liều thuốc trừ sâu X cụ thể để diệt rệp sáp giả trên thanh long là bao nhiêu?",
+      "expected_behavior": "insufficient_data",
+      "expected_doc_ids": [],
+      "intent": "price_analysis",
+      "provider": "ollama",
+      "model": "qwen2.5:3b-instruct-q4_K_M",
+      "timings": {
+        "context_ms": 23.3,
+        "retrieval_ms": 2285.6,
+        "generation_ms": 10117.4,
+        "total_ms": 12426.8
+      },
+      "grounding": {
+        "status": "ready",
+        "reason": "ready"
+      },
+      "rag_status": "ready",
+      "generated_answer": "- **Giá hiện tại**: Hệ thống chưa có số liệu cho khu vực này.\n- **Xu hướng**: Hệ thống chưa có số liệu cho khu vực này.\n- **So sánh nếu có**: Không có dữ liệu để so sánh.\n- **Khuyến nghị bán/giữ hàng**: Không đủ dữ liệu để đưa ra khuyến nghị cụ thể.\n- **Mức độ tin cậy**: Hệ thống chưa có số liệu cho khu vực này.\n\n**Giải thích**: Hệ thống chưa có dữ liệu về giá nông sản, xu hướng thị trường, khuyến nghị mua/bán, cũng như thông tin về liều lượng thuốc trừ sâu cụ thể cho rệp sáp giả trên thanh long tại Lâm Đồng. Để có thông tin chính xác, cần cập nhật dữ liệu từ nguồn đáng tin cậy về nông nghiệp tại khu vực này.\n\nNguồn tham khảo:\n- [TL1] challenge-kn-10.txt — trang 1",
+      "citations": [
+        {
+          "citation": "TL1",
+          "doc_id": "kn-10",
+          "name": "challenge-kn-10.txt",
+          "source_name": "Khuyến nông Quốc gia",
+          "source_url": "https://khuyennongvn.gov.vn/khoa-hoc-cong-nghe/khcn-trong-nuoc/quy-trinh-quan-ly-tong-hop-rep-sap-gia-hai-cay-thanh-long-theo-huong-sinh-hoc-29858.html",
+          "page": 1,
+          "score": 0.8543,
+          "excerpt": "Sau đây xin giới thiệu quy trình quản lý tổng hợp rệp sáp giả thuộc họ P seudococcidae hại thanh long tại tỉnh Bình Thuận và các vùng phụ cận có điều kiện sinh thái tương tự. 1. Biện pháp canh tác - Biện pháp cắt, tỉa cành, quả: + Đối với các vườn cây thanh long ở giai đoạn kiến thiết cơ bản cần thường xuyên vệ sinh, cắt tỉa cành, đặc biệt là tỉa những cành nằm ở dọc theo trụ nọc. Sau khi cắt tỉa, cần thu gom và xử lý các bộ phận được cắt bỏ, không để dưới vườn hoặc ở gốc cây thanh long. + Đối với những vườn thanh long ở giai đoạn kinh doanh, khi tỉa quả cần cắt sát cuống quả vì đây là nơi rệp"
+        }
+      ],
+      "retrieved_doc_ids": [
+        "kn-10"
+      ],
+      "latency_ms": 12435.0,
+      "error": null,
+      "result": {
+        "verdict": "needs_review",
+        "checks": {
+          "he_thong_tu_choi": true,
+          "khong_bia_so_lieu": true,
+          "cong_grounding_chan": false
+        },
+        "notes": [
+          "cong_khong_chan_model_tu_tu_choi"
+        ]
+      },
+      "human_review": null
+    },
+    {
+      "run_id": "20260925T183255Z",
+      "evaluated_at": "2026-09-25T18:38:54.188081+00:00",
+      "dataset_version": "evaluation-jsonl",
+      "id": "q027",
+      "category": "no_source",
+      "question": "Giá cà phê hôm nay tại Đắk Lắk là bao nhiêu?",
+      "expected_behavior": "insufficient_data",
+      "expected_doc_ids": [],
+      "intent": "price_analysis",
+      "provider": "ollama",
+      "model": "qwen2.5:3b-instruct-q4_K_M",
+      "timings": {
+        "context_ms": 91.2,
+        "retrieval_ms": 2391.5,
+        "generation_ms": 10479.2,
+        "total_ms": 12962.4
+      },
+      "grounding": {
+        "status": "ready",
+        "reason": "ready"
+      },
+      "rag_status": "ready",
+      "generated_answer": "- **Giá hiện tại**: Hệ thống chưa có số liệu cho khu vực này.\n\n- **Xu hướng**: Hệ thống chưa có số liệu cho khu vực này.\n\n- **So sánh nếu có**: Không có dữ liệu lịch sử để so sánh.\n\n- **Khuyến nghị bán/giữ hàng**: Không có dữ liệu lịch sử giá để đưa ra khuyến nghị.\n\n- **Mức độ tin cậy**: Hệ thống chưa có số liệu cho khu vực này.\n\n**Khuyến nghị**: Để có thông tin chính xác về giá cà phê tại Đắk Lắk, bạn có thể tham khảo các nguồn tin tức hoặc liên hệ với các tổ chức nông nghiệp địa phương. Hệ thống của chúng tôi hiện chưa có dữ liệu cụ thể cho khu vực này.\n\nNguồn tham khảo:\n- [TL1] challenge-kn-07.txt — trang 1",
+      "citations": [
+        {
+          "citation": "TL1",
+          "doc_id": "kn-07",
+          "name": "challenge-kn-07.txt",
+          "source_name": "Khuyến nông Quốc gia",
+          "source_url": "https://khuyennongvn.gov.vn/khoa-hoc-cong-nghe/khcn-trong-nuoc/cac-bien-phap-nang-cao-nang-suat-va-phong-tru-sau-benh-hai-cho-cay-mac-ca-31477.html",
+          "page": 1,
+          "score": 0.5642,
+          "excerpt": "ong quá trình chăm sóc có thể bón làm 2-3 lần/năm, lần 1 bón khoảng 30 – 50 kg phân chuồng hoai/hố kết hợp với 0,2 – 0,5 kg NPK/hố, các lần tiếp theo chỉ bón phân NPK (thành phần loại phân NPK tùy theo giai đoạn phát triển của cây). * Tạo ánh sáng và không gian dinh dưỡng hợp lý: - Mật độ trồng: Mật độ trồng ảnh hưởng rất lớn đến năng suất cây trồng, việc xác định mật độ trồng phù hợp với điều kiện đất đai, khả năng sinh trưởng của cây là rất quan trọng. + Trồng thuần: Có thể sử dụng các mật độ từ 205 cây/ha (cự ly 7 x 7m) đến 278 cây/ha (cự ly 6 x 6m). + Trồng xen: Trồng xen với cây cà phê vớ"
+        }
+      ],
+      "retrieved_doc_ids": [
+        "kn-07"
+      ],
+      "latency_ms": 12969.8,
+      "error": null,
+      "result": {
+        "verdict": "needs_review",
+        "checks": {
+          "he_thong_tu_choi": true,
+          "khong_bia_so_lieu": true,
+          "cong_grounding_chan": false
+        },
+        "notes": [
+          "cong_khong_chan_model_tu_tu_choi"
+        ]
+      },
+      "human_review": null
+    },
+    {
+      "run_id": "20260925T183255Z",
+      "evaluated_at": "2026-09-25T18:39:06.429590+00:00",
+      "dataset_version": "evaluation-jsonl",
+      "id": "q028",
+      "category": "no_source",
+      "question": "Năng suất mắc ca ở Tây Nguyên năm tới sẽ đạt bao nhiêu tấn mỗi hecta?",
+      "expected_behavior": "insufficient_data",
+      "expected_doc_ids": [],
+      "intent": "weather_analysis",
+      "provider": "ollama",
+      "model": "qwen2.5:3b-instruct-q4_K_M",
+      "timings": {
+        "context_ms": 0.3,
+        "retrieval_ms": 2335.0,
+        "generation_ms": 9899.1,
+        "total_ms": 12234.8
+      },
+      "grounding": {
+        "status": "ready",
+        "reason": "ready"
+      },
+      "rag_status": "ready",
+      "generated_answer": "Chào bạn, tôi sẽ cố gắng tư vấn cho bạn dựa trên dữ liệu có sẵn. Tuy nhiên, nguồn tài liệu mà tôi có không cung cấp thông tin cụ thể về năng suất mắc ca ở Tây Nguyên. Phần lớn thông tin tôi có liên quan đến kỹ thuật chăm sóc cây trồng, mật độ trồng và phân bón. Để có thông tin chính xác về năng suất mắc ca, tôi cần số liệu cụ thể từ các nguồn tài liệu chuyên ngành về trồng mắc ca ở Tây Nguyên. \n\nVề thời tiết và rủi ro, hệ thống chưa có số liệu cho khu vực này. \n\nĐể có thông tin chính xác, tôi khuyên bạn nên liên hệ với các cơ quan khuyến nông địa phương hoặc truy cập các nguồn tài liệu chuyên ngành về trồng mắc ca ở Tây Nguyên. \n\nNếu bạn có thêm thông tin về thời tiết hoặc rủi ro cụ thể, tôi sẽ rất vui lòng tư vấn thêm. \n\nTrong thời điểm hiện tại, tôi không thể đưa ra khuyến nghị cụ thể về thời gian tưới, phun thuốc hoặc thu hoạch vì nguồn tài liệu không cung cấp thông tin này. \n\nHãy liên hệ với các cơ quan khuyến nông địa phương để\n\nNguồn tham khảo:\n- [TL1] challenge-kn-07.txt — trang 1",
+      "citations": [
+        {
+          "citation": "TL1",
+          "doc_id": "kn-07",
+          "name": "challenge-kn-07.txt",
+          "source_name": "Khuyến nông Quốc gia",
+          "source_url": "https://khuyennongvn.gov.vn/khoa-hoc-cong-nghe/khcn-trong-nuoc/cac-bien-phap-nang-cao-nang-suat-va-phong-tru-sau-benh-hai-cho-cay-mac-ca-31477.html",
+          "page": 1,
+          "score": 0.5611,
+          "excerpt": "ong quá trình chăm sóc có thể bón làm 2-3 lần/năm, lần 1 bón khoảng 30 – 50 kg phân chuồng hoai/hố kết hợp với 0,2 – 0,5 kg NPK/hố, các lần tiếp theo chỉ bón phân NPK (thành phần loại phân NPK tùy theo giai đoạn phát triển của cây). * Tạo ánh sáng và không gian dinh dưỡng hợp lý: - Mật độ trồng: Mật độ trồng ảnh hưởng rất lớn đến năng suất cây trồng, việc xác định mật độ trồng phù hợp với điều kiện đất đai, khả năng sinh trưởng của cây là rất quan trọng. + Trồng thuần: Có thể sử dụng các mật độ từ 205 cây/ha (cự ly 7 x 7m) đến 278 cây/ha (cự ly 6 x 6m). + Trồng xen: Trồng xen với cây cà phê vớ"
+        }
+      ],
+      "retrieved_doc_ids": [
+        "kn-07"
+      ],
+      "latency_ms": 12241.2,
+      "error": null,
+      "result": {
+        "verdict": "needs_review",
+        "checks": {
+          "he_thong_tu_choi": true,
+          "khong_bia_so_lieu": true,
+          "cong_grounding_chan": false
+        },
+        "notes": [
+          "cong_khong_chan_model_tu_tu_choi"
+        ]
+      },
+      "human_review": null
+    },
+    {
+      "run_id": "20260925T183255Z",
+      "evaluated_at": "2026-09-25T18:39:15.182630+00:00",
+      "dataset_version": "evaluation-jsonl",
+      "id": "q029",
+      "category": "no_source",
+      "question": "Quy trình trồng nho Hạ Đen tại Ninh Thuận trong dataset là gì?",
+      "expected_behavior": "insufficient_data",
+      "expected_doc_ids": [],
+      "intent": "general_question",
+      "provider": "ollama",
+      "model": "qwen2.5:3b-instruct-q4_K_M",
+      "timings": {
+        "context_ms": 0.3,
+        "retrieval_ms": 2396.5,
+        "generation_ms": 6349.3,
+        "total_ms": 8746.4
+      },
+      "grounding": {
+        "status": "ready",
+        "reason": "ready"
+      },
+      "rag_status": "ready",
+      "generated_answer": "Trong dữ liệu hiện có, không có quy trình trồng nho Hạ Đen tại Ninh Thuận được cung cấp. Phần tài liệu trích dẫn chỉ đề cập đến quy trình trồng vải và nhãn. Tôi cần thêm thông tin về quy trình trồng nho Hạ Đen tại Ninh Thuận để trả lời chính xác câu hỏi của bạn.\n\nNguồn tham khảo:\n- [TL1] challenge-kn-03.txt — trang 1",
+      "citations": [
+        {
+          "citation": "TL1",
+          "doc_id": "kn-03",
+          "name": "challenge-kn-03.txt",
+          "source_name": "Khuyến nông Quốc gia",
+          "source_url": "https://khuyennongvn.gov.vn/khoa-hoc-cong-nghe/khcn-trong-nuoc/cac-bien-phap-giam-thieu-thiet-hai-cho-cay-trong-sau-bao-so-3-28121.html",
+          "page": 1,
+          "score": 0.5228,
+          "excerpt": "cây có múi: Khơi các rãnh để đảm bảo thoát úng vườn cây, nhặt gom quả rụng, lá và cành cây bị gẫy, vệ sinh gốc, vun thêm đất vào gốc, cắt bỏ các cành già không mang quả, bị gẫy, dập, sau 7-10 ngày đất vườn khô ráo tiến hành bón thúc NPK 16-16-8 vào rãnh tạo quanh tán, mỗi gốc 0,5-0,8kg. - Với nhóm cây vải, nhãn: Thoát nước triệt để, cắt tỉa các cành bị gẫy, dựng lại các cây bị nghiêng ngả, vệ sinh sạch sẽ gốc, quét vôi nước vào gốc cây để phòng nấm bệnh, khi cây trở lại trạng thái sinh trưởng bình thường, ra lá, lộc non thì bón thúc để chuẩn bị đón và nuôi đợt lộc thu. Sau bão khi đã rút cạn n"
+        }
+      ],
+      "retrieved_doc_ids": [
+        "kn-03"
+      ],
+      "latency_ms": 8752.8,
+      "error": null,
+      "result": {
+        "verdict": "fail",
+        "checks": {
+          "he_thong_tu_choi": false,
+          "khong_bia_so_lieu": true
+        },
+        "notes": []
+      },
+      "human_review": null
+    },
+    {
+      "run_id": "20260925T183255Z",
+      "evaluated_at": "2026-09-25T18:39:15.188790+00:00",
+      "dataset_version": "evaluation-jsonl",
+      "id": "q030",
+      "category": "out_of_scope",
+      "question": "Hướng dẫn kê khai thuế VAT cho doanh nghiệp nhỏ là gì?",
+      "expected_behavior": "out_of_scope_refusal",
+      "expected_doc_ids": [],
+      "intent": "general_question",
+      "provider": "local",
+      "model": "intent-router-v1",
+      "timings": {},
+      "grounding": {
+        "status": "not_used",
+        "reason": "ready"
+      },
+      "rag_status": "not_used",
+      "generated_answer": "Mình có thể hỗ trợ bạn theo 5 nhóm chính: phân tích giá nông sản, thời tiết canh tác, mùa vụ/thu hoạch, chất lượng nông sản và cảnh báo rủi ro. Bạn chỉ cần hỏi rõ nội dung, ví dụ: “giá cà chua ở Hà Nội hôm nay”, “hôm nay có nên tưới lúa không?” hoặc “mùa vụ của tôi khi nào thu hoạch?”.",
+      "citations": [],
+      "retrieved_doc_ids": [],
+      "latency_ms": 5.9,
+      "error": null,
+      "result": {
+        "verdict": "fail",
+        "checks": {
+          "tu_choi_theo_pham_vi": false,
+          "ly_do_ngoai_pham_vi": false,
+          "khong_noi_nham_thieu_du_lieu": true
+        },
+        "notes": []
+      },
+      "human_review": null
+    }
+  ]
+}

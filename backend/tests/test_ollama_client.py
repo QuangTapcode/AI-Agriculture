@@ -19,9 +19,20 @@ TRA_LOI = "Cà chua trồng tốt nhất vào tháng 9-10, đất tơi xốp tho
 
 
 def test_local_model_defaults_fit_a_four_gigabyte_gpu_and_bound_response_time():
+    """Ngân sách ngữ cảnh phải đủ cho prompt RAG mà vẫn ở lại trên GPU 4GB.
+
+    Mức 3072 trước đây giữ được toàn bộ lớp trên GPU nhưng đo thật trên corpus
+    khuyến nông thì prompt RAG lên tới 4025 token: Ollama trả 400 ("request
+    exceeds the available context size") đúng ở những câu nhiều tài liệu nhất.
+    Mở lên 8192 chữa được lỗi đó nhưng chỉ còn 21/37 lớp trụ trên GTX 1650 và
+    mỗi câu mất 30–55 giây.
+
+    4096 là mức giữ được gần trọn offload; phần prompt vượt ra bị cắt chủ động
+    trong app/services/prompt_budget.py thay vì để model từ chối.
+    """
     config = Settings(_env_file=None)
 
-    assert config.AI_CONTEXT_TOKENS == 3072
+    assert config.AI_CONTEXT_TOKENS == 4096
     assert config.AI_MAX_OUTPUT_TOKENS == 256
     assert config.RAG_MAX_CHUNKS_PER_DOCUMENT == 1
 

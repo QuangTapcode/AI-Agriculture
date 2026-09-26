@@ -91,6 +91,11 @@ htmlcov/
 # Crawler runtime artifacts (anh debug, raw dump, quarantine)
 backend/storage/raw_crawl/
 backend/storage/rag/
+storage/raw_crawl/
+backend/storage/rag-experiment-*/
+backend/storage/challenge-experiment-*.db
+backend/storage/server*.log
+backend/.pytest-p1-*/
 
 # Ảnh/video nghiệm thu redesign (giữ local, không đưa vào repo)
 docs/redesign/evidence/

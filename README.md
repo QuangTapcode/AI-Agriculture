@@ -147,6 +147,104 @@ Sao chép `.env.example` để xem toàn bộ biến cấu hình. Các nhóm ch�
 
 Trong môi trường phát triển, `.env.example` cho phép mock/sample để kiểm thử luồng. **Không dùng các giá trị đó cho production.** Môi trường production phải tắt mock/sample, bật realtime-only khi phù hợp và chỉ hiển thị số liệu có nguồn, freshness và trạng thái cập nhật.
 
+### Dataset RAG cho AI Builder Challenge
+
+Repo chốt một corpus gồm **20 tài liệu HTML công khai** từ Trung tâm Khuyến nông Quốc gia, bao phủ trồng trọt, chăn nuôi và thủy sản. Manifest cố định, URL nguồn, metadata, độ dài văn bản và SHA-256 nằm trong [`docs/challenge/dataset_manifest.json`](docs/challenge/dataset_manifest.json); quy tắc chọn và cách tái tạo nằm trong [`docs/challenge/dataset.md`](docs/challenge/dataset.md).
+
+Kiểm tra manifest không cần mạng:
+
+```powershell
+backend\\venv\\Scripts\\python.exe scripts/verify_challenge_dataset.py
+```
+
+Tải lại, đối chiếu hash và index corpus vào shared Chroma collection:
+
+```powershell
+backend\venv\Scripts\python.exe scripts\verify_challenge_dataset.py --remote
+backend\venv\Scripts\python.exe scripts\ingest_challenge_dataset.py
+```
+
+### Đánh giá trợ lý trên corpus
+
+30 câu hỏi cố định chia ba nhóm — có nguồn, thiếu nguồn, ngoài phạm vi — chạy qua đúng endpoint người dùng gọi. Bộ đề, cách chấm và cách đọc kết quả nằm trong [`docs/challenge/evaluation.md`](docs/challenge/evaluation.md).
+
+```powershell
+backend\venv\Scripts\python.exe scripts\evaluate_rag.py --timeout 300
+backend\venv\Scripts\python.exe scripts\evaluate_rag.py --review
+```
+
+#### Challenge submission summary
+
+**Problem statement.** Nông dân cần câu trả lời kỹ thuật có nguồn kiểm chứng cho cây trồng, sâu bệnh, chăn nuôi và thủy sản; trợ lý phải từ chối rõ ràng khi kho không có dữ liệu thay vì đoán.
+
+**Solution overview.** AgriAI dùng pipeline RAG local với Chroma và Ollama, metadata nguồn để citation, grounding gate để phân biệt có nguồn/thiếu nguồn/ngoài phạm vi, cùng bộ evaluation 30 câu cố định.
+
+```text
+Documents
+  → Parsing
+  → Chunking
+  → Embedding
+  → Retrieval
+  → LLM
+  → Answer + Citation
+```
+
+Corpus challenge có **20 tài liệu HTML công khai** (đủ nhóm trồng trọt, chăn nuôi và thủy sản), được cố định bằng manifest, URL và SHA-256. Bộ câu hỏi và test schema nằm trong [`docs/challenge/evaluation.jsonl`](docs/challenge/evaluation.jsonl).
+
+Kết quả baseline với chunk 800: Hit@K **100%**, Recall@K **93.3%**, citation có ít nhất một nguồn đúng **25/25**, tổng latency p50/p95 **12.427/21.118 ms**. Chi tiết answer quality và failure analysis ở [`docs/challenge/evaluation_report.md`](docs/challenge/evaluation_report.md). Phần từ chối đã được sửa và kiểm tra lại riêng trong [`grounding_gate_verification.md`](docs/challenge/grounding_gate_verification.md).
+
+Experiment chunk 300 vs 800 có số liệu trong [`docs/challenge/experiment_report.md`](docs/challenge/experiment_report.md), [`experiment_chunk_300.json`](docs/challenge/experiment_chunk_300.json) và [`experiment_chunk_800.json`](docs/challenge/experiment_chunk_800.json). Chunk 800 có recall tốt hơn; chunk 300 nhanh hơn ở p50 và ít citation dư hơn. Cấu hình được điều khiển bằng `RAG_CHUNK_SIZE` và `RAG_CHUNK_OVERLAP`.
+
+**Reviewer test nhanh.**
+
+```powershell
+backend\venv\Scripts\python.exe scripts\verify_challenge_dataset.py
+backend\venv\Scripts\python.exe scripts\ingest_challenge_dataset.py
+backend\venv\Scripts\python.exe scripts\evaluate_rag.py --questions docs/challenge/evaluation.jsonl --timeout 300
+backend\venv\Scripts\python.exe scripts\summarize_evaluation.py `
+  docs\challenge\experiment_chunk_800.jsonl `
+  docs\challenge\experiment_chunk_800.json --chunk-size 800 --overlap 120
+```
+
+Reviewer có thể mở demo local tại [http://localhost:5173](http://localhost:5173), API/Swagger tại [http://localhost:8000/docs](http://localhost:8000/docs), hoặc public demo [agriai-demo.pages.dev](https://agriai-demo.pages.dev/). Mã nguồn: [github.com/QuangTapcode/AI-Agriculture](https://github.com/QuangTapcode/AI-Agriculture).
+
+#### Product/demo verification — 2026-09-26
+
+| Tiêu chí | Trạng thái | Bằng chứng / ghi chú |
+|---|---|---|
+| Frontend public | **Đạt** | `https://agriai-demo.pages.dev/`, `/features`, `/login`, `/register` trả HTTP 200 trên mobile và desktop; smoke test không phát hiện overflow, lỗi console hoặc response 5xx. `/health` trả `{"status":"healthy"}`. |
+| Đăng nhập/demo account | **Chưa đạt / chưa xác minh** | Đã thử `nguyenvanan@gmail.com` với `Farmer@2024` và `123456`; public API trả HTTP 401. Không trình bày các tài khoản dưới đây như tài khoản đang hoạt động. |
+| Kho RAG ≥20 tài liệu | **Đạt ở local** | Chroma local có **20 documents / 103 chunks**; public knowledge-status cần đăng nhập nên chưa thể xác nhận con số trên public demo. |
+| API không dùng mock | **Đạt ở local; public chưa đủ bằng chứng** | Local smoke dùng provider `ollama`, model `qwen3:4b-instruct`, grounding `ready`, có 3 nguồn và không có `is_mock=true`. Cấu hình production đặt `ALLOW_MOCK_DATA=false`, `ALLOW_SAMPLE_DATA=false`, `USE_REALTIME_ONLY=true`. Public request AI chưa hoàn tất trong thời gian kiểm tra. |
+| Video công khai | **Chưa đạt** | Video hiện có [agriai-ui-motion-concept.mp4](frontend/prototypes/ui-redesign/agriai-ui-motion-concept.mp4) trong repository, nhưng chưa được upload lên một host công khai. |
+
+**Tài khoản demo tham chiếu từ seed** (cần re-seed/reset password và kiểm tra lại trước khi gửi reviewer):
+
+```text
+nguyenvanan@gmail.com       / 123456  / farmer
+tranthimy2205@gmail.com     / 123456  / farmer
+levanbinhfarmer@gmail.com   / 123456  / farmer
+phamthilan@gmail.com        / 123456  / farmer
+admin@agriai.vn             / 123456  / admin
+```
+
+**Câu hỏi mẫu:** `Sau bão lũ, vườn cây ăn quả bị gãy cành cần làm gì trước?`
+
+**Lệnh kiểm tra public:** `PUBLIC_BASE_URL=https://agriai-demo.pages.dev node frontend/scripts/smoke-public.mjs`. Muốn hoàn tất hai mục còn thiếu cần cung cấp một tài khoản demo public đã seed/reset và một dịch vụ/tài khoản upload video (YouTube, Loom, Drive hoặc host tương đương).
+
+**Prompt chính đã dùng:**
+
+```text
+KIẾN THỨC KỸ THUẬT: chỉ được lấy từ các đoạn tài liệu truy xuất.
+Mỗi nhận định lấy từ đoạn nào thì trích dẫn [TL1], [TL2] tương ứng.
+Phần nào tài liệu không nói tới thì trả lời thẳng "chưa đủ dữ liệu cho phần này"
+— không thay bằng hiểu biết sẵn có và không suy đoán liều lượng thuốc/phân.
+```
+
+**Limitations.** Baseline trước khi sửa có no-answer strict **0/5**; kiểm tra hồi quy sau sửa đạt **5/5** (q026–q030). Citation vẫn có nguồn dư; `needs_review` chưa phải xác nhận semantic của câu trả lời; latency phụ thuộc model local, warm-up Ollama và CPU/GPU máy chạy. Không nên trình bày metrics answerable như bảo đảm production nếu chưa duyệt thủ công 25 câu.
+
+Nhật ký sử dụng AI và các điểm đã kiểm chứng nằm trong [`AI_WORKLOG.md`](AI_WORKLOG.md).
+
 ## Chạy production/home deployment
 
 `compose.home.yml` là compose hiện tại cho môi trường home/production-like, dùng SQL Server, Redis, volume RAG/upload và Cloudflare Tunnel.

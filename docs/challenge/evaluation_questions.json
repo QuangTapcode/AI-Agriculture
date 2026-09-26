@@ -1,0 +1,223 @@
+{
+  "dataset_id": "agriai-knowledge-assistant-challenge",
+  "version": "2026-09-26",
+  "question_count": 30,
+  "note": "Bộ câu hỏi cố định để đánh giá trợ lý. Ba nhóm được chấm theo ba chuẩn khác nhau; trộn chung một chuẩn thì không đo được gì — một hệ thống từ chối mọi câu sẽ đạt điểm cao ở nhóm no_source và trượt sạch nhóm grounded.",
+  "categories": {
+    "grounded": "Corpus có tài liệu trả lời được. Phải trả lời kèm trích dẫn đúng tài liệu.",
+    "no_source": "Câu hỏi nông nghiệp thật nhưng corpus không bao phủ. Phải trả lời chưa đủ dữ liệu, không được suy từ tài liệu gần giống.",
+    "out_of_scope": "Ngoài lĩnh vực nông nghiệp. Phải từ chối theo phạm vi, không phải 'chưa đủ dữ liệu' (ngụ ý nạp thêm tài liệu sẽ trả lời được)."
+  },
+  "questions": [
+    {
+      "id": "q-01",
+      "category": "grounded",
+      "expected_behavior": "answer_with_citation",
+      "expected_doc_ids": ["kn-02"],
+      "question": "Ruộng lúa bị úng ngập sau mưa bão thì cần làm gì để khắc phục?"
+    },
+    {
+      "id": "q-02",
+      "category": "grounded",
+      "expected_behavior": "answer_with_citation",
+      "expected_doc_ids": ["kn-01"],
+      "question": "Vườn cây ăn quả sau bão lũ phục hồi theo các bước nào?"
+    },
+    {
+      "id": "q-03",
+      "category": "grounded",
+      "expected_behavior": "answer_with_citation",
+      "expected_doc_ids": ["kn-03"],
+      "question": "Sau bão số 3, cây trồng cần những biện pháp gì để giảm thiệt hại?"
+    },
+    {
+      "id": "q-04",
+      "category": "grounded",
+      "expected_behavior": "answer_with_citation",
+      "expected_doc_ids": ["kn-08"],
+      "question": "Kỹ thuật sản xuất lúa chét cho vùng bị ngập lụt ở các tỉnh phía Bắc làm thế nào?"
+    },
+    {
+      "id": "q-05",
+      "category": "grounded",
+      "expected_behavior": "answer_with_citation",
+      "expected_doc_ids": ["kn-09"],
+      "question": "Rau hoa màu bị thiệt hại sau bão lũ thì khắc phục ra sao?"
+    },
+    {
+      "id": "q-06",
+      "category": "grounded",
+      "expected_behavior": "answer_with_citation",
+      "expected_doc_ids": ["kn-06"],
+      "question": "Xử lý ra hoa trái vụ cho cây chôm chôm ở Nam Bộ theo quy trình nào?"
+    },
+    {
+      "id": "q-07",
+      "category": "grounded",
+      "expected_behavior": "answer_with_citation",
+      "expected_doc_ids": ["kn-07"],
+      "question": "Cây mắc ca bị sâu bệnh hại thì phòng trừ thế nào để giữ năng suất?"
+    },
+    {
+      "id": "q-08",
+      "category": "grounded",
+      "expected_behavior": "answer_with_citation",
+      "expected_doc_ids": ["kn-10"],
+      "question": "Rệp sáp giả hại cây thanh long quản lý tổng hợp theo hướng sinh học thế nào?"
+    },
+    {
+      "id": "q-09",
+      "category": "grounded",
+      "expected_behavior": "answer_with_citation",
+      "expected_doc_ids": ["kn-05"],
+      "question": "Mùa đông phòng chống đói rét cho đàn vật nuôi bằng cách nào?"
+    },
+    {
+      "id": "q-10",
+      "category": "grounded",
+      "expected_behavior": "answer_with_citation",
+      "expected_doc_ids": ["kn-13"],
+      "question": "Trời nắng nóng kéo dài thì chống nóng cho gia súc gia cầm ra sao?"
+    },
+    {
+      "id": "q-11",
+      "category": "grounded",
+      "expected_behavior": "answer_with_citation",
+      "expected_doc_ids": ["kn-11"],
+      "question": "Bảo quản và sử dụng vắc xin trong chăn nuôi cần lưu ý những gì?"
+    },
+    {
+      "id": "q-12",
+      "category": "grounded",
+      "expected_behavior": "answer_with_citation",
+      "expected_doc_ids": ["kn-12"],
+      "question": "Bệnh Tembusu trên đàn vịt có triệu chứng gì và phòng bệnh thế nào?"
+    },
+    {
+      "id": "q-13",
+      "category": "grounded",
+      "expected_behavior": "answer_with_citation",
+      "expected_doc_ids": ["kn-14"],
+      "question": "Bệnh dịch tả lợn Châu Phi phòng chống bằng những biện pháp nào?"
+    },
+    {
+      "id": "q-14",
+      "category": "grounded",
+      "expected_behavior": "answer_with_citation",
+      "expected_doc_ids": ["kn-15"],
+      "question": "Chăn nuôi gà hữu cơ yêu cầu gì về chuồng trại và con giống?"
+    },
+    {
+      "id": "q-15",
+      "category": "grounded",
+      "expected_behavior": "answer_with_citation",
+      "expected_doc_ids": ["kn-04"],
+      "question": "Kiểm soát bệnh dịch nguy hiểm để chăn nuôi bền vững cần những giải pháp nào?"
+    },
+    {
+      "id": "q-16",
+      "category": "grounded",
+      "expected_behavior": "answer_with_citation",
+      "expected_doc_ids": ["kn-16"],
+      "question": "Thời điểm giao mùa thì phòng bệnh cho cá nuôi thế nào?"
+    },
+    {
+      "id": "q-17",
+      "category": "grounded",
+      "expected_behavior": "answer_with_citation",
+      "expected_doc_ids": ["kn-17"],
+      "question": "Tôm thẻ chân trắng bị hoại tử gan tụy cấp do Vibrio thì kiểm soát ra sao?"
+    },
+    {
+      "id": "q-18",
+      "category": "grounded",
+      "expected_behavior": "answer_with_citation",
+      "expected_doc_ids": ["kn-18"],
+      "question": "Nuôi tôm an toàn không dùng thuốc và hóa chất xử lý môi trường thì làm thế nào?"
+    },
+    {
+      "id": "q-19",
+      "category": "grounded",
+      "expected_behavior": "answer_with_citation",
+      "expected_doc_ids": ["kn-19", "kn-20"],
+      "question": "Nuôi thương phẩm cá song chấm nâu trong ao thì chuẩn bị ao và chọn giống thế nào?"
+    },
+    {
+      "id": "q-20",
+      "category": "grounded",
+      "expected_behavior": "answer_with_citation",
+      "expected_doc_ids": ["kn-19", "kn-20"],
+      "question": "Cá song chấm nâu nuôi ao bằng thức ăn công nghiệp thì cho ăn và quản lý môi trường ra sao?"
+    },
+    {
+      "id": "q-21",
+      "category": "no_source",
+      "expected_behavior": "insufficient_data",
+      "expected_doc_ids": [],
+      "question": "Trồng nho ngón tay ở Ninh Thuận nên để khoảng cách bao nhiêu mét một gốc?"
+    },
+    {
+      "id": "q-22",
+      "category": "no_source",
+      "expected_behavior": "insufficient_data",
+      "expected_doc_ids": [],
+      "question": "Sầu riêng Musang King giai đoạn nuôi trái bón phân theo công thức nào?"
+    },
+    {
+      "id": "q-23",
+      "category": "no_source",
+      "expected_behavior": "insufficient_data",
+      "expected_doc_ids": [],
+      "question": "Trồng dưa lưới trong nhà màng thì quy trình gồm những bước nào?"
+    },
+    {
+      "id": "q-24",
+      "category": "no_source",
+      "expected_behavior": "insufficient_data",
+      "expected_doc_ids": [],
+      "question": "Tái canh cà phê ở Tây Nguyên cần luân canh cải tạo đất bao lâu trước khi trồng lại?"
+    },
+    {
+      "id": "q-25",
+      "category": "no_source",
+      "expected_behavior": "insufficient_data",
+      "expected_doc_ids": [],
+      "question": "Trồng hoa lan hồ điệp trong nhà kính cần giữ nhiệt độ và ẩm độ bao nhiêu?"
+    },
+    {
+      "id": "q-26",
+      "category": "no_source",
+      "expected_behavior": "insufficient_data",
+      "expected_doc_ids": [],
+      "question": "Nuôi ong mật lấy mật nhãn thì một đàn cần bao nhiêu cầu ong?"
+    },
+    {
+      "id": "q-27",
+      "category": "out_of_scope",
+      "expected_behavior": "out_of_scope_refusal",
+      "expected_doc_ids": [],
+      "question": "Thủ đô nước Pháp là gì?"
+    },
+    {
+      "id": "q-28",
+      "category": "out_of_scope",
+      "expected_behavior": "out_of_scope_refusal",
+      "expected_doc_ids": [],
+      "question": "Viết giúp tôi một đoạn code Python sắp xếp mảng."
+    },
+    {
+      "id": "q-29",
+      "category": "out_of_scope",
+      "expected_behavior": "out_of_scope_refusal",
+      "expected_doc_ids": [],
+      "question": "Tỷ số trận đấu tối qua thế nào?"
+    },
+    {
+      "id": "q-30",
+      "category": "out_of_scope",
+      "expected_behavior": "out_of_scope_refusal",
+      "expected_doc_ids": [],
+      "question": "Hôm nay có phim gì hay ngoài rạp không?"
+    }
+  ]
+}

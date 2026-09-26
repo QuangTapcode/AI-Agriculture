@@ -27,7 +27,15 @@ class Settings(BaseSettings):
     AI_BASE_URL: str = "http://localhost:11434"
     AI_MODEL_NAME: str = "qwen3:4b-instruct"
     AI_TIMEOUT_SECONDS: float = 120.0
-    AI_CONTEXT_TOKENS: int = 3072
+    # Đo thật trên corpus khuyến nông (GTX 1650 4GB): prompt RAG dao động
+    # 1106–4025 token. Mức 3072 cũ làm Ollama trả 400 ("request exceeds the
+    # available context size") đúng ở những câu nhiều tài liệu nhất. Nhưng mở
+    # lên 8192 thì chỉ 21/37 lớp trụ lại trên GPU, phần còn lại chạy CPU và
+    # mỗi câu mất 30–55 giây.
+    #
+    # 4096 là mức vừa đủ giữ gần trọn offload; phần prompt vượt ra được cắt
+    # chủ động trong app/services/prompt_budget.py thay vì để Ollama từ chối.
+    AI_CONTEXT_TOKENS: int = 4096
     AI_MAX_OUTPUT_TOKENS: int = 256
     AI_KEEP_ALIVE: str = "15m"
     RAG_ENABLED: bool = True
@@ -37,6 +45,8 @@ class Settings(BaseSettings):
     RAG_EMBED_CACHE_TTL_SECONDS: int = 300
     RAG_EMBED_CACHE_SIZE: int = 256
     RAG_EMBED_NUM_GPU: int = 0
+    RAG_CHUNK_SIZE: int = 1000
+    RAG_CHUNK_OVERLAP: int = 150
     RAG_TOP_K: int = 4
     RAG_MAX_CHUNKS_PER_DOCUMENT: int = 1
     RAG_MIN_SIMILARITY: float = 0.35
