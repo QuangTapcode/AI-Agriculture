@@ -85,3 +85,21 @@ Con người kiểm chứng manifest/URL/hash, schema và phân phối 30 câu, 
 2. Thêm reranker/MMR, giới hạn citation theo evidence thực sự dùng và thử nhiều overlap.
 3. Tách retrieval latency khỏi embedding cache warm-up, chạy nhiều seed/repeat và thêm load test.
 4. Thêm dashboard freshness/source health và một bộ regression test cho từng failure bucket.
+
+## Verification runtime — 2026-09-29
+
+- Đã dùng find-skills theo yêu cầu: kiểm tra leaderboard skills.sh và tìm các skill
+  liên quan project verification/testing và documentation/diagrams. Không cài skill
+  bên ngoài vì repository đã có evaluator và Playwright helper phù hợp.
+- Đã chạy Docker Compose: backend, SQL Server và Redis đều healthy.
+- Đã chạy Playwright smoke test: /health, /docs, landing page, /login, HTTP 200,
+  body không rỗng và browser console không có lỗi.
+- Đã chạy đủ 30 câu qua POST /api/ai-chat/message: 20 grounded, 6 no_source,
+  4 out_of_scope. Kết quả chi tiết nằm trong docs/challenge/verification_2026-09-29.md.
+- Kết quả thật: grounded 20/20 needs_review, no_source 1/6 pass + 5/6 needs_review,
+  out_of_scope 4/4 pass; latency p50 22.9s, p95 34.6s, max 41.4s.
+- README được viết lại với sơ đồ Mermaid cho kiến trúc, dashboard, thời tiết,
+  thị trường, mùa vụ, quality, ingestion Chroma, hybrid/agentic RAG và auth.
+- Kết luận không làm đẹp số liệu: submission chưa thể tuyên bố đạt toàn bộ vì
+  no_source strict pass còn thấp, grounded cần người duyệt semantic, public demo
+  account/video chưa có bằng chứng runtime.
