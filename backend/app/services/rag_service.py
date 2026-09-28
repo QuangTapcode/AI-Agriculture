@@ -3,6 +3,7 @@ import hashlib
 import io
 import logging
 import math
+import re
 import unicodedata
 from datetime import datetime, timezone
 from functools import lru_cache
@@ -13,6 +14,7 @@ from time import monotonic
 import httpx
 
 from app.core.config import settings
+from app.services.rag_ranking import rank_hybrid_candidates
 
 logger = logging.getLogger(__name__)
 MAX_UPLOAD_BYTES = 10 * 1024 * 1024
@@ -33,6 +35,12 @@ def _source_conflicts_with_query(query: str, metadata: dict) -> bool:
     title_is_robusta = "robusta" in normalized_title or "ca phe voi" in normalized_title
     title_is_arabica = "arabica" in normalized_title or "ca phe che" in normalized_title
     return (asks_robusta and title_is_arabica) or (asks_arabica and title_is_robusta)
+
+
+def _has_normalized_term(text: str, term: str) -> bool:
+    if not term:
+        return True
+    return re.search(rf"(?<![a-z0-9]){re.escape(term)}(?![a-z0-9])", text) is not None
 
 
 def _crop_metadata_values(crop: str | None) -> list[str]:
@@ -302,11 +310,33 @@ class RagService:
             crop_term = _normalized_search_text(crop).strip()
             crop_values = _crop_metadata_values(crop)
             crop_where = {"crop": {"$in": crop_values}} if crop_values else None
-            candidates = []
-            for collection in available:
+            rows = []
+            vector_scores = {}
+            vector_candidate_count = 0
+            for collection_index, collection in enumerate(available):
+                snapshot = collection.get(include=["documents", "metadatas"])
+                for row_index, (document, meta) in enumerate(zip(
+                    snapshot.get("documents") or [], snapshot.get("metadatas") or [],
+                )):
+                    meta = meta or {}
+                    searchable = _normalized_search_text(
+                        " ".join(str(meta.get(field) or "") for field in (
+                            "name", "source_name", "crop", "region",
+                        )) + " " + str(document or "")
+                    )
+                    if _source_conflicts_with_query(query, meta):
+                        continue
+                    if crop_term and not _has_normalized_term(searchable, crop_term):
+                        continue
+                    row_key = f"{collection_index}:{meta.get('document_id') or row_index}:{meta.get('chunk') or row_index}"
+                    rows.append({"id": row_key, "document": document or "", "metadata": meta})
+
                 query_args = {
                     "query_embeddings": query_embedding,
-                    "n_results": min(max(1, settings.RAG_TOP_K), 6, collection.count()),
+                    "n_results": min(
+                        max(1, int(getattr(settings, "RAG_HYBRID_CANDIDATE_K", 24))),
+                        collection.count(),
+                    ),
                     "include": ["documents", "metadatas", "distances"],
                 }
                 if crop_where:
@@ -326,45 +356,75 @@ class RagService:
                     # requested crop.
                     query_args.pop("where", None)
                     result = collection.query(**query_args)
-                for text, meta, distance in zip(result["documents"][0], result["metadatas"][0], result["distances"][0]):
+                vector_candidate_count += len((result.get("documents") or [[]])[0])
+                for row_index, (text, meta, distance) in enumerate(zip(
+                    (result.get("documents") or [[]])[0],
+                    (result.get("metadatas") or [[]])[0],
+                    (result.get("distances") or [[]])[0],
+                )):
+                    meta = meta or {}
                     if _source_conflicts_with_query(query, meta):
                         continue
                     if crop_term:
                         searchable = _normalized_search_text(
-                            " ".join(str(meta.get(field) or "") for field in ("name", "source_name", "crop"))
+                            " ".join(str(meta.get(field) or "") for field in (
+                                "name", "source_name", "crop", "region",
+                            ))
                             + " " + str(text or "")
                         )
-                        if crop_term not in searchable:
+                        if not _has_normalized_term(searchable, crop_term):
                             continue
-                    score = 1 - distance
-                    if crop_term:
-                        # Metadata-filtered hits should win over generic
-                        # semantically similar documents from other crops.
-                        score = min(1.0, score + 0.1)
+                    row_key = f"{collection_index}:{meta.get('document_id') or row_index}:{meta.get('chunk') or row_index}"
+                    score = max(0.0, min(1.0, 1 - float(distance)))
                     if score >= settings.RAG_MIN_SIMILARITY:
-                        candidates.append((score, text, meta))
-            candidates.sort(key=lambda item: item[0], reverse=True)
+                        vector_scores[row_key] = max(vector_scores.get(row_key, 0.0), score)
+
+            ranked = rank_hybrid_candidates(
+                rows,
+                vector_scores,
+                query,
+                limit=min(max(1, int(settings.RAG_TOP_K)) * 3, 18),
+                rrf_k=max(1, int(getattr(settings, "RAG_RRF_K", 60))),
+                vector_weight=float(getattr(settings, "RAG_HYBRID_VECTOR_WEIGHT", 0.55)),
+                lexical_weight=float(getattr(settings, "RAG_HYBRID_LEXICAL_WEIGHT", 0.45)),
+            )
             sources = []
             seen = set()
             per_document = {}
-            for score, excerpt, meta in candidates:
-                key = (meta["document_id"], meta["chunk"])
+            for candidate in ranked:
+                meta = candidate.metadata
+                key = (meta.get("document_id"), meta.get("chunk"))
                 if key in seen:
                     continue
-                document_id = meta["document_id"]
+                document_id = meta.get("document_id") or candidate.key
                 if per_document.get(document_id, 0) >= settings.RAG_MAX_CHUNKS_PER_DOCUMENT:
                     continue
                 seen.add(key)
                 per_document[document_id] = per_document.get(document_id, 0) + 1
                 sources.append({"citation": f"TL{len(sources) + 1}", "document_id": meta["document_id"],
                                 "name": meta["name"], "page": meta["page"], "chunk": meta["chunk"],
-                                "excerpt": excerpt, "score": round(score, 4),
+                                "excerpt": candidate.document, "score": candidate.rank_score,
+                                "vector_score": candidate.vector_score,
+                                "lexical_score": candidate.lexical_score,
+                                "rrf_score": candidate.rrf_score,
                                 "source_name": meta.get("source_name"), "source_url": meta.get("source_url"),
                                 "published_at": meta.get("published_at"), "region": meta.get("region"),
                                 "crop": meta.get("crop"), "version": meta.get("version")})
                 if len(sources) >= min(max(1, settings.RAG_TOP_K), 6):
                     break
-            return {"status": "ready" if sources else "no_match", "sources": sources}
+            if not sources:
+                return {"status": "no_match", "sources": []}
+            return {
+                "status": "ready",
+                "sources": sources,
+                "retrieval": {
+                    "mode": "hybrid",
+                    "ranking": "rrf",
+                    "vector_candidates": vector_candidate_count,
+                    "lexical_candidates": len(rows),
+                    "returned": len(sources),
+                },
+            }
         except Exception:
             logger.exception("Document retrieval unavailable")
             return {"status": "unavailable", "sources": []}

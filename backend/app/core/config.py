@@ -50,6 +50,12 @@ class Settings(BaseSettings):
     RAG_TOP_K: int = 4
     RAG_MAX_CHUNKS_PER_DOCUMENT: int = 1
     RAG_MIN_SIMILARITY: float = 0.35
+    RAG_HYBRID_CANDIDATE_K: int = 24
+    RAG_HYBRID_VECTOR_WEIGHT: float = 0.55
+    RAG_HYBRID_LEXICAL_WEIGHT: float = 0.45
+    RAG_RRF_K: int = 60
+    RAG_AGENT_MAX_STEPS: int = 2
+    RAG_AGENT_MIN_RELEVANCE: float = 0.18
     KNOWLEDGE_AGENT_ENABLED: bool = False
     KNOWLEDGE_AGENT_HOUR: int = 2
     KNOWLEDGE_AGENT_MAX_DOCUMENTS: int = 20

@@ -23,6 +23,7 @@ from app.api.auth import get_current_user, get_optional_current_user
 from app.api.response import api_response
 from app.api.assistant_library import load_memory
 from app.services.rag_service import rag_service
+from app.services.agentic_rag_service import agentic_rag_service
 from app.services.knowledge_discovery_service import knowledge_discovery_service
 from app.core.config import settings
 from app.integrations.ai_provider import get_ai_client
@@ -1217,10 +1218,12 @@ async def ai_chat_message(
                                  f"Cây trồng: {crop or ''}. Khu vực: {region or ''}.", request.message])
     retrieval_started = perf_counter()
     context["rag"] = await asyncio.to_thread(
-        rag_service.retrieve,
+        agentic_rag_service.retrieve,
         retrieval_query,
         current_user.UserID if current_user else None,
         crop,
+        region=region,
+        intent=intent,
     )
     timing["retrieval_ms"] = round((perf_counter() - retrieval_started) * 1000, 1)
     needs_query_discovery = _rag_needs_query_discovery(

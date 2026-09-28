@@ -39,6 +39,41 @@ def test_cultivation_question_is_not_misrouted_to_harvest_analysis():
     assert classify_user_intent("Cà phê Robusta cần chuẩn bị đất như thế nào?") == "cultivation_advice"
 
 
+def test_chat_response_exposes_agentic_hybrid_retrieval_trace(monkeypatch):
+    monkeypatch.setattr(
+        "app.api.ai_chat.rag_service.retrieve",
+        lambda *args, **kwargs: {
+            "status": "ready",
+            "sources": [{
+                "citation": "TL1",
+                "name": "nho.txt",
+                "document_id": "nho",
+                "page": 1,
+                "chunk": 1,
+                "crop": "nho",
+                "excerpt": "Quy trình trồng nho và phòng bệnh cho nho.",
+                "score": 0.82,
+            }],
+            "retrieval": {"mode": "hybrid", "ranking": "rrf"},
+        },
+    )
+
+    async def fake_ai(_request, _context):
+        return "Quy trình trồng nho [TL1].", "test-model"
+
+    monkeypatch.setattr("app.api.ai_chat._chon_provider", lambda: (fake_ai, "ollama"))
+    response = client.post("/api/ai-chat/message", json={
+        "message": "Quy trình trồng nho tại Ninh Thuận?",
+    })
+
+    assert response.status_code == 200
+    rag = response.json()["data"]["rag"]
+    assert rag["retrieval"]["mode"] == "hybrid"
+    assert rag["retrieval"]["ranking"] == "rrf"
+    assert rag["agentic"]["mode"] == "plan_retrieve_grade_rewrite"
+    assert rag["agentic"]["outcome"] == "evidence_found_first_pass"
+
+
 def test_grape_cultivation_in_da_nang_is_not_misrouted_to_weather_or_corn():
     question = "Kỹ thuật trồng nho ngón tay tại Đà Nẵng"
 

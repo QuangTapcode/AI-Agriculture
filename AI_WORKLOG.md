@@ -52,6 +52,29 @@ Audit q026–q030 cho thấy lỗi nằm trước model, không chỉ ở câu t
 
 Đã sửa bằng intent classification chính xác hơn, cổng grounding có scope theo intent, kiểm tra dosage/future-quantitative riêng và token boundary cho crop. Test hồi quy không cho gọi model khi thiếu bằng chứng. Kết quả chạy endpoint thật sau sửa: q026–q029 `no_source` **4/4 pass**, q030 `out_of_scope` **1/1 pass**; log thô nằm trong [`grounding_gate_verification.md`](docs/challenge/grounding_gate_verification.md).
 
+## Chuyển sang hybrid search, RAG ranking và agentic RAG — 2026-09-28
+
+Skill search được kiểm tra theo yêu cầu người dùng. Các kết quả liên quan gồm
+`hybrid-search-implementation`, `rag-retrieval` và `rag-architect`; không cài
+skill ngoài vì repo đã có pipeline FastAPI + Chroma đủ để triển khai trực tiếp.
+
+- `RagService.retrieve()` lấy vector candidates từ Chroma và lexical candidates
+  bằng BM25 trên snapshot collection.
+- `rag_ranking.py` hợp nhất hai nhánh bằng RRF, trả `vector_score`,
+  `lexical_score`, `rrf_score` và final `score` để reviewer/debug có thể thấy
+  nguồn được xếp hạng vì lý do gì.
+- `AgenticRagService` chạy vòng bounded
+  `plan → retrieve → grade → rewrite`, tối đa 2 bước mặc định; không dùng LLM
+  để quyết định retry nhằm tránh agent tự bịa query.
+- API chat trả thêm `rag.retrieval` và `rag.agentic` trace; grounding gate vẫn
+  là lớp cuối quyết định có cho model sinh câu trả lời hay không.
+
+Regression sau thay đổi: **130 backend tests passed**, frontend **151 tests
+passed** và production build thành công. Test mới nằm ở
+[`backend/tests/test_rag_hybrid.py`](backend/tests/test_rag_hybrid.py),
+[`backend/tests/test_agentic_rag.py`](backend/tests/test_agentic_rag.py) và
+test API trong `test_ai_chat_intent.py`. Quyết định kiến trúc: [`ADR 0001`](docs/adr/0001-hybrid-ranking-agentic-rag.md).
+
 ## Phần con người đã kiểm chứng
 
 Con người kiểm chứng manifest/URL/hash, schema và phân phối 30 câu, storage tách biệt, model/config của hai run, log metrics, các q-id lỗi và kết luận giới hạn. Nội dung semantic của toàn bộ 25 câu answerable chưa được duyệt thủ công từng câu; vì vậy `needs_review` vẫn được giữ đúng tên và không tuyên bố là “đúng tuyệt đối”.

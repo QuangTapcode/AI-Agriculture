@@ -495,3 +495,8 @@ python -m pytest tests/test_api.py -v
 ## Trợ lý RAG
 
 Hướng dẫn nạp tài liệu, cấu hình Ollama/Chroma và sử dụng lịch sử nhiều lượt: [assistant-rag.md](docs/assistant-rag.md).
+
+Retrieval hiện là hybrid search (Chroma vector + BM25 lexical), dùng RRF để
+xếp hạng và có vòng agentic RAG bounded để grade/rewrite query khi evidence
+đầu tiên yếu. Xem quyết định kiến trúc tại
+[`../../docs/adr/0001-hybrid-ranking-agentic-rag.md`](../../docs/adr/0001-hybrid-ranking-agentic-rag.md).

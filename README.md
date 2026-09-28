@@ -139,6 +139,8 @@ Sao chép `.env.example` để xem toàn bộ biến cấu hình. Các nhóm ch�
 - `DATABASE_URL`, `REDIS_URL`: database và cache.
 - `AI_PROVIDER`, `AI_BASE_URL`, `AI_MODEL_NAME`: nhà cung cấp/model AI.
 - `RAG_ENABLED`, `RAG_STORAGE_PATH`, `RAG_EMBEDDING_MODEL`: RAG và kho tài liệu.
+- `RAG_HYBRID_CANDIDATE_K`, `RAG_HYBRID_VECTOR_WEIGHT`, `RAG_HYBRID_LEXICAL_WEIGHT`, `RAG_RRF_K`: hybrid search và RRF ranking.
+- `RAG_AGENT_MAX_STEPS`, `RAG_AGENT_MIN_RELEVANCE`: giới hạn vòng agentic RAG và ngưỡng evidence.
 - `THITRUONG_NONGSAN_*`, `PRICE_SOURCE_URLS_JSON`: nguồn giá/tin tức.
 - `WEATHER_PROVIDER`, `OPEN_METEO_BASE_URL`: nguồn thời tiết.
 - `FIRECRAWL_*`, `TAVILY_*`, `GEMINI_API_KEY`: tích hợp tìm kiếm/crawl/LLM tùy chọn.
@@ -146,6 +148,8 @@ Sao chép `.env.example` để xem toàn bộ biến cấu hình. Các nhóm ch�
 - `ALLOW_MOCK_DATA`, `ALLOW_SAMPLE_DATA`, `USE_REALTIME_ONLY`: chế độ dữ liệu.
 
 Trong môi trường phát triển, `.env.example` cho phép mock/sample để kiểm thử luồng. **Không dùng các giá trị đó cho production.** Môi trường production phải tắt mock/sample, bật realtime-only khi phù hợp và chỉ hiển thị số liệu có nguồn, freshness và trạng thái cập nhật.
+
+RAG hiện dùng hybrid search: Chroma cosine + BM25 lexical search, hợp nhất bằng RRF ranking. Vòng agentic RAG có giới hạn sẽ lập query tập trung theo crop/khu vực/intent, chấm evidence và rewrite một lần khi kết quả đầu chưa đủ liên quan. Chi tiết kiến trúc nằm trong [`docs/adr/0001-hybrid-ranking-agentic-rag.md`](docs/adr/0001-hybrid-ranking-agentic-rag.md).
 
 ### Dataset RAG cho AI Builder Challenge
 

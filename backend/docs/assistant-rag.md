@@ -43,6 +43,12 @@ RAG_TIMEOUT_SECONDS=60
 RAG_TOP_K=4
 RAG_MAX_CHUNKS_PER_DOCUMENT=1
 RAG_MIN_SIMILARITY=0.35
+RAG_HYBRID_CANDIDATE_K=24
+RAG_HYBRID_VECTOR_WEIGHT=0.55
+RAG_HYBRID_LEXICAL_WEIGHT=0.45
+RAG_RRF_K=60
+RAG_AGENT_MAX_STEPS=2
+RAG_AGENT_MIN_RELEVANCE=0.18
 ```
 
 `AI_MODEL_NAME` hiện mặc định là Qwen3 4B Instruct thay cho Qwen2.5 3B. Đây là biến thể trả lời trực tiếp, tránh độ trễ của biến thể Thinking khi chạy trên GPU 4 GB. Model quantized khoảng 2,5 GB; bộ nhớ chạy thực tế còn bao gồm context và có thể phải dùng một phần RAM/CPU. Chất lượng thực tế vẫn cần đánh giá trên tài liệu và câu hỏi của dự án. Thông số model: [Qwen3 4B Instruct](https://ollama.com/library/qwen3:4b-instruct), [Qwen3 8B](https://ollama.com/library/qwen3:8b).
@@ -54,9 +60,10 @@ Embedding chạy CPU để tránh tranh VRAM với model chat. Model Qwen3 đư�
 1. Đọc tài liệu, giới hạn 10 MB, 300 trang PDF và 300.000 ký tự. PDF ảnh cần OCR trước, PDF có mật khẩu bị từ chối.
 2. Chia đoạn tối đa 1.000 ký tự, chồng lấn 150 ký tự và giữ số trang.
 3. Gọi [Ollama `/api/embed`](https://docs.ollama.com/api/embed) theo lô, lưu embedding cùng văn bản và metadata vào Chroma trên đĩa. Toàn bộ embedding phải hoàn thành trước khi xuất bản tài liệu; SHA-256 nội dung ngăn nạp trùng.
-4. Khi hỏi, kết hợp câu hỏi hiện tại với cây trồng, khu vực và câu hỏi gần đây trong chính hội thoại để tìm đoạn liên quan theo cosine similarity. Chỉ nhận kết quả đạt ngưỡng, mặc định tối đa 4 đoạn.
-5. Ghép nguồn truy xuất, dữ liệu nghiệp vụ phù hợp và tối đa 3 lượt hội thoại gần nhất vào prompt. Lịch sử được giới hạn độ dài và không được coi là nguồn xác minh.
-6. Sinh câu trả lời, lưu cả trích dẫn vào lịch sử. Nếu model lỗi nhưng có nguồn, trả các đoạn trích với thông báo rõ ràng. Nếu kho trống, không có kết quả hoặc truy xuất lỗi, giao diện hiển thị trạng thái tương ứng; không tự tạo nguồn.
+4. Khi hỏi, agentic RAG lập query theo cây trồng, khu vực và intent. Hybrid search lấy vector candidates từ Chroma và lexical candidates bằng BM25 trên snapshot collection; RRF hợp nhất rồi xếp hạng theo score vector, lexical, crop metadata và diversity.
+5. Evidence grader kiểm tra kết quả đầu. Nếu dưới ngưỡng, agent rewrite query tối đa một lần theo `RAG_AGENT_MAX_STEPS`; nếu vẫn yếu, grounding gate từ chối thay vì cho model đoán.
+6. Ghép nguồn truy xuất, dữ liệu nghiệp vụ phù hợp và tối đa 3 lượt hội thoại gần nhất vào prompt. Lịch sử được giới hạn độ dài và không được coi là nguồn xác minh.
+7. Sinh câu trả lời, lưu cả trích dẫn vào lịch sử. Nếu model lỗi nhưng có nguồn, trả các đoạn trích với thông báo rõ ràng. Nếu kho trống, không có kết quả hoặc truy xuất lỗi, giao diện hiển thị trạng thái tương ứng; không tự tạo nguồn.
 
 API tài liệu: `GET/POST /api/ai-chat/documents`, `DELETE /api/ai-chat/documents/{id}`. Tất cả cần đăng nhập. Kho giới hạn 10.000 đoạn mỗi tài khoản/model embedding. Đổi model embedding tạo collection riêng; cần nạp lại tài liệu, không trộn vector từ hai model. Dữ liệu collection cũ vẫn nằm trên đĩa để quản trị viên quản lý.
 
