@@ -25,6 +25,13 @@ def test_frontend_mac_dinh_dung_cong_chuan():
     """Chạy local không set biến môi trường thì vẫn phải gọi đúng backend."""
     api = (GOC / "frontend" / "src" / "services" / "api.js").read_text(encoding="utf-8")
     mac_dinh = re.search(r"VITE_API_URL\s*\|\|\s*'([^']+)'", api)
+    if not mac_dinh:
+        # Production uses the same-origin proxy, while local development keeps
+        # an explicit backend fallback.
+        mac_dinh = re.search(
+            r"import\.meta\.env\.PROD\s*\?\s*'/'\s*:\s*'([^']+)'",
+            api,
+        )
     assert mac_dinh, "api.js không có URL mặc định"
     assert f":{CONG}" in mac_dinh.group(1), (
         f"Frontend mặc định gọi {mac_dinh.group(1)}, không khớp cổng {CONG}"
