@@ -48,6 +48,9 @@ jobs:
         cd backend
         pip install -r requirements.txt
         pip install pytest pytest-cov
+
+    - name: Prepare model weights
+      run: python scripts/setup_models.py
     
     - name: Run tests
       env:
