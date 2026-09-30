@@ -23,8 +23,8 @@ POST /api/ai-chat/message, với 30 câu hỏi cố định:
 
 Kết luận trung thực: pipeline, dataset, citation, evaluation và guardrail đã
 đủ để trình diễn; **chưa nên tuyên bố đạt tuyệt đối** vì answer quality vẫn cần
-human review và nhóm no_source chưa đạt 6/6 strict pass. Raw output của lần
-chạy local nằm trong .local/verification/2026-09-29/; cách chạy lại nằm ở
+human review và nhóm no_source chưa đạt 6/6 strict pass. Raw output là artifact
+local, không nằm trong repository; có thể chạy lại theo
 [báo cáo verification](docs/challenge/verification_2026-09-29.md).
 
 ## Tính năng và công nghệ
@@ -68,6 +68,9 @@ backend/app/tasks        # Celery và background refresh
 backend/tests            # pytest cho contract, grounding, service
 docs/challenge            # dataset, evaluation, experiment, verification
 scripts                   # ingest, evaluate, smoke test, verification
+infra                     # nginx, public web và deployment assets
+training                  # recipe/checkpoint cho các model cần huấn luyện lại
+storage                   # raw crawl/upload runtime; không dùng làm source code
 ~~~
 
 ## Luồng hoạt động từng tính năng
@@ -270,6 +273,20 @@ $env:VITE_API_URL="http://127.0.0.1:8000"
 npm run dev
 ~~~
 
+### Chuẩn bị model cho quality check
+
+`training/quality/checkpoints/` chứa checkpoint được theo dõi trong Git, còn
+`backend/ai_models/weights/` là thư mục runtime bị bỏ qua bởi Git. Nếu cần chạy
+quality check bằng model thật, chạy từ thư mục gốc trước khi build image:
+
+~~~powershell
+python scripts/setup_models.py
+docker compose up -d --build
+~~~
+
+Nếu đã tạo virtual environment, có thể dùng
+`backend/venv/Scripts/python.exe scripts/setup_models.py` thay cho `python`.
+
 ## Kiểm thử và đánh giá
 
 ### Unit/integration tests
@@ -342,8 +359,11 @@ chứng runtime riêng; kết quả local không tự chứng minh public deploy
   hoặc reranker/threshold tốt hơn.
 - Latency phụ thuộc warm-up Ollama, GPU/CPU và độ dài prompt; số liệu trên
   không phải SLA production.
-- Model weights quality (best.pt, efficientnet_quality.pt) không nằm trong
-  repository hiện tại; cần cung cấp artifact khi triển khai quality service.
+- Runtime quality weights không nằm trong `backend/ai_models/weights/` của Git.
+  Chạy `scripts/setup_models.py` để copy `best.pt` và
+  `efficientnet_quality.pt` từ `training/quality/checkpoints/` trước khi build
+  image hoặc khởi động quality service. Nếu thiếu weights, quality API phải trả
+  lỗi/unavailable; không được coi fallback là kết quả thật.
 - Giá, tin tức và thời tiết phụ thuộc nguồn ngoài, cache và trạng thái freshness;
   thiếu dữ liệu phải hiển thị unavailable, không thay bằng zero/mock.
 
