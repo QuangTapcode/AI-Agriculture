@@ -44,16 +44,16 @@ local, không nằm trong repository; có thể chạy lại theo
 
 ~~~mermaid
 flowchart LR
-    Browser[React 18 + Vite<br/>Field Command UI] -->|Axios / JSON / JWT| API[FastAPI + Uvicorn]
-    API --> DB[(SQL Server dev<br/>PostgreSQL production<br/>SQLite fallback)]
-    API --> Cache[(Redis)]
-    Worker[Celery worker + beat] --> Cache
+    Browser["React 18 + Vite<br/>Field Command UI"] -->|Axios / JSON / JWT| API["FastAPI + Uvicorn"]
+    API --> DB["SQL Server dev<br/>PostgreSQL production<br/>SQLite fallback"]
+    API --> Cache["Redis"]
+    Worker["Celery worker + beat"] --> Cache
     Worker --> DB
-    API --> Weather[Open-Meteo]
-    API --> Market[Official sources / crawlers / Tavily]
-    API --> RAG[Chroma + BM25/RRF]
-    RAG --> Ollama[Ollama<br/>qwen3 + embeddinggemma]
-    API --> Models[YOLO/Ultralytics<br/>EfficientNet/OpenCV]
+    API --> Weather["Open-Meteo"]
+    API --> Market["Official sources / crawlers / Tavily"]
+    API --> RAG["Chroma + BM25/RRF"]
+    RAG --> Ollama["Ollama<br/>qwen3 + embeddinggemma"]
+    API --> Models["YOLO/Ultralytics<br/>EfficientNet/OpenCV"]
 ~~~
 
 Các lớp chính:
@@ -79,17 +79,17 @@ storage                   # raw crawl/upload runtime; không dùng làm source c
 
 ~~~mermaid
 flowchart TD
-    U[Người dùng chọn cây trồng + khu vực] --> UI[Dashboard React]
-    UI --> ENDPOINT[/api/dashboard/overview<br/>/summary /data-health]
-    ENDPOINT --> DS[DashboardService]
-    DS --> SQL[(SQLAlchemy / database)]
-    DS --> W[WeatherService + cache]
-    DS --> P[Pricing/Market services]
-    DS --> N[Market news service]
+    U["Người dùng chọn cây trồng + khu vực"] --> UI["Dashboard React"]
+    UI --> ENDPOINT["/api/dashboard/overview<br/>/summary /data-health"]
+    ENDPOINT --> DS["DashboardService"]
+    DS --> SQL["SQLAlchemy / database"]
+    DS --> W["WeatherService + cache"]
+    DS --> P["Pricing/Market services"]
+    DS --> N["Market news service"]
     W --> UI
     P --> UI
     N --> UI
-    UI --> Trust[Hiển thị source + freshness + unavailable state]
+    UI --> Trust["Hiển thị source + freshness + unavailable state"]
 ~~~
 
 Dashboard không tự bịa số liệu. Mỗi giá trị định lượng phải đi qua API, có
@@ -99,15 +99,15 @@ nguồn/trạng thái cập nhật; khi thiếu dữ liệu, frontend hiển th�
 
 ~~~mermaid
 flowchart LR
-    User[Chọn khu vực/cây trồng] --> WeatherAPI[/api/weather/*]
-    WeatherAPI --> Service[WeatherService]
-    Service --> Cache{Có cache còn hạn?}
-    Cache -->|Có| Cached[Trả dữ liệu + freshness]
-    Cache -->|Không| OpenMeteo[Open-Meteo API]
-    OpenMeteo --> Store[Lưu DB + Redis]
-    Store --> Risk[Phân tích rủi ro nông nghiệp]
-    Risk --> Alerts[Cảnh báo thời tiết/notification]
-    Cached --> UI[ForecastPage / AlertPage]
+    User["Chọn khu vực/cây trồng"] --> WeatherAPI["/api/weather/*"]
+    WeatherAPI --> Service["WeatherService"]
+    Service --> Cache{"Có cache còn hạn?"}
+    Cache -->|Có| Cached["Trả dữ liệu + freshness"]
+    Cache -->|Không| OpenMeteo["Open-Meteo API"]
+    OpenMeteo --> Store["Lưu DB + Redis"]
+    Store --> Risk["Phân tích rủi ro nông nghiệp"]
+    Risk --> Alerts["Cảnh báo thời tiết/notification"]
+    Cached --> UI["ForecastPage / AlertPage"]
     Alerts --> UI
 ~~~
 
@@ -115,41 +115,41 @@ flowchart LR
 
 ~~~mermaid
 flowchart TD
-    Crawler[Crawler/Celery định kỳ] --> Sources[Trang giá chính thức<br/>RSS / Tavily tùy chọn]
-    Sources --> Normalize[Chuẩn hóa tên cây, vùng, đơn vị, timestamp]
-    Normalize --> PriceDB[(MarketPrices / PriceHistory)]
-    User[Người dùng nhập cây + vùng + sản lượng] --> MarketAPI[/api/pricing/*<br/>/api/market/*<br/>/api/news/*]
+    Crawler["Crawler/Celery định kỳ"] --> Sources["Trang giá chính thức<br/>RSS / Tavily tùy chọn"]
+    Sources --> Normalize["Chuẩn hóa tên cây, vùng, đơn vị, timestamp"]
+    Normalize --> PriceDB["MarketPrices / PriceHistory"]
+    User["Người dùng nhập cây + vùng + sản lượng"] --> MarketAPI["/api/pricing/*<br/>/api/market/*<br/>/api/news/*"]
     MarketAPI --> PriceDB
-    MarketAPI --> Analyzer[PricingService + MarketAnalysisService]
-    Analyzer --> Result[Lịch sử / xu hướng / giá gợi ý / kênh bán]
-    Result --> UI[PricingPage / ReportsPage]
+    MarketAPI --> Analyzer["PricingService + MarketAnalysisService"]
+    Analyzer --> Result["Lịch sử / xu hướng / giá gợi ý / kênh bán"]
+    Result --> UI["PricingPage / ReportsPage"]
 ~~~
 
 ### 4. Mùa vụ và dự báo thu hoạch
 
 ~~~mermaid
 flowchart LR
-    Input[Ngày trồng + cây + vùng + giống] --> API[/api/seasons/*<br/>/api/harvest/*]
-    API --> Season[SeasonService]
-    Season --> Forecast[HarvestService<br/>logic mùa vụ / Prophet tùy luồng]
-    Forecast --> Risk[WeatherService + harvest risk]
-    Risk --> DB[(HarvestSchedule / ForecastResults)]
-    DB --> UI[SeasonManagementPage]
-    UI --> Actions[Lịch canh tác, lịch sử, nhắc việc]
+    Input["Ngày trồng + cây + vùng + giống"] --> API["/api/seasons/*<br/>/api/harvest/*"]
+    API --> Season["SeasonService"]
+    Season --> Forecast["HarvestService<br/>logic mùa vụ / Prophet tùy luồng"]
+    Forecast --> Risk["WeatherService + harvest risk"]
+    Risk --> DB["HarvestSchedule / ForecastResults"]
+    DB --> UI["SeasonManagementPage"]
+    UI --> Actions["Lịch canh tác, lịch sử, nhắc việc"]
 ~~~
 
 ### 5. Kiểm tra chất lượng nông sản
 
 ~~~mermaid
 flowchart TD
-    Upload[Upload ảnh] --> Validate[FastAPI multipart validation]
-    Validate --> Detect[YOLO/Ultralytics phát hiện vùng/đối tượng]
-    Detect --> Classify[EfficientNet phân loại chất lượng]
-    Classify --> Vision[OpenCV/Pillow đo màu và khuyết tật]
-    Vision --> Grade[QualityService hợp nhất grade, disease, defects]
-    Grade --> Price[PricingService tính giá tham khảo nếu đủ dữ liệu]
-    Grade --> Save[(QualityRecords)]
-    Save --> UI[QualityPage + lịch sử]
+    Upload["Upload ảnh"] --> Validate["FastAPI multipart validation"]
+    Validate --> Detect["YOLO/Ultralytics phát hiện vùng/đối tượng"]
+    Detect --> Classify["EfficientNet phân loại chất lượng"]
+    Classify --> Vision["OpenCV/Pillow đo màu và khuyết tật"]
+    Vision --> Grade["QualityService hợp nhất grade, disease, defects"]
+    Grade --> Price["PricingService tính giá tham khảo nếu đủ dữ liệu"]
+    Grade --> Save["QualityRecords"]
+    Save --> UI["QualityPage + lịch sử"]
 ~~~
 
 Model weights phải tồn tại trong môi trường triển khai. Nếu thiếu model hoặc
@@ -160,12 +160,12 @@ fallback thành kết quả thật trong production.
 
 ~~~mermaid
 flowchart TD
-    Sources[20 tài liệu HTML công khai<br/>manifest + URL + SHA-256] --> Verify[Verify status, hash, min chars]
-    Verify --> Parse[BeautifulSoup / pypdf parse text]
-    Parse --> Chunk[Chunk size + overlap]
-    Chunk --> Embed[Ollama embeddinggemma]
-    Embed --> Chroma[(Persistent Chroma collection)]
-    Parse --> Metadata[document_id, source, URL, crop, region, page, chunk]
+    Sources["20 tài liệu HTML công khai<br/>manifest + URL + SHA-256"] --> Verify["Verify status, hash, min chars"]
+    Verify --> Parse["BeautifulSoup / pypdf parse text"]
+    Parse --> Chunk["Chunk size + overlap"]
+    Chunk --> Embed["Ollama embeddinggemma"]
+    Embed --> Chroma["Persistent Chroma collection"]
+    Parse --> Metadata["document_id, source, URL, crop, region, page, chunk"]
     Metadata --> Chroma
 ~~~
 
@@ -184,20 +184,20 @@ nguồn thuộc nhóm Khuyến nông Quốc gia và có metadata/hash để tái
 
 ~~~mermaid
 flowchart TD
-    Q[Câu hỏi người dùng] --> Intent[Intent + crop + region extraction]
-    Intent --> Plan[Agentic plan: query gốc + query tập trung]
-    Plan --> Retrieve[Retrieve tối đa RAG_AGENT_MAX_STEPS]
-    Retrieve --> Vector[Chroma cosine candidates]
-    Retrieve --> Lexical[BM25 lexical candidates trên snapshot]
-    Vector --> RRF[RRF + weighted score]
+    Q["Câu hỏi người dùng"] --> Intent["Intent + crop + region extraction"]
+    Intent --> Plan["Agentic plan: query gốc + query tập trung"]
+    Plan --> Retrieve["Retrieve tối đa RAG_AGENT_MAX_STEPS"]
+    Retrieve --> Vector["Chroma cosine candidates"]
+    Retrieve --> Lexical["BM25 lexical candidates trên snapshot"]
+    Vector --> RRF["RRF + weighted score"]
     Lexical --> RRF
-    RRF --> Grade[Evidence grade: scope + topic + score]
-    Grade -->|Yếu| Rewrite[Rewrite query bounded]
+    RRF --> Grade["Evidence grade: scope + topic + score"]
+    Grade -->|Yếu| Rewrite["Rewrite query bounded"]
     Rewrite --> Retrieve
-    Grade -->|Đủ| Gate{Grounding gate}
-    Gate -->|ready| LLM[Ollama qwen3:4b-instruct]
-    Gate -->|no_match / out_of_scope| Refusal[Từ chối rõ ràng, không đoán]
-    LLM --> Citation[Answer + TL1/TL2 + source metadata]
+    Grade -->|Đủ| Gate{"Grounding gate"}
+    Gate -->|ready| LLM["Ollama qwen3:4b-instruct"]
+    Gate -->|no_match / out_of_scope| Refusal["Từ chối rõ ràng, không đoán"]
+    LLM --> Citation["Answer + TL1/TL2 + source metadata"]
 ~~~
 
 Các lớp bảo vệ:
@@ -213,14 +213,14 @@ Các lớp bảo vệ:
 
 ~~~mermaid
 flowchart LR
-    Login[LoginPage] --> AuthAPI[POST /api/auth/login]
-    AuthAPI --> Security[python-jose + passlib]
-    Security --> DB[(Users)]
-    Security --> Token[JWT access token]
-    Token --> Storage[localStorage token]
-    Storage --> Axios[Axios interceptor Bearer]
-    Axios --> Protected[ProtectedRoute + authenticated API]
-    Protected --> Pages[Dashboard / mùa vụ / chat / settings]
+    Login["LoginPage"] --> AuthAPI["POST /api/auth/login"]
+    AuthAPI --> Security["python-jose + passlib"]
+    Security --> DB["Users"]
+    Security --> Token["JWT access token"]
+    Token --> Storage["localStorage token"]
+    Storage --> Axios["Axios interceptor Bearer"]
+    Axios --> Protected["ProtectedRoute + authenticated API"]
+    Protected --> Pages["Dashboard / mùa vụ / chat / settings"]
 ~~~
 
 ## Chạy dự án
